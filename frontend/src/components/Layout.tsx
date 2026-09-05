@@ -15,7 +15,6 @@ import {
   ShoppingCart,
   UserCog,
   Users,
-  UtensilsCrossed,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -124,19 +123,16 @@ export default function Layout() {
           )}
         >
           <div
-            className={cx(
-              "flex items-center gap-2.5 py-5",
-              recolhido ? "justify-center px-2" : "px-5",
-            )}
+            className={cx("flex items-center py-5", recolhido ? "justify-center px-2" : "px-5")}
           >
-            <div className="rounded-lg bg-marca-500 p-2">
-              <UtensilsCrossed className="h-5 w-5 text-white" />
-            </div>
-            {!recolhido && (
-              <div className="min-w-0">
-                <p className="font-bold leading-tight text-white">Cantina</p>
-                <p className="text-xs text-carvao-400">Sistema de gestao</p>
-              </div>
+            {recolhido ? (
+              <img src="/icone-cantina.png" alt="Cantina" className="h-9 w-9 rounded-lg" />
+            ) : (
+              <img
+                src="/logo-cantina.png"
+                alt="Maanaim Cantina"
+                className="w-full max-w-[190px]"
+              />
             )}
           </div>
 
@@ -205,6 +201,7 @@ export default function Layout() {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topo do celular: sem menu lateral, so titulo e sair */}
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-carvao-100 bg-white px-4 py-3 lg:hidden">
+          <img src="/icone-cantina.png" alt="Cantina" className="h-9 w-9 shrink-0 rounded-lg" />
           <div className="min-w-0 flex-1">
             <p className="truncate font-bold text-carvao-900">{atual?.texto ?? "Cantina"}</p>
             <p className="truncate text-xs text-carvao-500">{usuario?.nome}</p>

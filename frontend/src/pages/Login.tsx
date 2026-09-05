@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { UtensilsCrossed } from "lucide-react";
-
 import { mensagemErro } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Botao, Campo, Erro } from "../components/ui";
@@ -28,12 +26,13 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-carvao-900 px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-7 text-center">
-          <div className="mx-auto mb-3 inline-flex rounded-2xl bg-marca-500 p-3">
-            <UtensilsCrossed className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">Sistema Cantina</h1>
-          <p className="mt-1 text-sm text-carvao-400">Entre para acessar o painel</p>
+        <div className="mb-8 text-center">
+          <img
+            src="/logo-cantina.png"
+            alt="Maanaim Cantina"
+            className="mx-auto w-64 max-w-full"
+          />
+          <p className="mt-4 text-sm text-carvao-400">Entre para acessar o sistema</p>
         </div>
 
         <form onSubmit={enviar} className="cartao space-y-4 p-6">
