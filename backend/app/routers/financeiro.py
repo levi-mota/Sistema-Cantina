@@ -3,13 +3,18 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 
 from app import models, schemas
-from app.core.deps import DB, CurrentUser
+from app.core.deps import DB, CurrentUser, exigir_admin
 
-router = APIRouter(prefix="/api/financeiro", tags=["financeiro"])
+# Modulo de gestao: fora do alcance de quem so opera o caixa.
+router = APIRouter(
+    prefix="/api/financeiro",
+    tags=["financeiro"],
+    dependencies=[Depends(exigir_admin)],
+)
 
 ABERTOS = [models.StatusTitulo.ABERTO, models.StatusTitulo.PARCIAL]
 

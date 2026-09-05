@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app import models, schemas
-from app.core.deps import DB, CurrentUser, Gestao
+from app.core.deps import DB, CurrentUser, SomenteAdmin
 from app.services import caixa as servico_caixa
 from app.services import documento as servico_documento
 from app.services import estoque as servico_estoque
@@ -225,7 +225,7 @@ def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
 
 
 @router.post("/{venda_id}/cancelar", response_model=schemas.VendaOut)
-def cancelar(venda_id: int, db: DB, gestor: Gestao):
+def cancelar(venda_id: int, db: DB, gestor: SomenteAdmin):
     """Cancela a venda, devolve os itens ao estoque e cancela o titulo gerado."""
     venda = db.get(models.Venda, venda_id)
     if not venda:

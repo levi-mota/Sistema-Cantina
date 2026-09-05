@@ -32,21 +32,48 @@ interface ItemMenu {
 }
 
 const MENU: ItemMenu[] = [
-  { para: "/", texto: "Painel", curto: "Painel", icone: LayoutDashboard, fixoNoCelular: true },
+  // Sem `perfis`, o item aparece para todos. O USUARIO fica com PDV e caixa.
   { para: "/pdv", texto: "Ponto de venda", curto: "PDV", icone: ShoppingCart, fixoNoCelular: true },
-  { para: "/estoque", texto: "Estoque", curto: "Estoque", icone: Boxes, fixoNoCelular: true },
   { para: "/caixa", texto: "Caixa", curto: "Caixa", icone: Landmark, fixoNoCelular: true },
-  { para: "/contas-a-pagar", texto: "Contas a pagar", curto: "Pagar", icone: ArrowUpCircle },
-  { para: "/contas-a-receber", texto: "Contas a receber", curto: "Receber", icone: ArrowDownCircle },
-  { para: "/parceiros", texto: "Clientes e fornecedores", curto: "Cadastros", icone: Users },
-  { para: "/relatorios", texto: "Relatorios", curto: "Relatorios", icone: BarChart3 },
   {
-    para: "/funcionarios",
-    texto: "Funcionarios",
-    curto: "Equipe",
-    icone: UserCog,
-    perfis: ["ADMIN", "GERENTE"],
+    para: "/",
+    texto: "Painel",
+    curto: "Painel",
+    icone: LayoutDashboard,
+    perfis: ["ADMIN"],
+    fixoNoCelular: true,
   },
+  {
+    para: "/estoque",
+    texto: "Estoque",
+    curto: "Estoque",
+    icone: Boxes,
+    perfis: ["ADMIN"],
+    fixoNoCelular: true,
+  },
+  {
+    para: "/contas-a-pagar",
+    texto: "Contas a pagar",
+    curto: "Pagar",
+    icone: ArrowUpCircle,
+    perfis: ["ADMIN"],
+  },
+  {
+    para: "/contas-a-receber",
+    texto: "Contas a receber",
+    curto: "Receber",
+    icone: ArrowDownCircle,
+    perfis: ["ADMIN"],
+  },
+  {
+    para: "/parceiros",
+    texto: "Clientes e fornecedores",
+    curto: "Cadastros",
+    icone: Users,
+    perfis: ["ADMIN"],
+  },
+  { para: "/relatorios", texto: "Relatorios", curto: "Relatorios", icone: BarChart3, perfis: ["ADMIN"] },
+  { para: "/funcionarios", texto: "Funcionarios", curto: "Equipe", icone: UserCog, perfis: ["ADMIN"] },
 ];
 
 export default function Layout() {

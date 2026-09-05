@@ -26,7 +26,7 @@ Sistema cantina/
 │   │   ├── schemas/        contratos de entrada/saída da API (Pydantic)
 │   │   ├── routers/        endpoints por módulo
 │   │   │   ├── auth.py          login e sessão
-│   │   │   ├── funcionarios.py  equipe, perfis de acesso, ponto
+│   │   │   ├── funcionarios.py  equipe e perfis de acesso
 │   │   │   ├── parceiros.py     clientes e fornecedores
 │   │   │   ├── estoque.py       categorias, produtos, movimentações
 │   │   │   ├── vendas.py        PDV
@@ -96,9 +96,9 @@ O login é um nome curto, sem e-mail — a ferramenta é de uso interno.
 | Usuário | Senha | Perfil |
 | --- | --- | --- |
 | `admin` | admin123 | ADMIN |
-| `marina` | 123456 | GERENTE |
-| `diego` | 123456 | OPERADOR |
-| `paula` | 123456 | OPERADOR |
+| `marina` | 123456 | ADMIN |
+| `diego` | 123456 | USUARIO |
+| `paula` | 123456 | USUARIO |
 
 ### Acesso pelo celular
 
@@ -117,19 +117,27 @@ endereço pronto. Basta abri-lo no celular, com ele no mesmo Wi-Fi.
 
 ### Atalhos do PDV
 
+**Escolhendo o produto**
+
 | Tecla | O que faz |
 | --- | --- |
 | digitar | Vai direto para a busca, de qualquer lugar da tela |
 | `↑` `↓` | Navega entre os produtos |
-| `Enter` | Adiciona o produto destacado |
-| `3*` antes do nome | Quantidade (ex.: `3*coxinha` põe três de uma vez) |
+| `Enter` | Abre a quantidade do produto destacado |
+| `3*` antes do nome | Já abre com a quantidade (ex.: `3*coxinha`) |
 | `F2` | Abre o pagamento |
 | `F4` | Limpa a venda |
 | `Alt+←` | Tira o último item |
-| `Esc` | Limpa a busca / fecha a janela |
+| `Esc` | Limpa a busca |
 
-No pagamento: `1` dinheiro, `2` PIX (ou `F1`/`F2` sem sair do campo), `Enter` confirma,
-`Esc` volta. Terminada a venda, `Enter` já começa a próxima.
+**Definindo a quantidade** — ao escolher o produto abre um passo com a quantidade em
+destaque: `↑` `↓` ou `+` `-` ajustam, digitar troca direto, `Enter` confirma e `Esc`
+cancela. Escolher um produto **que já está na venda** abre esse passo com a quantidade
+atual — é assim que se corrige uma quantidade sem mouse. Zero remove o item.
+
+**Recebendo** — o `F2` abre o pagamento já com o foco na forma: `←` `→` (ou `1` e `2`)
+alternam entre dinheiro e PIX, `Enter` avança para o valor recebido e o `Enter` seguinte
+confirma. `Esc` volta. Terminada a venda, `Enter` começa a próxima.
 
 ### Recebimento
 
@@ -160,7 +168,7 @@ para habilitar; sem a chave o PDV continua aceitando PIX, só não desenha o QR.
 * **Relatórios** — painel, faturamento por dia, mais vendidos, formas de pagamento,
   DRE simplificado (receita − CMV − despesas pagas), curva ABC e **quebras de caixa
   por operador**. Exportação em CSV.
-* **Funcionários** — cadastro, perfis de acesso e registro de ponto.
+* **Funcionários** — cadastro da equipe e perfis de acesso.
 * **Clientes e fornecedores** — cadastro único com preenchimento automático por
   CNPJ e CEP, e limite de crédito usado pelo fiado no PDV. CPF e CNPJ são validados
   pelos dígitos verificadores, no cadastro e na venda.
@@ -182,14 +190,19 @@ de crédito e recebe a conta a receber.
 
 ### Perfis de acesso
 
+São dois perfis, e só:
+
 | Perfil | Pode |
 | --- | --- |
-| `ADMIN` | tudo |
-| `GERENTE` | tudo, exceto restrições futuras de administração |
-| `OPERADOR` | PDV, caixa (o próprio turno), estoque, cadastros e relatórios |
+| `ADMIN` | Tudo |
+| `USUARIO` | PDV e caixa (o próprio turno) |
 
-Cadastrar caixas, cancelar vendas, fechar o turno de outra pessoa e reabrir turnos são
-ações de gerência.
+O `USUARIO` entra direto no PDV — os demais módulos não aparecem no menu e as rotas
+redirecionam para lá. A restrição vale também na API: os endpoints de gestão respondem
+403, e não apenas somem da tela.
+
+Cadastrar caixas, cancelar vendas, fechar o turno de outra pessoa e reabrir turnos
+continuam sendo ações de administrador.
 
 ---
 

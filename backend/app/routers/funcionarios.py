@@ -1,16 +1,19 @@
-"""Controle de funcionarios: cadastro, perfis de acesso e registro de ponto."""
+"""Cadastro de funcionarios e perfis de acesso. Restrito a administradores."""
 
 import re
-from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, select
 
 from app import models, schemas
-from app.core.deps import DB, CurrentUser, Gestao
+from app.core.deps import DB, SomenteAdmin, exigir_admin
 from app.core.security import hash_password
 
-router = APIRouter(prefix="/api/funcionarios", tags=["funcionarios"])
+router = APIRouter(
+    prefix="/api/funcionarios",
+    tags=["funcionarios"],
+    dependencies=[Depends(exigir_admin)],
+)
 
 
 def normalizar_login(bruto: str) -> str:
@@ -25,22 +28,10 @@ def normalizar_login(bruto: str) -> str:
     return login
 
 
-def _ponto_out(p: models.RegistroPonto) -> schemas.PontoOut:
-    return schemas.PontoOut(
-        id=p.id,
-        usuario_id=p.usuario_id,
-        data=p.data,
-        entrada=p.entrada,
-        saida=p.saida,
-        observacao=p.observacao,
-        usuario_nome=p.usuario.nome if p.usuario else None,
-    )
-
-
 @router.get("", response_model=list[schemas.UsuarioOut])
 def listar(
     db: DB,
-    _: Gestao,
+    _: SomenteAdmin,
     busca: str | None = None,
     ativo: bool | None = None,
 ):
@@ -56,7 +47,7 @@ def listar(
 
 
 @router.post("", response_model=schemas.UsuarioOut, status_code=status.HTTP_201_CREATED)
-def criar(dados: schemas.UsuarioCreate, db: DB, _: Gestao):
+def criar(dados: schemas.UsuarioCreate, db: DB, _: SomenteAdmin):
     login = normalizar_login(dados.usuario)
     if db.scalar(select(models.Usuario).where(models.Usuario.usuario == login)):
         raise HTTPException(status.HTTP_409_CONFLICT, f"O login '{login}' ja esta em uso")
@@ -70,7 +61,7 @@ def criar(dados: schemas.UsuarioCreate, db: DB, _: Gestao):
 
 
 @router.get("/{usuario_id}", response_model=schemas.UsuarioOut)
-def obter(usuario_id: int, db: DB, _: Gestao):
+def obter(usuario_id: int, db: DB, _: SomenteAdmin):
     usuario = db.get(models.Usuario, usuario_id)
     if not usuario:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionario nao encontrado")
@@ -78,7 +69,7 @@ def obter(usuario_id: int, db: DB, _: Gestao):
 
 
 @router.put("/{usuario_id}", response_model=schemas.UsuarioOut)
-def atualizar(usuario_id: int, dados: schemas.UsuarioUpdate, db: DB, _: Gestao):
+def atualizar(usuario_id: int, dados: schemas.UsuarioUpdate, db: DB, _: SomenteAdmin):
     usuario = db.get(models.Usuario, usuario_id)
     if not usuario:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionario nao encontrado")
@@ -101,7 +92,7 @@ def atualizar(usuario_id: int, dados: schemas.UsuarioUpdate, db: DB, _: Gestao):
 
 
 @router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
-def desativar(usuario_id: int, db: DB, gestor: Gestao):
+def desativar(usuario_id: int, db: DB, gestor: SomenteAdmin):
     usuario = db.get(models.Usuario, usuario_id)
     if not usuario:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionario nao encontrado")
@@ -109,65 +100,3 @@ def desativar(usuario_id: int, db: DB, gestor: Gestao):
         raise HTTPException(status.HTTP_409_CONFLICT, "Voce nao pode desativar a si mesmo")
     usuario.ativo = False
     db.commit()
-
-
-# --------------------------------------------------------------------------- #
-# Ponto
-# --------------------------------------------------------------------------- #
-@router.get("/ponto/registros", response_model=list[schemas.PontoOut])
-def listar_ponto(
-    db: DB,
-    _: Gestao,
-    usuario_id: int | None = None,
-    inicio: date | None = None,
-    fim: date | None = None,
-):
-    stmt = select(models.RegistroPonto)
-    if usuario_id:
-        stmt = stmt.where(models.RegistroPonto.usuario_id == usuario_id)
-    if inicio:
-        stmt = stmt.where(models.RegistroPonto.data >= inicio)
-    if fim:
-        stmt = stmt.where(models.RegistroPonto.data <= fim)
-    registros = db.scalars(stmt.order_by(models.RegistroPonto.data.desc())).all()
-    return [_ponto_out(r) for r in registros]
-
-
-@router.post("/ponto/bater", response_model=schemas.PontoOut)
-def bater_ponto(db: DB, usuario: CurrentUser, usuario_id: int | None = Query(default=None)):
-    """Registra entrada na primeira batida do dia e saida na segunda."""
-    alvo_id = usuario_id or usuario.id
-    if alvo_id != usuario.id and usuario.perfil == models.Perfil.OPERADOR:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Voce so pode bater o proprio ponto")
-
-    hoje = date.today()
-    registro = db.scalar(
-        select(models.RegistroPonto).where(
-            models.RegistroPonto.usuario_id == alvo_id,
-            models.RegistroPonto.data == hoje,
-        )
-    )
-    agora = datetime.now(timezone.utc)
-    if not registro:
-        registro = models.RegistroPonto(usuario_id=alvo_id, data=hoje, entrada=agora)
-        db.add(registro)
-    elif registro.saida is None:
-        registro.saida = agora
-    else:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Entrada e saida ja registradas hoje")
-
-    db.commit()
-    db.refresh(registro)
-    return _ponto_out(registro)
-
-
-@router.put("/ponto/{registro_id}", response_model=schemas.PontoOut)
-def ajustar_ponto(registro_id: int, dados: schemas.PontoIn, db: DB, _: Gestao):
-    registro = db.get(models.RegistroPonto, registro_id)
-    if not registro:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Registro nao encontrado")
-    for campo, valor in dados.model_dump(exclude_unset=True).items():
-        setattr(registro, campo, valor)
-    db.commit()
-    db.refresh(registro)
-    return _ponto_out(registro)

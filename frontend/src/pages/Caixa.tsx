@@ -60,7 +60,8 @@ function Linha({
 
 export default function Caixa() {
   const { pode } = useAuth();
-  const gestor = pode("ADMIN", "GERENTE");
+  // Fechar o turno de outra pessoa e reabrir turnos sao acoes de gestao.
+  const gestor = pode("ADMIN");
 
   const [minhaSessao, setMinhaSessao] = useState<CaixaSessao | null>(null);
   const [terminais, setTerminais] = useState<CaixaTerminal[]>([]);

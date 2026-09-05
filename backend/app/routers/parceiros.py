@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import or_, select
 
 from app import models, schemas
-from app.core.deps import DB, CurrentUser
+from app.core.deps import DB, CurrentUser, SomenteAdmin
 from app.services import documento as servico_documento
 
 router = APIRouter(prefix="/api/parceiros", tags=["parceiros"])
@@ -69,7 +69,7 @@ def identificar(documento: str, db: DB, _: CurrentUser):
 
 
 @router.post("", response_model=schemas.ParceiroOut, status_code=status.HTTP_201_CREATED)
-def criar(dados: schemas.ParceiroCreate, db: DB, _: CurrentUser):
+def criar(dados: schemas.ParceiroCreate, db: DB, _: SomenteAdmin):
     payload = dados.model_dump()
     try:
         payload["documento"] = servico_documento.validar(payload.get("documento"))
@@ -102,7 +102,7 @@ def obter(parceiro_id: int, db: DB, _: CurrentUser):
 
 
 @router.put("/{parceiro_id}", response_model=schemas.ParceiroOut)
-def atualizar(parceiro_id: int, dados: schemas.ParceiroUpdate, db: DB, _: CurrentUser):
+def atualizar(parceiro_id: int, dados: schemas.ParceiroUpdate, db: DB, _: SomenteAdmin):
     parceiro = db.get(models.Parceiro, parceiro_id)
     if not parceiro:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Parceiro nao encontrado")
@@ -121,7 +121,7 @@ def atualizar(parceiro_id: int, dados: schemas.ParceiroUpdate, db: DB, _: Curren
 
 
 @router.delete("/{parceiro_id}", status_code=status.HTTP_204_NO_CONTENT)
-def desativar(parceiro_id: int, db: DB, _: CurrentUser):
+def desativar(parceiro_id: int, db: DB, _: SomenteAdmin):
     parceiro = db.get(models.Parceiro, parceiro_id)
     if not parceiro:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Parceiro nao encontrado")

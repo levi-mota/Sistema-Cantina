@@ -1,4 +1,4 @@
-export type Perfil = "ADMIN" | "GERENTE" | "OPERADOR";
+export type Perfil = "ADMIN" | "USUARIO";
 export type TipoParceiro = "CLIENTE" | "FORNECEDOR" | "AMBOS";
 export type TipoPessoa = "FISICA" | "JURIDICA";
 export type TipoMovimento = "ENTRADA" | "SAIDA" | "AJUSTE" | "PERDA";
@@ -21,16 +21,6 @@ export interface Usuario {
   data_demissao?: string | null;
   ativo: boolean;
   criado_em: string;
-}
-
-export interface RegistroPonto {
-  id: number;
-  usuario_id: number;
-  usuario_nome?: string | null;
-  data: string;
-  entrada?: string | null;
-  saida?: string | null;
-  observacao?: string | null;
 }
 
 export interface Parceiro {

@@ -54,9 +54,9 @@ def executar() -> None:
             )
         )
     equipe = [
-        ("Marina Souza", "marina", models.Perfil.GERENTE, "Gerente", "4200.00"),
-        ("Diego Lima", "diego", models.Perfil.OPERADOR, "Atendente", "2100.00"),
-        ("Paula Reis", "paula", models.Perfil.OPERADOR, "Caixa", "2100.00"),
+        ("Marina Souza", "marina", models.Perfil.ADMIN, "Gerente", "4200.00"),
+        ("Diego Lima", "diego", models.Perfil.USUARIO, "Atendente", "2100.00"),
+        ("Paula Reis", "paula", models.Perfil.USUARIO, "Caixa", "2100.00"),
     ]
     for nome, login, perfil, cargo, salario in equipe:
         db.add(
@@ -354,9 +354,9 @@ def executar() -> None:
     db.commit()
     print("Demo criada com sucesso.")
     print("  admin  / admin123   (ADMIN)")
-    print("  marina / 123456     (GERENTE)")
-    print("  diego  / 123456     (OPERADOR)")
-    print("  paula  / 123456     (OPERADOR)")
+    print("  marina / 123456     (ADMIN)")
+    print("  diego  / 123456     (USUARIO)")
+    print("  paula  / 123456     (USUARIO)")
 
 
 if __name__ == "__main__":

@@ -66,8 +66,14 @@ export default function Pdv() {
   const [pixImagem, setPixImagem] = useState<string | null>(null);
   const [pixCopiado, setPixCopiado] = useState(false);
 
+  // Passo de quantidade: aberto ao escolher um produto (Enter ou clique).
+  const [escolhido, setEscolhido] = useState<Produto | null>(null);
+  const [quantidade, setQuantidade] = useState(1);
+
   const campoBusca = useRef<HTMLInputElement>(null);
+  const campoQuantidade = useRef<HTMLInputElement>(null);
   const campoRecebido = useRef<HTMLInputElement>(null);
+  const botaoForma = useRef<HTMLButtonElement>(null);
   const listaRef = useRef<HTMLDivElement>(null);
 
   const carregar = useCallback(async () => {
@@ -125,18 +131,6 @@ export default function Pdv() {
     forma === "DINHEIRO" && recebido !== "" ? Math.max(total - Number(recebido), 0) : 0;
 
   // --- Carrinho -----------------------------------------------------------
-  const adicionar = useCallback((produto: Produto, quantidade = 1) => {
-    setCarrinho((atual) => {
-      const existente = atual.find((i) => i.produto.id === produto.id);
-      if (existente) {
-        return atual.map((i) =>
-          i.produto.id === produto.id ? { ...i, quantidade: i.quantidade + quantidade } : i,
-        );
-      }
-      return [...atual, { produto, quantidade }];
-    });
-  }, []);
-
   function alterarQtd(produtoId: number, delta: number) {
     setCarrinho((atual) =>
       atual
@@ -157,6 +151,7 @@ export default function Pdv() {
     setPixCobranca(null);
     setPixImagem(null);
     setBusca("");
+    setEscolhido(null);
   }, []);
 
   const focarBusca = useCallback(() => {
@@ -173,7 +168,7 @@ export default function Pdv() {
 
   // --- Atalhos de teclado da tela ----------------------------------------
   useEffect(() => {
-    if (pagamentoAberto || comprovante) return;
+    if (pagamentoAberto || comprovante || escolhido) return;
 
     function aoTeclar(e: KeyboardEvent) {
       if (e.key === "F2") {
@@ -215,16 +210,79 @@ export default function Pdv() {
 
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [pagamentoAberto, comprovante, filtrados.length, abrirPagamento, limpar, focarBusca]);
+  }, [
+    pagamentoAberto,
+    comprovante,
+    escolhido,
+    filtrados.length,
+    abrirPagamento,
+    limpar,
+    focarBusca,
+  ]);
+
+
+  /** Abre o passo de quantidade. Se o item ja esta no carrinho, edita o total. */
+  const escolherProduto = useCallback(
+    (produto: Produto) => {
+      if (Number(produto.estoque_atual) <= 0) return;
+      const noCarrinho = carrinho.find((i) => i.produto.id === produto.id);
+      setQuantidade(quantidadeDigitada > 1 ? quantidadeDigitada : (noCarrinho?.quantidade ?? 1));
+      setEscolhido(produto);
+      requestAnimationFrame(() => campoQuantidade.current?.select());
+    },
+    [carrinho, quantidadeDigitada],
+  );
+
+  /** Confirma o passo: define a quantidade total daquele produto no carrinho. */
+  const confirmarQuantidade = useCallback(() => {
+    if (!escolhido) return;
+    const total = Math.max(Math.floor(quantidade), 0);
+    setCarrinho((atual) => {
+      const sem = atual.filter((i) => i.produto.id !== escolhido.id);
+      return total > 0 ? [...sem, { produto: escolhido, quantidade: total }] : sem;
+    });
+    setEscolhido(null);
+    setBusca("");
+    focarBusca();
+  }, [escolhido, quantidade, focarBusca]);
 
   function aoTeclarBusca(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter") return;
     e.preventDefault();
-    const escolhido = filtrados[destaque] ?? filtrados[0];
-    if (!escolhido || Number(escolhido.estoque_atual) <= 0) return;
-    adicionar(escolhido, quantidadeDigitada);
-    setBusca("");
+    const produto = filtrados[destaque] ?? filtrados[0];
+    if (produto) escolherProduto(produto);
   }
+
+  // --- Atalhos do passo de quantidade ------------------------------------
+  useEffect(() => {
+    if (!escolhido) return;
+
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        confirmarQuantidade();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setEscolhido(null);
+        focarBusca();
+        return;
+      }
+      if (e.key === "ArrowUp" || e.key === "+") {
+        e.preventDefault();
+        setQuantidade((q) => q + 1);
+        return;
+      }
+      if (e.key === "ArrowDown" || e.key === "-") {
+        e.preventDefault();
+        setQuantidade((q) => Math.max(q - 1, 0));
+      }
+    }
+
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [escolhido, confirmarQuantidade, focarBusca]);
 
   // --- Identificacao do consumidor ---------------------------------------
   async function identificarConsumidor() {
@@ -323,13 +381,18 @@ export default function Pdv() {
       }
       if (e.key === "Enter" && !finalizando) {
         e.preventDefault();
+        // No dinheiro o primeiro Enter leva ao valor; o segundo confirma.
+        if (forma === "DINHEIRO" && document.activeElement === botaoForma.current) {
+          campoRecebido.current?.focus();
+          return;
+        }
         void finalizar();
       }
     }
 
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [pagamentoAberto, finalizando, finalizar]);
+  }, [pagamentoAberto, finalizando, finalizar, forma]);
 
   // Comprovante: Enter ou Esc ja comeca a proxima venda.
   useEffect(() => {
@@ -418,11 +481,7 @@ export default function Pdv() {
                 <button
                   key={p.id}
                   data-indice={indice}
-                  onClick={() => {
-                    adicionar(p, quantidadeDigitada);
-                    setBusca("");
-                    focarBusca();
-                  }}
+                  onClick={() => escolherProduto(p)}
                   onMouseEnter={() => setDestaque(indice)}
                   disabled={semEstoque}
                   tabIndex={-1}
@@ -476,12 +535,17 @@ export default function Pdv() {
           <ul className="max-h-[45vh] divide-y divide-carvao-100 overflow-y-auto">
             {carrinho.map(({ produto, quantidade }) => (
               <li key={produto.id} className="flex items-center gap-2 px-4 py-2.5">
-                <div className="min-w-0 flex-1">
+                <button
+                  onClick={() => escolherProduto(produto)}
+                  tabIndex={-1}
+                  className="min-w-0 flex-1 text-left"
+                  title="Alterar quantidade"
+                >
                   <p className="truncate text-sm font-medium text-carvao-800">{produto.nome}</p>
                   <p className="text-xs text-carvao-500">
                     {quantidade} x {brl(produto.preco_venda)}
                   </p>
-                </div>
+                </button>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => alterarQtd(produto.id, -1)}
@@ -537,6 +601,110 @@ export default function Pdv() {
         </div>
       </Cartao>
 
+      {/* Passo de quantidade */}
+      <Modal
+        aberto={!!escolhido}
+        titulo={escolhido?.nome ?? ""}
+        aoFechar={() => {
+          setEscolhido(null);
+          focarBusca();
+        }}
+        largura="max-w-sm"
+      >
+        {escolhido && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-sm text-carvao-600">
+              <span>{brl(escolhido.preco_venda)} cada</span>
+              <span>
+                {Number(escolhido.estoque_atual)} {escolhido.unidade} em estoque
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setQuantidade((q) => Math.max(q - 1, 0))}
+                tabIndex={-1}
+                className="rounded-xl border border-carvao-200 p-4 text-carvao-600 active:bg-carvao-100"
+                aria-label="Diminuir"
+              >
+                <Minus className="h-5 w-5" />
+              </button>
+              <input
+                ref={campoQuantidade}
+                type="number"
+                min="0"
+                inputMode="numeric"
+                value={quantidade}
+                onChange={(e) => setQuantidade(Math.max(Number(e.target.value) || 0, 0))}
+                autoFocus
+                className="campo w-full py-4 text-center text-3xl font-bold"
+              />
+              <button
+                onClick={() => setQuantidade((q) => q + 1)}
+                tabIndex={-1}
+                className="rounded-xl border border-carvao-200 p-4 text-carvao-600 active:bg-carvao-100"
+                aria-label="Aumentar"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {[1, 2, 3, 5, 10].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setQuantidade(n)}
+                  tabIndex={-1}
+                  className={cx(
+                    "min-w-11 rounded-lg border px-3 py-2 text-sm font-semibold transition",
+                    quantidade === n
+                      ? "border-marca-500 bg-marca-50 text-marca-700"
+                      : "border-carvao-200 text-carvao-600 hover:bg-carvao-50",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg bg-carvao-50 px-3 py-2">
+              <span className="text-sm text-carvao-600">Subtotal do item</span>
+              <span className="text-xl font-bold text-carvao-900">
+                {brl(Number(escolhido.preco_venda) * quantidade)}
+              </span>
+            </div>
+
+            {Number(escolhido.estoque_atual) < quantidade && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Estoque menor que a quantidade pedida.
+              </p>
+            )}
+
+            <p className="text-center text-xs text-carvao-400">
+              <kbd className={tecla}>up/down</kbd> ou <kbd className={tecla}>+ -</kbd> ajustam,{" "}
+              <kbd className={tecla}>Enter</kbd> confirma, <kbd className={tecla}>Esc</kbd> cancela
+            </p>
+
+            <div className="flex gap-2">
+              <Botao
+                variante="secundario"
+                className="flex-1"
+                tabIndex={-1}
+                onClick={() => {
+                  setEscolhido(null);
+                  focarBusca();
+                }}
+              >
+                Cancelar
+              </Botao>
+              <Botao className="flex-1 py-3" tabIndex={-1} onClick={confirmarQuantidade}>
+                {quantidade === 0 ? "Remover" : "Adicionar"}
+              </Botao>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Pagamento */}
       <Modal
         aberto={pagamentoAberto}
@@ -549,8 +717,12 @@ export default function Pdv() {
       >
         <Erro mensagem={erro} />
         <div className="space-y-4">
-          {/* Forma de pagamento */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Forma de pagamento: grupo de radio navegavel com as setas */}
+          <div
+            className="grid grid-cols-2 gap-2"
+            role="radiogroup"
+            aria-label="Forma de pagamento"
+          >
             {(
               [
                 { valor: "DINHEIRO", texto: "Dinheiro", atalho: "1", icone: Banknote },
@@ -559,6 +731,18 @@ export default function Pdv() {
             ).map((f) => (
               <button
                 key={f.valor}
+                ref={f.valor === forma ? botaoForma : undefined}
+                autoFocus={f.valor === "DINHEIRO"}
+                role="radio"
+                aria-checked={forma === f.valor}
+                tabIndex={forma === f.valor ? 0 : -1}
+                onKeyDown={(e) => {
+                  // As setas alternam a forma sem tirar a mao do teclado.
+                  if (["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) {
+                    e.preventDefault();
+                    setForma((atual) => (atual === "DINHEIRO" ? "PIX" : "DINHEIRO"));
+                  }
+                }}
                 onClick={() => {
                   setForma(f.valor);
                   if (f.valor === "DINHEIRO") {
@@ -588,7 +772,6 @@ export default function Pdv() {
                 inputMode="decimal"
                 step="0.01"
                 min="0"
-                autoFocus
                 value={recebido}
                 onChange={(e) => setRecebido(e.target.value)}
                 className="py-3 text-lg font-semibold"

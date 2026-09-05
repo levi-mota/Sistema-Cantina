@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app import models, schemas
-from app.core.deps import DB, CurrentUser, Gestao
+from app.core.deps import DB, CurrentUser, SomenteAdmin
 from app.services import caixa as servico
 
 router = APIRouter(prefix="/api/caixa", tags=["caixa"])
@@ -54,7 +54,7 @@ def listar_terminais(db: DB, usuario: CurrentUser, apenas_ativos: bool = True):
 @router.post(
     "/terminais", response_model=schemas.CaixaTerminalOut, status_code=status.HTTP_201_CREATED
 )
-def criar_terminal(dados: schemas.CaixaIn, db: DB, _: Gestao):
+def criar_terminal(dados: schemas.CaixaIn, db: DB, _: SomenteAdmin):
     nome = dados.nome.strip()
     if db.scalar(select(models.Caixa).where(models.Caixa.nome == nome)):
         raise HTTPException(status.HTTP_409_CONFLICT, f"Ja existe um caixa chamado '{nome}'")
@@ -66,7 +66,7 @@ def criar_terminal(dados: schemas.CaixaIn, db: DB, _: Gestao):
 
 
 @router.put("/terminais/{terminal_id}", response_model=schemas.CaixaTerminalOut)
-def atualizar_terminal(terminal_id: int, dados: schemas.CaixaIn, db: DB, _: Gestao):
+def atualizar_terminal(terminal_id: int, dados: schemas.CaixaIn, db: DB, _: SomenteAdmin):
     terminal = db.get(models.Caixa, terminal_id)
     if not terminal:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Caixa nao encontrado")
@@ -211,7 +211,7 @@ def fechar(dados: schemas.FechamentoIn, db: DB, usuario: CurrentUser):
 
 
 @router.post("/sessoes/{sessao_id}/fechar-forcado", response_model=schemas.CaixaOut)
-def fechar_forcado(sessao_id: int, dados: schemas.FechamentoIn, db: DB, gestor: Gestao):
+def fechar_forcado(sessao_id: int, dados: schemas.FechamentoIn, db: DB, gestor: SomenteAdmin):
     """Fecha o turno de outro operador (esqueceu de fechar, saiu do turno).
 
     Restrito a gerencia: e uma conferencia feita por terceiro, entao fica
@@ -239,7 +239,7 @@ def fechar_forcado(sessao_id: int, dados: schemas.FechamentoIn, db: DB, gestor: 
 
 
 @router.post("/sessoes/{sessao_id}/reabrir", response_model=schemas.CaixaOut)
-def reabrir(sessao_id: int, db: DB, _: Gestao):
+def reabrir(sessao_id: int, db: DB, _: SomenteAdmin):
     """Reabre um turno fechado por engano. Restrito a gerencia."""
     sessao = db.get(models.CaixaSessao, sessao_id)
     if not sessao:

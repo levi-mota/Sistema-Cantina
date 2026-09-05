@@ -12,7 +12,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,9 +30,14 @@ Quantidade = Numeric(12, 3)
 # Enums
 # --------------------------------------------------------------------------- #
 class Perfil(StrEnum):
+    """Dois niveis apenas.
+
+    ADMIN ve e faz tudo. USUARIO opera a frente de caixa: PDV e o proprio
+    turno, mais a consulta de produtos que o PDV precisa.
+    """
+
     ADMIN = "ADMIN"
-    GERENTE = "GERENTE"
-    OPERADOR = "OPERADOR"
+    USUARIO = "USUARIO"
 
 
 class TipoParceiro(StrEnum):
@@ -101,7 +105,7 @@ class Usuario(Base):
     # Login interno, sem e-mail: "levi", "davi", "alisson".
     usuario: Mapped[str] = mapped_column(String(40), unique=True, index=True)
     senha_hash: Mapped[str] = mapped_column(String(255))
-    perfil: Mapped[Perfil] = mapped_column(Enum(Perfil), default=Perfil.OPERADOR)
+    perfil: Mapped[Perfil] = mapped_column(Enum(Perfil), default=Perfil.USUARIO)
     cargo: Mapped[str | None] = mapped_column(String(80))
     cpf: Mapped[str | None] = mapped_column(String(14))
     telefone: Mapped[str | None] = mapped_column(String(20))
@@ -110,27 +114,6 @@ class Usuario(Base):
     data_demissao: Mapped[date | None] = mapped_column(Date)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
-
-    pontos: Mapped[list["RegistroPonto"]] = relationship(
-        back_populates="usuario", cascade="all, delete-orphan"
-    )
-
-
-class RegistroPonto(Base):
-    __tablename__ = "registros_ponto"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    usuario_id: Mapped[int] = mapped_column(
-        ForeignKey("usuarios.id", ondelete="CASCADE"), index=True
-    )
-    data: Mapped[date] = mapped_column(Date, index=True)
-    entrada: Mapped[datetime | None] = mapped_column(DateTime)
-    saida: Mapped[datetime | None] = mapped_column(DateTime)
-    observacao: Mapped[str | None] = mapped_column(Text)
-
-    usuario: Mapped[Usuario] = relationship(back_populates="pontos", lazy="joined")
-
-    __table_args__ = (UniqueConstraint("usuario_id", "data", name="uq_ponto_dia"),)
 
 
 # --------------------------------------------------------------------------- #

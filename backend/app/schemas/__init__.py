@@ -23,7 +23,7 @@ class LoginIn(BaseModel):
 class UsuarioBase(BaseModel):
     nome: str
     usuario: str = Field(min_length=2, max_length=40)
-    perfil: models.Perfil = models.Perfil.OPERADOR
+    perfil: models.Perfil = models.Perfil.USUARIO
     cargo: str | None = None
     cpf: str | None = None
     telefone: str | None = None
@@ -60,19 +60,6 @@ class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     usuario: UsuarioOut
-
-
-class PontoIn(BaseModel):
-    usuario_id: int
-    data: date
-    entrada: datetime | None = None
-    saida: datetime | None = None
-    observacao: str | None = None
-
-
-class PontoOut(ORMModel, PontoIn):
-    id: int
-    usuario_nome: str | None = None
 
 
 # --------------------------------------------------------------------------- #

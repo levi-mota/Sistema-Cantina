@@ -3,13 +3,18 @@
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy import case, func, select
 
 from app import models
-from app.core.deps import DB, CurrentUser
+from app.core.deps import DB, CurrentUser, exigir_admin
 
-router = APIRouter(prefix="/api/relatorios", tags=["relatorios"])
+# Modulo de gestao: fora do alcance de quem so opera o caixa.
+router = APIRouter(
+    prefix="/api/relatorios",
+    tags=["relatorios"],
+    dependencies=[Depends(exigir_admin)],
+)
 
 VENDA_VALIDA = models.Venda.status == models.StatusVenda.FINALIZADA
 

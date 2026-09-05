@@ -49,8 +49,8 @@ def require_perfis(*perfis: models.Perfil):
     return _checker
 
 
-AdminOnly = Annotated[models.Usuario, Depends(require_perfis(models.Perfil.ADMIN))]
-Gestao = Annotated[
-    models.Usuario,
-    Depends(require_perfis(models.Perfil.ADMIN, models.Perfil.GERENTE)),
-]
+#: Usuario com perfil ADMIN. Serve tanto como tipo de parametro quanto como
+#: dependencia de rota inteira: `dependencies=[Depends(exigir_admin)]`.
+SomenteAdmin = Annotated[models.Usuario, Depends(require_perfis(models.Perfil.ADMIN))]
+
+exigir_admin = require_perfis(models.Perfil.ADMIN)

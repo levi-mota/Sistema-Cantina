@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import or_, select
 
 from app import models, schemas
-from app.core.deps import DB, CurrentUser
+from app.core.deps import DB, CurrentUser, SomenteAdmin
 from app.services import estoque as servico
 
 router = APIRouter(prefix="/api/estoque", tags=["estoque"])
@@ -48,7 +48,7 @@ def listar_categorias(db: DB, _: CurrentUser):
 @router.post(
     "/categorias", response_model=schemas.CategoriaOut, status_code=status.HTTP_201_CREATED
 )
-def criar_categoria(dados: schemas.CategoriaIn, db: DB, _: CurrentUser):
+def criar_categoria(dados: schemas.CategoriaIn, db: DB, _: SomenteAdmin):
     if db.scalar(select(models.Categoria).where(models.Categoria.nome == dados.nome)):
         raise HTTPException(status.HTTP_409_CONFLICT, "Categoria ja existe")
     categoria = models.Categoria(**dados.model_dump())
@@ -59,7 +59,7 @@ def criar_categoria(dados: schemas.CategoriaIn, db: DB, _: CurrentUser):
 
 
 @router.delete("/categorias/{categoria_id}", status_code=status.HTTP_204_NO_CONTENT)
-def excluir_categoria(categoria_id: int, db: DB, _: CurrentUser):
+def excluir_categoria(categoria_id: int, db: DB, _: SomenteAdmin):
     categoria = db.get(models.Categoria, categoria_id)
     if not categoria:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoria nao encontrada")
@@ -104,7 +104,7 @@ def listar_produtos(
 @router.post(
     "/produtos", response_model=schemas.ProdutoOut, status_code=status.HTTP_201_CREATED
 )
-def criar_produto(dados: schemas.ProdutoCreate, db: DB, usuario: CurrentUser):
+def criar_produto(dados: schemas.ProdutoCreate, db: DB, usuario: SomenteAdmin):
     payload = dados.model_dump()
     estoque_inicial = Decimal(str(payload.pop("estoque_inicial", 0) or 0))
     if payload.get("codigo"):
@@ -139,7 +139,7 @@ def obter_produto(produto_id: int, db: DB, _: CurrentUser):
 
 
 @router.put("/produtos/{produto_id}", response_model=schemas.ProdutoOut)
-def atualizar_produto(produto_id: int, dados: schemas.ProdutoUpdate, db: DB, _: CurrentUser):
+def atualizar_produto(produto_id: int, dados: schemas.ProdutoUpdate, db: DB, _: SomenteAdmin):
     produto = db.get(models.Produto, produto_id)
     if not produto:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto nao encontrado")
@@ -151,7 +151,7 @@ def atualizar_produto(produto_id: int, dados: schemas.ProdutoUpdate, db: DB, _: 
 
 
 @router.delete("/produtos/{produto_id}", status_code=status.HTTP_204_NO_CONTENT)
-def desativar_produto(produto_id: int, db: DB, _: CurrentUser):
+def desativar_produto(produto_id: int, db: DB, _: SomenteAdmin):
     produto = db.get(models.Produto, produto_id)
     if not produto:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto nao encontrado")
@@ -197,7 +197,7 @@ def listar_movimentos(
 
 
 @router.post("/movimentos", response_model=schemas.ProdutoOut, status_code=201)
-def registrar_movimento(dados: schemas.MovimentoIn, db: DB, usuario: CurrentUser):
+def registrar_movimento(dados: schemas.MovimentoIn, db: DB, usuario: SomenteAdmin):
     """Entrada, saida, perda ou ajuste de inventario.
 
     Uma entrada de compra pode gerar automaticamente a conta a pagar do

@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Clock, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataBr, hora, hojeIso } from "../lib/format";
-import { useAuth } from "../lib/auth";
-import type { Perfil, RegistroPonto, Usuario } from "../lib/tipos";
+import { brl, dataBr } from "../lib/format";
+import type { Perfil, Usuario } from "../lib/tipos";
 import {
   Botao,
   Campo,
@@ -21,15 +20,14 @@ import {
 
 const PERFIS: { valor: Perfil; texto: string }[] = [
   { valor: "ADMIN", texto: "Administrador (acesso total)" },
-  { valor: "GERENTE", texto: "Gerente (gestao e cancelamentos)" },
-  { valor: "OPERADOR", texto: "Operador (PDV e cadastros)" },
+  { valor: "USUARIO", texto: "Usuario (PDV e caixa)" },
 ];
 
 const FORM_VAZIO = {
   nome: "",
   usuario: "",
   senha: "",
-  perfil: "OPERADOR" as Perfil,
+  perfil: "USUARIO" as Perfil,
   cargo: "",
   cpf: "",
   telefone: "",
@@ -39,10 +37,7 @@ const FORM_VAZIO = {
 };
 
 export default function Funcionarios() {
-  const { usuario: eu } = useAuth();
   const [equipe, setEquipe] = useState<Usuario[]>([]);
-  const [pontos, setPontos] = useState<RegistroPonto[]>([]);
-  const [aba, setAba] = useState<"equipe" | "ponto">("equipe");
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -52,14 +47,8 @@ export default function Funcionarios() {
 
   const carregar = useCallback(async () => {
     try {
-      const [u, p] = await Promise.all([
-        api.get<Usuario[]>("/funcionarios"),
-        api.get<RegistroPonto[]>("/funcionarios/ponto/registros", {
-          params: { inicio: hojeIso(-30) },
-        }),
-      ]);
-      setEquipe(u.data);
-      setPontos(p.data);
+      const { data } = await api.get<Usuario[]>("/funcionarios");
+      setEquipe(data);
     } catch (e) {
       setErro(mensagemErro(e));
     } finally {
@@ -124,57 +113,23 @@ export default function Funcionarios() {
     }
   }
 
-  async function baterPonto(usuarioId: number) {
-    setErro(null);
-    try {
-      await api.post("/funcionarios/ponto/bater", null, { params: { usuario_id: usuarioId } });
-      await carregar();
-    } catch (e) {
-      setErro(mensagemErro(e));
-    }
-  }
-
   if (carregando) return <Carregando texto="Carregando a equipe..." />;
 
   return (
     <>
       <TituloPagina
         titulo="Funcionarios"
-        descricao="Equipe, perfis de acesso e registro de ponto"
+        descricao="Equipe e perfis de acesso"
         acoes={
-          <>
-            <Botao
-              variante="secundario"
-              icone={<Clock className="h-4 w-4" />}
-              onClick={() => eu && baterPonto(eu.id)}
-            >
-              Bater meu ponto
-            </Botao>
-            <Botao icone={<Plus className="h-4 w-4" />} onClick={() => abrir("novo")}>
-              Novo funcionario
-            </Botao>
-          </>
+          <Botao icone={<Plus className="h-4 w-4" />} onClick={() => abrir("novo")}>
+            Novo funcionario
+          </Botao>
         }
       />
 
       <Erro mensagem={erro} />
 
-      <div className="mb-4 flex gap-1 rounded-lg border border-carvao-100 bg-white p-1">
-        {(["equipe", "ponto"] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setAba(v)}
-            className={`flex-1 rounded-md py-2 text-sm font-semibold transition ${
-              aba === v ? "bg-marca-600 text-white" : "text-carvao-600 hover:bg-carvao-50"
-            }`}
-          >
-            {v === "equipe" ? "Equipe" : "Ponto (30 dias)"}
-          </button>
-        ))}
-      </div>
-
-      {aba === "equipe" ? (
-        equipe.length === 0 ? (
+      {equipe.length === 0 ? (
           <Cartao>
             <Vazio titulo="Nenhum funcionario" />
           </Cartao>
@@ -190,14 +145,9 @@ export default function Funcionarios() {
                     </div>
                     <Selo tom={u.ativo ? "sucesso" : "neutro"}>{u.perfil}</Selo>
                   </div>
-                  <div className="mt-3 flex gap-2">
-                    <Botao variante="secundario" className="flex-1" onClick={() => abrir(u)}>
-                      Editar
-                    </Botao>
-                    <Botao className="flex-1" onClick={() => baterPonto(u.id)}>
-                      Bater ponto
-                    </Botao>
-                  </div>
+                  <Botao variante="secundario" className="mt-3 w-full" onClick={() => abrir(u)}>
+                    Editar
+                  </Botao>
                 </Cartao>
               ))}
             </div>
@@ -213,7 +163,7 @@ export default function Funcionarios() {
                       <p className="text-xs text-carvao-500">{u.usuario}</p>
                     </td>
                     <td className="px-4 py-2.5">
-                      <Selo tom={u.perfil === "ADMIN" ? "marca" : u.perfil === "GERENTE" ? "info" : "neutro"}>
+                      <Selo tom={u.perfil === "ADMIN" ? "marca" : "neutro"}>
                         {u.perfil}
                       </Selo>
                     </td>
@@ -224,49 +174,15 @@ export default function Funcionarios() {
                       {u.salario ? brl(u.salario) : "-"}
                     </td>
                     <td className="px-4 py-2.5">
-                      <div className="flex gap-1.5">
-                        <Botao variante="secundario" onClick={() => abrir(u)}>
-                          Editar
-                        </Botao>
-                        <Botao onClick={() => baterPonto(u.id)}>Ponto</Botao>
-                      </div>
+                      <Botao variante="secundario" onClick={() => abrir(u)}>
+                        Editar
+                      </Botao>
                     </td>
                   </tr>
                 ))}
               </Tabela>
             </Cartao>
           </>
-        )
-      ) : (
-        <Cartao className="overflow-hidden">
-          {pontos.length === 0 ? (
-            <Vazio titulo="Nenhum registro" descricao="Use 'Bater ponto' para comecar." />
-          ) : (
-            <Tabela cabecalho={["Data", "Funcionario", "Entrada", "Saida", "Horas"]}>
-              {pontos.map((p) => {
-                const horas =
-                  p.entrada && p.saida
-                    ? (
-                        (new Date(`${p.saida}Z`).getTime() -
-                          new Date(`${p.entrada}Z`).getTime()) /
-                        3_600_000
-                      ).toFixed(1)
-                    : null;
-                return (
-                  <tr key={p.id} className="hover:bg-carvao-50/60">
-                    <td className="px-4 py-2.5 text-carvao-600">{dataBr(p.data)}</td>
-                    <td className="px-4 py-2.5 font-medium text-carvao-800">{p.usuario_nome}</td>
-                    <td className="px-4 py-2.5 text-carvao-600">{hora(p.entrada)}</td>
-                    <td className="px-4 py-2.5 text-carvao-600">{hora(p.saida)}</td>
-                    <td className="px-4 py-2.5">
-                      {horas ? <Selo tom="info">{horas} h</Selo> : <Selo tom="alerta">Aberto</Selo>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </Tabela>
-          )}
-        </Cartao>
       )}
 
       <Modal
