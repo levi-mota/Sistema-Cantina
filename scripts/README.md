@@ -9,6 +9,7 @@ mesmo nome — clique duas vezes no `.bat` se preferir não usar o terminal.
 | `iniciar` | Sobe o sistema e abre no navegador |
 | `parar` | Encerra o que ficou rodando (quando a janela foi fechada sem Ctrl+C) |
 | `migrar` | Migrações de banco: aplicar, criar, ver status, reverter |
+| `dados-teste` | Enche o banco com vendas, turnos e contas para testar (não apaga nada) |
 | `recriar-banco` | Apaga tudo e cria um banco novo (faz backup antes) |
 
 ## Começando
@@ -43,6 +44,23 @@ rode `.\parar.ps1`.
 .\preparar.ps1                                # sem dados de demonstração
 .\recriar-banco.ps1 -ComDemo                  # zera e repopula
 ```
+
+## Dados de teste
+
+Para experimentar as telas com movimento de verdade — gráficos com curva,
+relatórios com números, estoque com itens no limite:
+
+```powershell
+.\dados-teste.ps1            # últimos 90 dias
+.\dados-teste.ps1 -Dias 30   # só o último mês
+```
+
+Ele **soma** ao banco atual: mantém usuários, caixas e produtos que já existem e
+acrescenta cadastros, estoque, vendas, turnos fechados com quebra, contas a
+pagar/receber e listas de compra. Nada é apagado, e rodar de novo acrescenta
+mais um período.
+
+Para começar do zero em vez de somar, use `recriar-banco`.
 
 ## Migrações
 
