@@ -31,6 +31,7 @@ Sistema cantina/
 │   │   │   ├── estoque.py       categorias, produtos, movimentações
 │   │   │   ├── vendas.py        PDV
 │   │   │   ├── caixa.py         caixas, turnos, sangria e fechamento
+│   │   │   ├── compras.py       lista de reposição e relatório do comprador
 │   │   │   ├── financeiro.py    contas a pagar e a receber
 │   │   │   ├── relatorios.py    dashboard, DRE, curva ABC
 │   │   │   └── integracoes.py   consulta de CNPJ e CEP
@@ -163,9 +164,14 @@ para habilitar; sem a chave o PDV continua aceitando PIX, só não desenha o QR.
   compra pode **gerar a conta a pagar** do fornecedor automaticamente.
 * **Contas a pagar / a receber** — títulos com parcelamento, baixa total ou parcial,
   cancelamento e destaque de vencidos.
-* **Relatórios** — painel, faturamento por dia, mais vendidos, formas de pagamento,
-  DRE simplificado (receita − CMV − despesas pagas), curva ABC e **quebras de caixa
-  por operador**. Exportação em CSV.
+* **Compras** — monta a lista de reposição e gera o relatório para quem vai comprar.
+  A sugestão automática traz tudo o que está no mínimo ou abaixo, com a quantidade que
+  recompõe o estoque; o relatório sai agrupado por fornecedor, pronto para mandar no
+  WhatsApp, baixar em CSV ou imprimir. A lista **não mexe no estoque** — a entrada é
+  feita no módulo de estoque quando a mercadoria chegar.
+* **Relatórios** — painel, faturamento por dia, **recebimento por forma de pagamento**,
+  mais vendidos, DRE simplificado (receita − CMV − despesas pagas), curva ABC e
+  **quebras de caixa por operador**. Exportação em CSV.
 * **Funcionários** — cadastro da equipe e perfis de acesso.
 * **Clientes e fornecedores** — cadastro único com preenchimento automático por
   CNPJ e CEP, e limite de crédito usado pelo fiado no PDV. CPF e CNPJ são validados
@@ -216,6 +222,13 @@ APIBRASIL_DEVICE_TOKEN="seu-device-token"
 
 Com o token preenchido a ApiBrasil vira o provedor principal; se ela falhar ou ficar
 indisponível, a consulta cai automaticamente para os provedores públicos.
+
+### Recebimento por forma de pagamento
+
+Quanto entrou em dinheiro e quanto entrou em PIX, com quantidade de vendas, ticket
+médio e participação de cada forma, mais o dia a dia empilhado. É o número que fecha
+as duas pontas da conferência: **o dinheiro tem que bater com a gaveta, o PIX com o
+extrato do banco**.
 
 ### Quebras de caixa por operador
 

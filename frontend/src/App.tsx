@@ -5,6 +5,7 @@ import Layout from "./components/Layout";
 import { Carregando } from "./components/ui";
 import { ProvedorAuth, useAuth } from "./lib/auth";
 import Caixa from "./pages/Caixa";
+import Compras from "./pages/Compras";
 import Estoque from "./pages/Estoque";
 import Financeiro from "./pages/Financeiro";
 import Funcionarios from "./pages/Funcionarios";
@@ -21,7 +22,7 @@ function SomenteAdmin({ children }: { children: ReactNode }) {
 }
 
 function Rotas() {
-  const { usuario, carregando, pode } = useAuth();
+  const { usuario, carregando, pode, sessaoId } = useAuth();
 
   if (carregando) return <Carregando texto="Carregando sessao..." />;
 
@@ -35,7 +36,9 @@ function Rotas() {
   }
 
   return (
-    <Routes>
+    // `key` por sessao: trocar de usuario remonta tudo, entao nenhuma tela
+    // aparece com dado carregado sob o token anterior.
+    <Routes key={sessaoId}>
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route element={<Layout />}>
         {/* Frente de caixa: liberado para qualquer usuario autenticado */}
@@ -44,6 +47,14 @@ function Rotas() {
 
         {/* Gestao: so administradores */}
         <Route index element={pode("ADMIN") ? <Painel /> : <Navigate to="/pdv" replace />} />
+        <Route
+          path="compras"
+          element={
+            <SomenteAdmin>
+              <Compras />
+            </SomenteAdmin>
+          }
+        />
         <Route
           path="estoque"
           element={

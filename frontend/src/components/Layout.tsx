@@ -5,6 +5,9 @@ import {
   ArrowUpCircle,
   BarChart3,
   Boxes,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
   Landmark,
   LayoutDashboard,
   LogOut,
@@ -32,22 +35,22 @@ interface ItemMenu {
 }
 
 const MENU: ItemMenu[] = [
-  // Sem `perfis`, o item aparece para todos. O USUARIO fica com PDV e caixa.
+  { para: "/", texto: "Painel", curto: "Painel", icone: LayoutDashboard, perfis: ["ADMIN"] },
   { para: "/pdv", texto: "Ponto de venda", curto: "PDV", icone: ShoppingCart, fixoNoCelular: true },
   { para: "/caixa", texto: "Caixa", curto: "Caixa", icone: Landmark, fixoNoCelular: true },
-  {
-    para: "/",
-    texto: "Painel",
-    curto: "Painel",
-    icone: LayoutDashboard,
-    perfis: ["ADMIN"],
-    fixoNoCelular: true,
-  },
   {
     para: "/estoque",
     texto: "Estoque",
     curto: "Estoque",
     icone: Boxes,
+    perfis: ["ADMIN"],
+    fixoNoCelular: true,
+  },
+  {
+    para: "/compras",
+    texto: "Compras",
+    curto: "Compras",
+    icone: ClipboardList,
     perfis: ["ADMIN"],
     fixoNoCelular: true,
   },
@@ -72,14 +75,35 @@ const MENU: ItemMenu[] = [
     icone: Users,
     perfis: ["ADMIN"],
   },
-  { para: "/relatorios", texto: "Relatorios", curto: "Relatorios", icone: BarChart3, perfis: ["ADMIN"] },
-  { para: "/funcionarios", texto: "Funcionarios", curto: "Equipe", icone: UserCog, perfis: ["ADMIN"] },
+  {
+    para: "/relatorios",
+    texto: "Relatorios",
+    curto: "Relatorios",
+    icone: BarChart3,
+    perfis: ["ADMIN"],
+  },
+  {
+    para: "/funcionarios",
+    texto: "Funcionarios",
+    curto: "Equipe",
+    icone: UserCog,
+    perfis: ["ADMIN"],
+  },
 ];
+
+const CHAVE_MENU = "cantina.menu-recolhido";
 
 export default function Layout() {
   const { usuario, sair, pode } = useAuth();
   const [maisAberto, setMaisAberto] = useState(false);
+  const [recolhido, setRecolhido] = useState(
+    () => localStorage.getItem(CHAVE_MENU) === "1",
+  );
   const local = useLocation();
+
+  useEffect(() => {
+    localStorage.setItem(CHAVE_MENU, recolhido ? "1" : "0");
+  }, [recolhido]);
 
   // Trocar de tela fecha a folha "Mais".
   useEffect(() => setMaisAberto(false), [local.pathname]);
@@ -89,50 +113,90 @@ export default function Layout() {
   const restantes = visiveis.filter((i) => !fixos.includes(i));
   const atual = visiveis.find((i) => i.para === local.pathname);
 
-  const classeLink = ({ isActive }: { isActive: boolean }) =>
-    cx(
-      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
-      isActive
-        ? "bg-marca-600 text-white shadow-sm"
-        : "text-carvao-200 hover:bg-carvao-800 hover:text-white",
-    );
-
   return (
     <div className="min-h-screen lg:flex">
-      {/* Menu lateral: apenas no desktop */}
-      <aside className="hidden w-64 shrink-0 lg:block">
-        <div className="fixed inset-y-0 flex w-64 flex-col bg-carvao-900">
-          <div className="flex items-center gap-2.5 px-5 py-5">
+      {/* Menu lateral: apenas no desktop, recolhivel para so os icones */}
+      <aside className={cx("hidden shrink-0 lg:block", recolhido ? "w-16" : "w-64")}>
+        <div
+          className={cx(
+            "fixed inset-y-0 flex flex-col bg-carvao-900 transition-all duration-200",
+            recolhido ? "w-16" : "w-64",
+          )}
+        >
+          <div
+            className={cx(
+              "flex items-center gap-2.5 py-5",
+              recolhido ? "justify-center px-2" : "px-5",
+            )}
+          >
             <div className="rounded-lg bg-marca-500 p-2">
               <UtensilsCrossed className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <p className="font-bold leading-tight text-white">Cantina</p>
-              <p className="text-xs text-carvao-400">Sistema de gestao</p>
-            </div>
+            {!recolhido && (
+              <div className="min-w-0">
+                <p className="font-bold leading-tight text-white">Cantina</p>
+                <p className="text-xs text-carvao-400">Sistema de gestao</p>
+              </div>
+            )}
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
             {visiveis.map(({ para, texto, icone: Icone }) => (
-              <NavLink key={para} to={para} end={para === "/"} className={classeLink}>
+              <NavLink
+                key={para}
+                to={para}
+                end={para === "/"}
+                title={recolhido ? texto : undefined}
+                className={({ isActive }) =>
+                  cx(
+                    "flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition",
+                    recolhido ? "justify-center px-2" : "px-3",
+                    isActive
+                      ? "bg-marca-600 text-white shadow-sm"
+                      : "text-carvao-200 hover:bg-carvao-800 hover:text-white",
+                  )
+                }
+              >
                 <Icone className="h-4.5 w-4.5 shrink-0" />
-                {texto}
+                {!recolhido && <span className="truncate">{texto}</span>}
               </NavLink>
             ))}
           </nav>
 
-          <div className="border-t border-carvao-800 p-3">
-            <div className="mb-2 px-2">
-              <p className="truncate text-sm font-semibold text-white">{usuario?.nome}</p>
-              <p className="text-xs text-carvao-400">
-                {usuario?.usuario} · {usuario?.perfil}
-              </p>
-            </div>
+          <div className="space-y-2 border-t border-carvao-800 p-3">
+            <button
+              onClick={() => setRecolhido((v) => !v)}
+              title={recolhido ? "Expandir menu" : "Recolher menu"}
+              className={cx(
+                "flex w-full items-center gap-2 rounded-lg py-2 text-sm font-medium",
+                "text-carvao-400 transition hover:bg-carvao-800 hover:text-white",
+                recolhido ? "justify-center px-2" : "px-3",
+              )}
+            >
+              {recolhido ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <>
+                  <ChevronLeft className="h-4 w-4" /> Recolher menu
+                </>
+              )}
+            </button>
+
+            {!recolhido && (
+              <p className="truncate px-2 text-sm font-semibold text-white">{usuario?.nome}</p>
+            )}
             <button
               onClick={sair}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500 hover:text-white"
+              title="Sair do sistema"
+              className={cx(
+                "flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/40",
+                "bg-red-500/10 py-2.5 text-sm font-semibold text-red-300 transition",
+                "hover:bg-red-500 hover:text-white",
+                recolhido ? "px-2" : "px-3",
+              )}
             >
-              <LogOut className="h-4 w-4" /> Sair do sistema
+              <LogOut className="h-4 w-4" />
+              {!recolhido && "Sair do sistema"}
             </button>
           </div>
         </div>
@@ -143,9 +207,7 @@ export default function Layout() {
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-carvao-100 bg-white px-4 py-3 lg:hidden">
           <div className="min-w-0 flex-1">
             <p className="truncate font-bold text-carvao-900">{atual?.texto ?? "Cantina"}</p>
-            <p className="truncate text-xs text-carvao-500">
-              {usuario?.nome} · {usuario?.perfil}
-            </p>
+            <p className="truncate text-xs text-carvao-500">{usuario?.nome}</p>
           </div>
           <button
             onClick={sair}

@@ -368,3 +368,73 @@ def quebras_detalhe(
         }
         for s in db.scalars(stmt).all()
     ]
+
+
+@router.get("/pagamentos")
+def pagamentos(db: DB, _: CurrentUser, inicio: date | None = None, fim: date | None = None):
+    """Recebimento por forma de pagamento no periodo.
+
+    Alem do total, traz o ticket medio e a participacao de cada forma -- e o
+    numero que responde "quanto entrou em dinheiro e quanto entrou em PIX",
+    que e o que separa a conferencia da gaveta do extrato do banco.
+    """
+    ini, f = _intervalo(inicio, fim)
+
+    linhas = db.execute(
+        select(
+            models.Venda.forma_pagamento,
+            func.coalesce(func.sum(models.Venda.total), 0),
+            func.count(models.Venda.id),
+            func.coalesce(func.sum(models.Venda.desconto), 0),
+        )
+        .where(VENDA_VALIDA, models.Venda.criado_em.between(ini, f))
+        .group_by(models.Venda.forma_pagamento)
+        .order_by(func.sum(models.Venda.total).desc())
+    ).all()
+
+    total_geral = sum((Decimal(str(t or 0)) for _, t, _, _ in linhas), Decimal("0"))
+    qtd_geral = sum(q for _, _, q, _ in linhas)
+
+    formas = [
+        {
+            "forma": forma.value,
+            "total": Decimal(str(total or 0)),
+            "quantidade": quantidade,
+            "desconto": Decimal(str(desconto or 0)),
+            "ticket_medio": (Decimal(str(total or 0)) / quantidade) if quantidade else Decimal("0"),
+            "participacao": (Decimal(str(total or 0)) / total_geral * 100)
+            if total_geral
+            else Decimal("0"),
+        }
+        for forma, total, quantidade, desconto in linhas
+    ]
+
+    return {
+        "formas": formas,
+        "total_geral": total_geral,
+        "quantidade_geral": qtd_geral,
+        "ticket_medio_geral": (total_geral / qtd_geral) if qtd_geral else Decimal("0"),
+    }
+
+
+@router.get("/pagamentos-por-dia")
+def pagamentos_por_dia(
+    db: DB, _: CurrentUser, inicio: date | None = None, fim: date | None = None
+):
+    """Uma linha por dia, com uma coluna por forma de pagamento."""
+    ini, f = _intervalo(inicio, fim)
+    dia = func.date(models.Venda.criado_em)
+
+    linhas = db.execute(
+        select(dia, models.Venda.forma_pagamento, func.coalesce(func.sum(models.Venda.total), 0))
+        .where(VENDA_VALIDA, models.Venda.criado_em.between(ini, f))
+        .group_by(dia, models.Venda.forma_pagamento)
+        .order_by(dia)
+    ).all()
+
+    por_dia: dict[str, dict[str, object]] = {}
+    for data, forma, total in linhas:
+        registro = por_dia.setdefault(data, {"dia": data, "total": Decimal("0")})
+        registro[forma.value] = Decimal(str(total or 0))
+        registro["total"] = registro["total"] + Decimal(str(total or 0))  # type: ignore[operator]
+    return list(por_dia.values())

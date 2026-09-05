@@ -12,6 +12,7 @@ from app.core.security import hash_password
 from app.routers import (
     auth,
     caixa,
+    compras,
     estoque,
     financeiro,
     funcionarios,
@@ -83,6 +84,7 @@ for modulo in (
     vendas,
     caixa,
     financeiro,
+    compras,
     relatorios,
     pix,
     integracoes,

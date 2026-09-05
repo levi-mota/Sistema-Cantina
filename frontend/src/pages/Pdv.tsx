@@ -68,7 +68,8 @@ export default function Pdv() {
 
   // Passo de quantidade: aberto ao escolher um produto (Enter ou clique).
   const [escolhido, setEscolhido] = useState<Produto | null>(null);
-  const [quantidade, setQuantidade] = useState(1);
+  const [quantidadeTexto, setQuantidadeTexto] = useState("1");
+  const quantidade = Number(quantidadeTexto || 0);
 
   const campoBusca = useRef<HTMLInputElement>(null);
   const campoQuantidade = useRef<HTMLInputElement>(null);
@@ -226,8 +227,10 @@ export default function Pdv() {
     (produto: Produto) => {
       if (Number(produto.estoque_atual) <= 0) return;
       const noCarrinho = carrinho.find((i) => i.produto.id === produto.id);
-      setQuantidade(quantidadeDigitada > 1 ? quantidadeDigitada : (noCarrinho?.quantidade ?? 1));
+      const inicial = quantidadeDigitada > 1 ? quantidadeDigitada : (noCarrinho?.quantidade ?? 1);
+      setQuantidadeTexto(String(inicial));
       setEscolhido(produto);
+      // O texto ja entra selecionado: a primeira tecla substitui o valor.
       requestAnimationFrame(() => campoQuantidade.current?.select());
     },
     [carrinho, quantidadeDigitada],
@@ -271,12 +274,12 @@ export default function Pdv() {
       }
       if (e.key === "ArrowUp" || e.key === "+") {
         e.preventDefault();
-        setQuantidade((q) => q + 1);
+        setQuantidadeTexto((q) => String(Number(q || 0) + 1));
         return;
       }
       if (e.key === "ArrowDown" || e.key === "-") {
         e.preventDefault();
-        setQuantidade((q) => Math.max(q - 1, 0));
+        setQuantidadeTexto((q) => String(Math.max(Number(q || 0) - 1, 0)));
       }
     }
 
@@ -622,7 +625,7 @@ export default function Pdv() {
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setQuantidade((q) => Math.max(q - 1, 0))}
+                onClick={() => setQuantidadeTexto((q) => String(Math.max(Number(q || 0) - 1, 0)))}
                 tabIndex={-1}
                 className="rounded-xl border border-carvao-200 p-4 text-carvao-600 active:bg-carvao-100"
                 aria-label="Diminuir"
@@ -631,16 +634,17 @@ export default function Pdv() {
               </button>
               <input
                 ref={campoQuantidade}
-                type="number"
-                min="0"
+                type="text"
                 inputMode="numeric"
-                value={quantidade}
-                onChange={(e) => setQuantidade(Math.max(Number(e.target.value) || 0, 0))}
+                pattern="[0-9]*"
+                value={quantidadeTexto}
+                onChange={(e) => setQuantidadeTexto(e.target.value.replace(/\D/g, ""))}
+                onFocus={(e) => e.target.select()}
                 autoFocus
                 className="campo w-full py-4 text-center text-3xl font-bold"
               />
               <button
-                onClick={() => setQuantidade((q) => q + 1)}
+                onClick={() => setQuantidadeTexto((q) => String(Number(q || 0) + 1))}
                 tabIndex={-1}
                 className="rounded-xl border border-carvao-200 p-4 text-carvao-600 active:bg-carvao-100"
                 aria-label="Aumentar"
@@ -653,7 +657,7 @@ export default function Pdv() {
               {[1, 2, 3, 5, 10].map((n) => (
                 <button
                   key={n}
-                  onClick={() => setQuantidade(n)}
+                  onClick={() => setQuantidadeTexto(String(n))}
                   tabIndex={-1}
                   className={cx(
                     "min-w-11 rounded-lg border px-3 py-2 text-sm font-semibold transition",

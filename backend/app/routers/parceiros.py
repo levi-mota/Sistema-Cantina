@@ -64,7 +64,6 @@ def identificar(documento: str, db: DB, _: CurrentUser):
         cadastrado=parceiro is not None,
         parceiro_id=parceiro.id if parceiro else None,
         nome=parceiro.nome if parceiro else None,
-        limite_credito=parceiro.limite_credito if parceiro else None,
     )
 
 

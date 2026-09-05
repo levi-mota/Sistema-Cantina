@@ -2,6 +2,9 @@ import axios, { AxiosError } from "axios";
 
 export const CHAVE_TOKEN = "cantina.token";
 
+/** Avisa o app que a sessao caiu, sem recarregar a pagina no meio de uma acao. */
+export const EVENTO_SESSAO_EXPIRADA = "cantina:sessao-expirada";
+
 export const api = axios.create({ baseURL: "/api" });
 
 api.interceptors.request.use((config) => {
@@ -13,9 +16,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (resposta) => resposta,
   (erro: AxiosError) => {
-    if (erro.response?.status === 401 && !erro.config?.url?.includes("/auth/login")) {
+    const ehLogin = erro.config?.url?.includes("/auth/login");
+    if (erro.response?.status === 401 && !ehLogin) {
       localStorage.removeItem(CHAVE_TOKEN);
-      if (location.pathname !== "/login") location.assign("/login");
+      window.dispatchEvent(new Event(EVENTO_SESSAO_EXPIRADA));
     }
     return Promise.reject(erro);
   },

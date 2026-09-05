@@ -81,6 +81,34 @@ def atualizar_terminal(terminal_id: int, dados: schemas.CaixaIn, db: DB, _: Some
     return schemas.CaixaTerminalOut.model_validate(terminal)
 
 
+@router.delete("/terminais/{terminal_id}", status_code=status.HTTP_204_NO_CONTENT)
+def excluir_terminal(terminal_id: int, db: DB, _: SomenteAdmin):
+    """Remove o caixa. Se ele ja tem historico, e desativado em vez de apagado.
+
+    Apagar um caixa com turnos levaria junto a conferencia daqueles turnos, que
+    e justamente o registro que o modulo existe para guardar.
+    """
+    terminal = db.get(models.Caixa, terminal_id)
+    if not terminal:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Caixa nao encontrado")
+
+    if servico.sessao_do_caixa(db, terminal_id):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Feche o turno aberto deste caixa antes de remove-lo"
+        )
+
+    tem_historico = db.scalar(
+        select(models.CaixaSessao.id).where(models.CaixaSessao.caixa_id == terminal_id).limit(1)
+    )
+    if tem_historico:
+        terminal.ativo = False
+        db.commit()
+        return
+
+    db.delete(terminal)
+    db.commit()
+
+
 # --------------------------------------------------------------------------- #
 # Sessoes
 # --------------------------------------------------------------------------- #

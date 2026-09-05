@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Building2, Plus, Search, Sparkles, User } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, cepFormatado, documentoFormatado, telefoneFormatado } from "../lib/format";
+import { cepFormatado, documentoFormatado, telefoneFormatado } from "../lib/format";
 import type { Empresa, Endereco, Parceiro, TipoParceiro, TipoPessoa } from "../lib/tipos";
 import {
   Botao,
@@ -33,7 +33,6 @@ const FORM_VAZIO = {
   bairro: "",
   cidade: "",
   uf: "",
-  limite_credito: "0",
   observacoes: "",
 };
 
@@ -92,7 +91,6 @@ export default function Parceiros() {
             bairro: p.bairro ?? "",
             cidade: p.cidade ?? "",
             uf: p.uf ?? "",
-            limite_credito: p.limite_credito,
             observacoes: p.observacoes ?? "",
           },
     );
@@ -161,7 +159,7 @@ export default function Parceiros() {
     e.preventDefault();
     setSalvando(true);
     setErro(null);
-    const corpo = { ...form, limite_credito: Number(form.limite_credito || 0) };
+    const corpo = { ...form };
     try {
       if (modal === "novo") await api.post("/parceiros", corpo);
       else if (modal) await api.put(`/parceiros/${modal.id}`, corpo);
@@ -242,7 +240,7 @@ export default function Parceiros() {
           </div>
 
           <Cartao className="hidden overflow-hidden lg:block">
-            <Tabela cabecalho={["Nome", "Tipo", "Documento", "Contato", "Cidade", "Limite", ""]}>
+            <Tabela cabecalho={["Nome", "Tipo", "Documento", "Contato", "Cidade", ""]}>
               {lista.map((p) => (
                 <tr key={p.id} className="hover:bg-carvao-50/60">
                   <td className="px-4 py-2.5">
@@ -272,9 +270,6 @@ export default function Parceiros() {
                   </td>
                   <td className="px-4 py-2.5 text-carvao-600">
                     {p.cidade ? `${p.cidade}/${p.uf}` : "-"}
-                  </td>
-                  <td className="px-4 py-2.5 text-carvao-600">
-                    {Number(p.limite_credito) > 0 ? brl(p.limite_credito) : "-"}
                   </td>
                   <td className="px-4 py-2.5">
                     <Botao variante="secundario" onClick={() => abrir(p)}>
@@ -422,15 +417,6 @@ export default function Parceiros() {
               maxLength={2}
               value={form.uf}
               onChange={(e) => setForm({ ...form, uf: e.target.value.toUpperCase() })}
-            />
-            <Campo
-              rotulo="Limite de credito (fiado)"
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.limite_credito}
-              onChange={(e) => setForm({ ...form, limite_credito: e.target.value })}
-              dica="0 = sem limite definido"
             />
           </div>
 

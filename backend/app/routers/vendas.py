@@ -5,9 +5,8 @@ aberto nao ha venda. O consumidor e "diverso" por padrao; digitar um CPF/CNPJ
 valido identifica a venda e, se o documento estiver cadastrado, vincula o
 cliente.
 
-Uma venda finalizada dispara tres integracoes:
+Uma venda finalizada dispara duas integracoes:
   * baixa de estoque (um movimento de SAIDA por item);
-  * financeiro -> venda no fiado gera uma conta a receber do cliente;
   * caixa -> a venda entra na conferencia da gaveta daquele turno.
 """
 
@@ -82,12 +81,6 @@ def obter(venda_id: int, db: DB, _: CurrentUser):
 
 @router.post("", response_model=schemas.VendaOut, status_code=status.HTTP_201_CREATED)
 def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
-    if dados.forma_pagamento == models.FormaPagamento.FIADO and not dados.cliente_id:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Venda no fiado exige um cliente identificado",
-        )
-
     cliente = db.get(models.Parceiro, dados.cliente_id) if dados.cliente_id else None
     if dados.cliente_id and not cliente:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Cliente nao encontrado")
@@ -183,41 +176,6 @@ def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
         venda.troco = Decimal(str(venda.valor_recebido)) - venda.total
     else:
         venda.valor_recebido = venda.total
-
-    if dados.forma_pagamento == models.FormaPagamento.FIADO:
-        limite = Decimal(str(cliente.limite_credito or 0)) if cliente else Decimal("0")
-        if limite > 0:
-            em_aberto = db.scalars(
-                select(models.Titulo).where(
-                    models.Titulo.tipo == models.TipoTitulo.RECEBER,
-                    models.Titulo.parceiro_id == cliente.id,
-                    models.Titulo.status.in_(
-                        [models.StatusTitulo.ABERTO, models.StatusTitulo.PARCIAL]
-                    ),
-                )
-            ).all()
-            devido = sum(
-                (Decimal(str(t.valor)) - Decimal(str(t.valor_pago)) for t in em_aberto),
-                Decimal("0"),
-            )
-            if devido + venda.total > limite:
-                raise HTTPException(
-                    status.HTTP_409_CONFLICT,
-                    f"Limite de credito excedido: em aberto R$ {devido}, limite R$ {limite}",
-                )
-
-        db.add(
-            models.Titulo(
-                tipo=models.TipoTitulo.RECEBER,
-                descricao=f"Venda fiado #{venda.id}",
-                categoria="Vendas",
-                parceiro_id=cliente.id if cliente else None,
-                venda_id=venda.id,
-                valor=venda.total,
-                vencimento=dados.vencimento_fiado or (date.today() + timedelta(days=30)),
-            )
-        )
-        venda.valor_recebido = Decimal("0")
 
     db.commit()
     db.refresh(venda)

@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -43,6 +44,29 @@ interface VendaDia {
   dia: string;
   total: string;
   quantidade: number;
+}
+
+interface FormaPagamento {
+  forma: string;
+  total: string;
+  quantidade: number;
+  desconto: string;
+  ticket_medio: string;
+  participacao: number;
+}
+
+interface ResumoPagamentos {
+  formas: FormaPagamento[];
+  total_geral: string;
+  quantidade_geral: number;
+  ticket_medio_geral: string;
+}
+
+interface PagamentoDia {
+  dia: string;
+  total: string;
+  DINHEIRO?: string;
+  PIX?: string;
 }
 
 interface QuebraOperador {
@@ -100,6 +124,8 @@ export default function Relatorios() {
   const [maisVendidos, setMaisVendidos] = useState<MaisVendido[]>([]);
   const [abc, setAbc] = useState<LinhaAbc[]>([]);
   const [porDia, setPorDia] = useState<VendaDia[]>([]);
+  const [pagamentos, setPagamentos] = useState<ResumoPagamentos | null>(null);
+  const [pagamentosDia, setPagamentosDia] = useState<PagamentoDia[]>([]);
   const [quebras, setQuebras] = useState<QuebraOperador[]>([]);
   const [turnosRuins, setTurnosRuins] = useState<TurnoComQuebra[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -110,7 +136,7 @@ export default function Relatorios() {
     setErro(null);
     const params = { inicio, fim };
     try {
-      const [d, m, a, v, q, t] = await Promise.all([
+      const [d, m, a, v, q, t, pg, pd] = await Promise.all([
         api.get<Dre>("/relatorios/dre-simplificado", { params }),
         api.get<MaisVendido[]>("/relatorios/produtos-mais-vendidos", {
           params: { ...params, limite: 10 },
@@ -121,6 +147,8 @@ export default function Relatorios() {
         api.get<TurnoComQuebra[]>("/relatorios/quebras-detalhe", {
           params: { ...params, limite: 10 },
         }),
+        api.get<ResumoPagamentos>("/relatorios/pagamentos", { params }),
+        api.get<PagamentoDia[]>("/relatorios/pagamentos-por-dia", { params }),
       ]);
       setDre(d.data);
       setMaisVendidos(m.data);
@@ -128,6 +156,8 @@ export default function Relatorios() {
       setPorDia(v.data);
       setQuebras(q.data);
       setTurnosRuins(t.data);
+      setPagamentos(pg.data);
+      setPagamentosDia(pd.data);
     } catch (e) {
       setErro(mensagemErro(e));
     } finally {
@@ -143,7 +173,7 @@ export default function Relatorios() {
     <>
       <TituloPagina
         titulo="Relatorios"
-        descricao="Resultado do periodo, produtos campeoes, curva ABC e quebras de caixa"
+        descricao="Resultado, formas de pagamento, produtos campeoes, curva ABC e quebras de caixa"
       />
 
       <Cartao className="mb-4 p-4">
@@ -316,6 +346,125 @@ export default function Relatorios() {
               )}
             </Cartao>
           </div>
+
+          {/* Recebimento por forma de pagamento */}
+          {pagamentos && pagamentos.formas.length > 0 && (
+            <Cartao className="mt-4 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-carvao-100 px-4 py-3">
+                <div>
+                  <h2 className="font-bold text-carvao-900">Recebimento por forma de pagamento</h2>
+                  <p className="text-xs text-carvao-500">
+                    Quanto entrou em cada forma. O dinheiro e o que deve bater com a gaveta; o
+                    PIX, com o extrato do banco.
+                  </p>
+                </div>
+                <Botao
+                  variante="secundario"
+                  icone={<Download className="h-4 w-4" />}
+                  onClick={() => baixarCsv(`pagamentos_${inicio}_a_${fim}`, pagamentos.formas)}
+                >
+                  CSV
+                </Botao>
+              </div>
+
+              <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+                {pagamentos.formas.map((f) => (
+                  <div key={f.forma} className="rounded-xl border border-carvao-100 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-carvao-500">
+                        {f.forma}
+                      </span>
+                      <Selo tom={f.forma === "DINHEIRO" ? "alerta" : "info"}>
+                        {porcentagem(f.participacao, 1)}
+                      </Selo>
+                    </div>
+                    <p className="mt-1 text-2xl font-bold text-carvao-900">{brl(f.total)}</p>
+                    <p className="text-xs text-carvao-500">
+                      {f.quantidade} venda(s) · ticket {brl(f.ticket_medio)}
+                    </p>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-carvao-100">
+                      <div
+                        className={f.forma === "DINHEIRO" ? "h-full bg-amber-500" : "h-full bg-sky-500"}
+                        style={{ width: `${Math.min(f.participacao, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <div className="rounded-xl border border-carvao-200 bg-carvao-50 p-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-carvao-500">
+                    Total recebido
+                  </span>
+                  <p className="mt-1 text-2xl font-bold text-carvao-900">
+                    {brl(pagamentos.total_geral)}
+                  </p>
+                  <p className="text-xs text-carvao-500">
+                    {pagamentos.quantidade_geral} venda(s) · ticket{" "}
+                    {brl(pagamentos.ticket_medio_geral)}
+                  </p>
+                </div>
+              </div>
+
+              {pagamentosDia.length > 0 && (
+                <div className="border-t border-carvao-100 p-4">
+                  <h3 className="mb-3 text-sm font-semibold text-carvao-700">
+                    Dia a dia, por forma
+                  </h3>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={pagamentosDia.map((d) => ({
+                          dia: d.dia,
+                          DINHEIRO: Number(d.DINHEIRO ?? 0),
+                          PIX: Number(d.PIX ?? 0),
+                        }))}
+                        margin={{ left: -18, right: 8, top: 4 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e4e1" vertical={false} />
+                        <XAxis
+                          dataKey="dia"
+                          tickFormatter={(v: string) => v.slice(8, 10) + "/" + v.slice(5, 7)}
+                          tick={{ fontSize: 11, fill: "#8d8a83" }}
+                          tickLine={false}
+                          axisLine={false}
+                          minTickGap={14}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 11, fill: "#8d8a83" }}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <Tooltip
+                          formatter={(v, n) => [brl(Number(v)), String(n)]}
+                          labelFormatter={(v) => dataBr(String(v))}
+                          contentStyle={{
+                            borderRadius: 10,
+                            border: "1px solid #e5e4e1",
+                            fontSize: 13,
+                          }}
+                          cursor={{ fill: "#f7f7f6" }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Bar dataKey="DINHEIRO" stackId="p" fill="#f59e0b" radius={[0, 0, 0, 0]} />
+                        <Bar dataKey="PIX" stackId="p" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-2 flex justify-end">
+                    <Botao
+                      variante="secundario"
+                      icone={<Download className="h-4 w-4" />}
+                      onClick={() =>
+                        baixarCsv(`pagamentos_por_dia_${inicio}_a_${fim}`, pagamentosDia)
+                      }
+                    >
+                      CSV dia a dia
+                    </Botao>
+                  </div>
+                </div>
+              )}
+            </Cartao>
+          )}
 
           {/* Quebras de caixa por operador */}
           <Cartao className="mt-4 overflow-hidden">

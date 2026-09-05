@@ -80,7 +80,6 @@ class ParceiroBase(BaseModel):
     bairro: str | None = None
     cidade: str | None = None
     uf: str | None = None
-    limite_credito: Decimal = Decimal("0")
     observacoes: str | None = None
     ativo: bool = True
 
@@ -104,7 +103,6 @@ class ParceiroUpdate(BaseModel):
     bairro: str | None = None
     cidade: str | None = None
     uf: str | None = None
-    limite_credito: Decimal | None = None
     observacoes: str | None = None
     ativo: bool | None = None
 
@@ -312,7 +310,6 @@ class IdentificacaoOut(BaseModel):
     cadastrado: bool
     parceiro_id: int | None = None
     nome: str | None = None
-    limite_credito: Decimal | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -426,3 +423,71 @@ class CaixaOut(ORMModel):
     observacao_fechamento: str | None = None
     movimentos: list[MovimentoCaixaOut] = []
     conferencia: ConferenciaOut | None = None
+
+
+# --------------------------------------------------------------------------- #
+# Compras
+# --------------------------------------------------------------------------- #
+class ItemCompraIn(BaseModel):
+    produto_id: int
+    quantidade: Decimal = Field(gt=0)
+    observacao: str | None = None
+
+
+class ItemCompraOut(ORMModel):
+    id: int
+    produto_id: int
+    produto: str
+    codigo: str | None = None
+    unidade: str
+    fornecedor: str | None = None
+    quantidade: Decimal
+    custo_estimado: Decimal
+    estoque_no_momento: Decimal
+    estoque_minimo: Decimal
+    total_estimado: Decimal
+    observacao: str | None = None
+
+
+class ListaCompraIn(BaseModel):
+    titulo: str = Field(min_length=1, max_length=120)
+    comprador: str | None = None
+    observacao: str | None = None
+    itens: list[ItemCompraIn] = []
+
+
+class ListaCompraUpdate(BaseModel):
+    titulo: str | None = None
+    comprador: str | None = None
+    observacao: str | None = None
+    itens: list[ItemCompraIn] | None = None
+
+
+class ListaCompraOut(ORMModel):
+    id: int
+    titulo: str
+    status: models.StatusCompra
+    comprador: str | None = None
+    observacao: str | None = None
+    usuario_nome: str | None = None
+    criado_em: datetime
+    enviada_em: datetime | None = None
+    concluida_em: datetime | None = None
+    itens: list[ItemCompraOut] = []
+    total_estimado: Decimal = Decimal("0")
+    quantidade_itens: int = 0
+
+
+class SugestaoCompra(BaseModel):
+    """Produto abaixo do minimo, com a quantidade que recompoe o estoque."""
+
+    produto_id: int
+    produto: str
+    codigo: str | None = None
+    unidade: str
+    fornecedor: str | None = None
+    estoque_atual: Decimal
+    estoque_minimo: Decimal
+    sugestao: Decimal
+    custo_estimado: Decimal
+    total_estimado: Decimal

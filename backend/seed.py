@@ -98,21 +98,18 @@ def executar() -> None:
             nome="Joao Pereira",
             documento="12345678909",
             telefone="11988887777",
-            limite_credito=Decimal("150.00"),
         ),
         models.Parceiro(
             tipo=models.TipoParceiro.CLIENTE,
             nome="Ana Clara Martins",
             documento="98765432100",
             telefone="11977776666",
-            limite_credito=Decimal("200.00"),
         ),
         models.Parceiro(
             tipo=models.TipoParceiro.CLIENTE,
             nome="Escola Municipal Vila Nova",
             tipo_pessoa=models.TipoPessoa.JURIDICA,
             documento="11222333000181",
-            limite_credito=Decimal("2000.00"),
         ),
     ]
     db.add_all(parceiros)

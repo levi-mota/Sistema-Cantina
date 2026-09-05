@@ -39,7 +39,6 @@ export interface Parceiro {
   bairro?: string | null;
   cidade?: string | null;
   uf?: string | null;
-  limite_credito: string;
   observacoes?: string | null;
   ativo: boolean;
   criado_em: string;
@@ -232,7 +231,6 @@ export interface Identificacao {
   cadastrado: boolean;
   parceiro_id?: number | null;
   nome?: string | null;
-  limite_credito?: string | null;
 }
 
 export interface CaixaSessao {
@@ -254,4 +252,56 @@ export interface CaixaSessao {
   observacao_fechamento?: string | null;
   movimentos: MovimentoCaixa[];
   conferencia?: Conferencia | null;
+}
+
+export type StatusCompra = "RASCUNHO" | "ENVIADA" | "CONCLUIDA" | "CANCELADA";
+
+export interface ItemCompra {
+  id: number;
+  produto_id: number;
+  produto: string;
+  codigo?: string | null;
+  unidade: string;
+  fornecedor?: string | null;
+  quantidade: string;
+  custo_estimado: string;
+  estoque_no_momento: string;
+  estoque_minimo: string;
+  total_estimado: string;
+  observacao?: string | null;
+}
+
+export interface ListaCompra {
+  id: number;
+  titulo: string;
+  status: StatusCompra;
+  comprador?: string | null;
+  observacao?: string | null;
+  usuario_nome?: string | null;
+  criado_em: string;
+  enviada_em?: string | null;
+  concluida_em?: string | null;
+  itens: ItemCompra[];
+  total_estimado: string;
+  quantidade_itens: number;
+}
+
+export interface SugestaoCompra {
+  produto_id: number;
+  produto: string;
+  codigo?: string | null;
+  unidade: string;
+  fornecedor?: string | null;
+  estoque_atual: string;
+  estoque_minimo: string;
+  sugestao: string;
+  custo_estimado: string;
+  total_estimado: string;
+}
+
+export interface RelatorioCompra {
+  titulo: string;
+  texto: string;
+  total_estimado: string;
+  quantidade_itens: number;
 }

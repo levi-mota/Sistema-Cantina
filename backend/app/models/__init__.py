@@ -94,6 +94,13 @@ class TipoMovimentoCaixa(StrEnum):
     SUPRIMENTO = "SUPRIMENTO"
 
 
+class StatusCompra(StrEnum):
+    RASCUNHO = "RASCUNHO"
+    ENVIADA = "ENVIADA"
+    CONCLUIDA = "CONCLUIDA"
+    CANCELADA = "CANCELADA"
+
+
 # --------------------------------------------------------------------------- #
 # Funcionarios / usuarios
 # --------------------------------------------------------------------------- #
@@ -141,7 +148,6 @@ class Parceiro(Base):
     bairro: Mapped[str | None] = mapped_column(String(80))
     cidade: Mapped[str | None] = mapped_column(String(80))
     uf: Mapped[str | None] = mapped_column(String(2))
-    limite_credito: Mapped[float] = mapped_column(Dinheiro, default=0)
     observacoes: Mapped[str | None] = mapped_column(Text)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
@@ -342,3 +348,48 @@ class MovimentoCaixa(Base):
 
     sessao: Mapped[CaixaSessao] = relationship(back_populates="movimentos")
     usuario: Mapped[Usuario | None] = relationship(lazy="joined")
+
+
+# --------------------------------------------------------------------------- #
+# Compras (lista de reposicao enviada ao comprador)
+# --------------------------------------------------------------------------- #
+class ListaCompra(Base):
+    """O que precisa ser comprado, para virar um pedido ao comprador."""
+
+    __tablename__ = "listas_compra"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    titulo: Mapped[str] = mapped_column(String(120))
+    status: Mapped[StatusCompra] = mapped_column(
+        Enum(StatusCompra), default=StatusCompra.RASCUNHO, index=True
+    )
+    comprador: Mapped[str | None] = mapped_column(String(120))
+    observacao: Mapped[str | None] = mapped_column(Text)
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora, index=True)
+    enviada_em: Mapped[datetime | None] = mapped_column(DateTime)
+    concluida_em: Mapped[datetime | None] = mapped_column(DateTime)
+
+    usuario: Mapped[Usuario | None] = relationship(lazy="joined")
+    itens: Mapped[list["ItemListaCompra"]] = relationship(
+        back_populates="lista", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class ItemListaCompra(Base):
+    __tablename__ = "itens_lista_compra"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lista_id: Mapped[int] = mapped_column(
+        ForeignKey("listas_compra.id", ondelete="CASCADE"), index=True
+    )
+    produto_id: Mapped[int] = mapped_column(ForeignKey("produtos.id"))
+    quantidade: Mapped[float] = mapped_column(Quantidade)
+    # Congelados no momento em que o item entra na lista, para o relatorio nao
+    # mudar de valor depois que o preco de custo for atualizado.
+    custo_estimado: Mapped[float] = mapped_column(Dinheiro, default=0)
+    estoque_no_momento: Mapped[float] = mapped_column(Quantidade, default=0)
+    observacao: Mapped[str | None] = mapped_column(String(200))
+
+    lista: Mapped[ListaCompra] = relationship(back_populates="itens")
+    produto: Mapped[Produto] = relationship(lazy="joined")
