@@ -16,9 +16,14 @@ class Settings(BaseSettings):
     apibrasil_token: str = ""
     apibrasil_device_token: str = ""
 
-    admin_email: str = "admin@cantina.local"
+    admin_usuario: str = "admin"
     admin_password: str = "admin123"
     admin_nome: str = "Administrador"
+
+    # PIX: usados para montar o BR Code (QR) do valor da venda.
+    pix_chave: str = ""
+    pix_beneficiario: str = ""
+    pix_cidade: str = ""
 
     @property
     def cors_list(self) -> list[str]:

@@ -91,11 +91,14 @@ Sistema em <http://localhost:5173>. O Vite já faz proxy de `/api` para o backen
 
 ### Acessos de demonstração
 
-| E-mail | Senha | Perfil |
+O login é um nome curto, sem e-mail — a ferramenta é de uso interno.
+
+| Usuário | Senha | Perfil |
 | --- | --- | --- |
-| admin@cantina.local | admin123 | ADMIN |
-| marina@cantina.local | 123456 | GERENTE |
-| diego@cantina.local | 123456 | OPERADOR |
+| `admin` | admin123 | ADMIN |
+| `marina` | 123456 | GERENTE |
+| `diego` | 123456 | OPERADOR |
+| `paula` | 123456 | OPERADOR |
 
 ### Acesso pelo celular
 
@@ -106,11 +109,40 @@ endereço pronto. Basta abri-lo no celular, com ele no mesmo Wi-Fi.
 
 ## Módulos e como eles se conectam
 
-* **Ponto de venda** — busca por nome ou código de barras, carrinho, desconto,
-  troco, comprovante. **Exige um caixa aberto pelo operador logado**: sem turno, não há
-  venda. Ao finalizar: **dá baixa no estoque** (um movimento por item) e, se a venda for
-  no fiado, **gera a conta a receber** do cliente respeitando o limite de crédito. O
-  cancelamento devolve os itens e cancela o título.
+* **Ponto de venda** — feito para ser operado **só com o teclado**: a busca nunca perde
+  o foco, `Enter` adiciona, `F2` fecha a venda e `Enter` de novo confirma. Recebe em
+  **dinheiro** (com troco e sugestões de cédula) e **PIX** (com QR Code do valor exato).
+  Exige um caixa aberto pelo operador logado: sem turno, não há venda. Ao finalizar, dá
+  baixa no estoque — um movimento por item. O cancelamento devolve os itens.
+
+### Atalhos do PDV
+
+| Tecla | O que faz |
+| --- | --- |
+| digitar | Vai direto para a busca, de qualquer lugar da tela |
+| `↑` `↓` | Navega entre os produtos |
+| `Enter` | Adiciona o produto destacado |
+| `3*` antes do nome | Quantidade (ex.: `3*coxinha` põe três de uma vez) |
+| `F2` | Abre o pagamento |
+| `F4` | Limpa a venda |
+| `Alt+←` | Tira o último item |
+| `Esc` | Limpa a busca / fecha a janela |
+
+No pagamento: `1` dinheiro, `2` PIX (ou `F1`/`F2` sem sair do campo), `Enter` confirma,
+`Esc` volta. Terminada a venda, `Enter` já começa a próxima.
+
+### Recebimento
+
+**Dinheiro** — campo do valor recebido com botões de cédula (exato, R$ 20, R$ 50…) e o
+troco em destaque. Enquanto faltar dinheiro, o botão de confirmar fica bloqueado.
+
+**PIX** — o sistema gera o BR Code (o "copia e cola") já com o valor da venda e mostra o
+QR na tela, mais um botão para copiar o código. Preencha `PIX_CHAVE` no `backend/.env`
+para habilitar; sem a chave o PDV continua aceitando PIX, só não desenha o QR.
+
+> O QR **não confirma o pagamento**. Quem confirma é o operador, olhando a notificação do
+> banco antes de teclar Enter. Confirmação automática exigiria integração com a API PIX
+> do banco (webhook de cobrança).
 * **Caixa** — a cantina pode ter **vários caixas** (Caixa 1, Caixa 2, …), cada um com a
   sua gaveta, o seu turno e o seu fechamento. Um caixa comporta um turno aberto por vez,
   e um operador opera um caixa por vez. Abertura com troco inicial, **sangria**

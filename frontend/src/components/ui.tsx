@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import type {
+  ButtonHTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+  Ref,
+  SelectHTMLAttributes,
+} from "react";
 import { Loader2, X } from "lucide-react";
 
 export function cx(...classes: (string | false | null | undefined)[]): string {
@@ -59,13 +65,15 @@ export function Botao({
 interface CampoProps extends InputHTMLAttributes<HTMLInputElement> {
   rotulo?: string;
   dica?: string;
+  /** No React 19 a ref e uma prop comum de componente de funcao. */
+  ref?: Ref<HTMLInputElement>;
 }
 
-export function Campo({ rotulo, dica, className, ...props }: CampoProps) {
+export function Campo({ rotulo, dica, className, ref, ...props }: CampoProps) {
   return (
     <label className="block">
       {rotulo && <span className="rotulo">{rotulo}</span>}
-      <input {...props} className={cx("campo", className)} />
+      <input {...props} ref={ref} className={cx("campo", className)} />
       {dica && <span className="mt-1 block text-xs text-carvao-400">{dica}</span>}
     </label>
   );

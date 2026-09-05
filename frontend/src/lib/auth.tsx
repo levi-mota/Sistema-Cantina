@@ -7,7 +7,7 @@ import type { Perfil, Usuario } from "./tipos";
 interface ContextoAuth {
   usuario: Usuario | null;
   carregando: boolean;
-  entrar: (email: string, senha: string) => Promise<void>;
+  entrar: (login: string, senha: string) => Promise<void>;
   sair: () => void;
   pode: (...perfis: Perfil[]) => boolean;
 }
@@ -30,8 +30,8 @@ export function ProvedorAuth({ children }: { children: ReactNode }) {
       .finally(() => setCarregando(false));
   }, []);
 
-  const entrar = useCallback(async (email: string, senha: string) => {
-    const { data } = await api.post("/auth/login", { email, senha });
+  const entrar = useCallback(async (login: string, senha: string) => {
+    const { data } = await api.post("/auth/login", { usuario: login, senha });
     localStorage.setItem(CHAVE_TOKEN, data.access_token);
     setUsuario(data.usuario);
   }, []);

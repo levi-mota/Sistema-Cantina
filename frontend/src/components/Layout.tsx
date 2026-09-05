@@ -1,18 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
   BarChart3,
   Boxes,
-  LayoutDashboard,
   Landmark,
+  LayoutDashboard,
   LogOut,
-  Menu,
+  MoreHorizontal,
   ShoppingCart,
   UserCog,
   Users,
   UtensilsCrossed,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -26,19 +27,19 @@ interface ItemMenu {
   curto: string;
   icone: LucideIcon;
   perfis?: Perfil[];
-  /** Aparece na barra inferior do celular (limitada a 5 itens). */
-  noCelular?: boolean;
+  /** Ganha um lugar fixo na barra inferior do celular. */
+  fixoNoCelular?: boolean;
 }
 
 const MENU: ItemMenu[] = [
-  { para: "/", texto: "Painel", curto: "Painel", icone: LayoutDashboard, noCelular: true },
-  { para: "/pdv", texto: "Ponto de venda", curto: "PDV", icone: ShoppingCart, noCelular: true },
-  { para: "/caixa", texto: "Caixa", curto: "Caixa", icone: Landmark },
-  { para: "/estoque", texto: "Estoque", curto: "Estoque", icone: Boxes, noCelular: true },
+  { para: "/", texto: "Painel", curto: "Painel", icone: LayoutDashboard, fixoNoCelular: true },
+  { para: "/pdv", texto: "Ponto de venda", curto: "PDV", icone: ShoppingCart, fixoNoCelular: true },
+  { para: "/estoque", texto: "Estoque", curto: "Estoque", icone: Boxes, fixoNoCelular: true },
+  { para: "/caixa", texto: "Caixa", curto: "Caixa", icone: Landmark, fixoNoCelular: true },
   { para: "/contas-a-pagar", texto: "Contas a pagar", curto: "Pagar", icone: ArrowUpCircle },
   { para: "/contas-a-receber", texto: "Contas a receber", curto: "Receber", icone: ArrowDownCircle },
-  { para: "/parceiros", texto: "Clientes e fornecedores", curto: "Cadastros", icone: Users, noCelular: true },
-  { para: "/relatorios", texto: "Relatorios", curto: "Relatorios", icone: BarChart3, noCelular: true },
+  { para: "/parceiros", texto: "Clientes e fornecedores", curto: "Cadastros", icone: Users },
+  { para: "/relatorios", texto: "Relatorios", curto: "Relatorios", icone: BarChart3 },
   {
     para: "/funcionarios",
     texto: "Funcionarios",
@@ -50,11 +51,16 @@ const MENU: ItemMenu[] = [
 
 export default function Layout() {
   const { usuario, sair, pode } = useAuth();
-  const [menuAberto, setMenuAberto] = useState(false);
+  const [maisAberto, setMaisAberto] = useState(false);
   const local = useLocation();
 
+  // Trocar de tela fecha a folha "Mais".
+  useEffect(() => setMaisAberto(false), [local.pathname]);
+
   const visiveis = MENU.filter((i) => !i.perfis || pode(...i.perfis));
-  const noCelular = visiveis.filter((i) => i.noCelular).slice(0, 5);
+  const fixos = visiveis.filter((i) => i.fixoNoCelular).slice(0, 4);
+  const restantes = visiveis.filter((i) => !fixos.includes(i));
+  const atual = visiveis.find((i) => i.para === local.pathname);
 
   const classeLink = ({ isActive }: { isActive: boolean }) =>
     cx(
@@ -64,88 +70,61 @@ export default function Layout() {
         : "text-carvao-200 hover:bg-carvao-800 hover:text-white",
     );
 
-  const barraLateral = (
-    <div className="flex h-full flex-col bg-carvao-900">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="rounded-lg bg-marca-500 p-2">
-          <UtensilsCrossed className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <p className="font-bold leading-tight text-white">Cantina</p>
-          <p className="text-xs text-carvao-400">Sistema de gestao</p>
-        </div>
-      </div>
-
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-        {visiveis.map(({ para, texto, icone: Icone }) => (
-          <NavLink
-            key={para}
-            to={para}
-            end={para === "/"}
-            className={classeLink}
-            onClick={() => setMenuAberto(false)}
-          >
-            <Icone className="h-4.5 w-4.5 shrink-0" />
-            {texto}
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="border-t border-carvao-800 p-3">
-        <div className="mb-2 px-2">
-          <p className="truncate text-sm font-semibold text-white">{usuario?.nome}</p>
-          <p className="text-xs text-carvao-400">
-            {usuario?.cargo ?? usuario?.perfil} · {usuario?.perfil}
-          </p>
-        </div>
-        <button
-          onClick={sair}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-carvao-300 transition hover:bg-carvao-800 hover:text-white"
-        >
-          <LogOut className="h-4 w-4" /> Sair
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen lg:flex">
-      {/* Desktop */}
+      {/* Menu lateral: apenas no desktop */}
       <aside className="hidden w-64 shrink-0 lg:block">
-        <div className="fixed inset-y-0 w-64">{barraLateral}</div>
+        <div className="fixed inset-y-0 flex w-64 flex-col bg-carvao-900">
+          <div className="flex items-center gap-2.5 px-5 py-5">
+            <div className="rounded-lg bg-marca-500 p-2">
+              <UtensilsCrossed className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="font-bold leading-tight text-white">Cantina</p>
+              <p className="text-xs text-carvao-400">Sistema de gestao</p>
+            </div>
+          </div>
+
+          <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+            {visiveis.map(({ para, texto, icone: Icone }) => (
+              <NavLink key={para} to={para} end={para === "/"} className={classeLink}>
+                <Icone className="h-4.5 w-4.5 shrink-0" />
+                {texto}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="border-t border-carvao-800 p-3">
+            <div className="mb-2 px-2">
+              <p className="truncate text-sm font-semibold text-white">{usuario?.nome}</p>
+              <p className="text-xs text-carvao-400">
+                {usuario?.usuario} · {usuario?.perfil}
+              </p>
+            </div>
+            <button
+              onClick={sair}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500 hover:text-white"
+            >
+              <LogOut className="h-4 w-4" /> Sair do sistema
+            </button>
+          </div>
+        </div>
       </aside>
 
-      {/* Celular: gaveta lateral */}
-      {menuAberto && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <button
-            className="absolute inset-0 bg-carvao-900/60"
-            onClick={() => setMenuAberto(false)}
-            aria-label="Fechar menu"
-          />
-          <div className="absolute inset-y-0 left-0 w-72 shadow-xl">{barraLateral}</div>
-        </div>
-      )}
-
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Topo do celular */}
+        {/* Topo do celular: sem menu lateral, so titulo e sair */}
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-carvao-100 bg-white px-4 py-3 lg:hidden">
-          <button
-            onClick={() => setMenuAberto((v) => !v)}
-            className="rounded-lg p-1.5 text-carvao-600 hover:bg-carvao-100"
-            aria-label="Menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <span className="font-bold text-carvao-900">
-            {visiveis.find((i) => i.para === local.pathname)?.texto ?? "Cantina"}
-          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-bold text-carvao-900">{atual?.texto ?? "Cantina"}</p>
+            <p className="truncate text-xs text-carvao-500">
+              {usuario?.nome} · {usuario?.perfil}
+            </p>
+          </div>
           <button
             onClick={sair}
-            className="ml-auto rounded-lg p-1.5 text-carvao-500 hover:bg-carvao-100"
-            aria-label="Sair"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 active:bg-red-100"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-4 w-4" /> Sair
           </button>
         </header>
 
@@ -153,9 +132,51 @@ export default function Layout() {
           <Outlet />
         </main>
 
-        {/* Celular: barra inferior com os modulos mais usados */}
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-carvao-100 bg-white lg:hidden">
-          {noCelular.map(({ para, curto, icone: Icone }) => (
+        {/* Folha "Mais": o resto do menu, ancorado na propria barra inferior */}
+        {maisAberto && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <button
+              className="absolute inset-0 bg-carvao-900/50"
+              onClick={() => setMaisAberto(false)}
+              aria-label="Fechar"
+            />
+            <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white pb-20 shadow-xl">
+              <div className="flex items-center justify-between border-b border-carvao-100 px-5 py-3">
+                <span className="font-bold text-carvao-900">Mais opcoes</span>
+                <button
+                  onClick={() => setMaisAberto(false)}
+                  className="rounded-lg p-1.5 text-carvao-400 active:bg-carvao-100"
+                  aria-label="Fechar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <nav className="grid grid-cols-2 gap-2 p-4">
+                {restantes.map(({ para, texto, icone: Icone }) => (
+                  <NavLink
+                    key={para}
+                    to={para}
+                    className={({ isActive }) =>
+                      cx(
+                        "flex items-center gap-2.5 rounded-xl border px-3 py-3 text-sm font-medium transition",
+                        isActive
+                          ? "border-marca-300 bg-marca-50 text-marca-700"
+                          : "border-carvao-200 text-carvao-700 active:bg-carvao-50",
+                      )
+                    }
+                  >
+                    <Icone className="h-4.5 w-4.5 shrink-0" />
+                    {texto}
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
+          </div>
+        )}
+
+        {/* Celular: a barra inferior e a unica navegacao */}
+        <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-carvao-100 bg-white lg:hidden">
+          {fixos.map(({ para, curto, icone: Icone }) => (
             <NavLink
               key={para}
               to={para}
@@ -171,6 +192,18 @@ export default function Layout() {
               {curto}
             </NavLink>
           ))}
+          <button
+            onClick={() => setMaisAberto((v) => !v)}
+            className={cx(
+              "flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition",
+              maisAberto || restantes.some((i) => i.para === local.pathname)
+                ? "text-marca-600"
+                : "text-carvao-400",
+            )}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            Mais
+          </button>
         </nav>
       </div>
     </div>

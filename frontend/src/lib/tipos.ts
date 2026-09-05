@@ -10,7 +10,8 @@ export type StatusVenda = "ABERTA" | "FINALIZADA" | "CANCELADA";
 export interface Usuario {
   id: number;
   nome: string;
-  email: string;
+  /** Login interno, sem e-mail: "levi", "davi.silva". */
+  usuario: string;
   perfil: Perfil;
   cargo?: string | null;
   cpf?: string | null;
@@ -164,6 +165,19 @@ export interface ResumoFinanceiro {
   a_receber_vencido: number;
   a_receber_proximos: number;
   saldo_projetado: number;
+}
+
+export interface PixConfig {
+  configurado: boolean;
+  beneficiario: string;
+  chave: string;
+}
+
+export interface PixCobranca {
+  brcode: string;
+  valor: string;
+  beneficiario: string;
+  chave: string;
 }
 
 export interface Endereco {

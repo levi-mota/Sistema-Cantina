@@ -27,7 +27,7 @@ const PERFIS: { valor: Perfil; texto: string }[] = [
 
 const FORM_VAZIO = {
   nome: "",
-  email: "",
+  usuario: "",
   senha: "",
   perfil: "OPERADOR" as Perfil,
   cargo: "",
@@ -79,7 +79,7 @@ export default function Funcionarios() {
         ? FORM_VAZIO
         : {
             nome: u.nome,
-            email: u.email,
+            usuario: u.usuario,
             senha: "",
             perfil: u.perfil,
             cargo: u.cargo ?? "",
@@ -98,7 +98,7 @@ export default function Funcionarios() {
     setErro(null);
     const corpo: Record<string, unknown> = {
       nome: form.nome,
-      email: form.email,
+      usuario: form.usuario,
       perfil: form.perfil,
       cargo: form.cargo || null,
       cpf: form.cpf || null,
@@ -186,7 +186,7 @@ export default function Funcionarios() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-carvao-900">{u.nome}</p>
-                      <p className="truncate text-xs text-carvao-500">{u.email}</p>
+                      <p className="truncate text-xs text-carvao-500">{u.usuario}</p>
                     </div>
                     <Selo tom={u.ativo ? "sucesso" : "neutro"}>{u.perfil}</Selo>
                   </div>
@@ -210,7 +210,7 @@ export default function Funcionarios() {
                   <tr key={u.id} className={u.ativo ? "hover:bg-carvao-50/60" : "opacity-60"}>
                     <td className="px-4 py-2.5">
                       <p className="font-medium text-carvao-800">{u.nome}</p>
-                      <p className="text-xs text-carvao-500">{u.email}</p>
+                      <p className="text-xs text-carvao-500">{u.usuario}</p>
                     </td>
                     <td className="px-4 py-2.5">
                       <Selo tom={u.perfil === "ADMIN" ? "marca" : u.perfil === "GERENTE" ? "info" : "neutro"}>
@@ -284,11 +284,13 @@ export default function Funcionarios() {
               onChange={(e) => setForm({ ...form, nome: e.target.value })}
             />
             <Campo
-              rotulo="E-mail (login)"
-              type="email"
+              rotulo="Usuario (login)"
               required
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              autoCapitalize="none"
+              spellCheck={false}
+              value={form.usuario}
+              onChange={(e) => setForm({ ...form, usuario: e.target.value })}
+              dica="Sem e-mail: levi, davi, alisson"
             />
             <Campo
               rotulo={modal === "novo" ? "Senha" : "Nova senha (opcional)"}

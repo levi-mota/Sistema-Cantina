@@ -98,7 +98,8 @@ class Usuario(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(120))
-    email: Mapped[str] = mapped_column(String(150), unique=True, index=True)
+    # Login interno, sem e-mail: "levi", "davi", "alisson".
+    usuario: Mapped[str] = mapped_column(String(40), unique=True, index=True)
     senha_hash: Mapped[str] = mapped_column(String(255))
     perfil: Mapped[Perfil] = mapped_column(Enum(Perfil), default=Perfil.OPERADOR)
     cargo: Mapped[str | None] = mapped_column(String(80))

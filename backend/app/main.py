@@ -17,6 +17,7 @@ from app.routers import (
     funcionarios,
     integracoes,
     parceiros,
+    pix,
     relatorios,
     vendas,
 )
@@ -30,14 +31,14 @@ def criar_admin_inicial() -> None:
         db.add(
             models.Usuario(
                 nome=settings.admin_nome,
-                email=settings.admin_email.lower(),
+                usuario=settings.admin_usuario.lower(),
                 senha_hash=hash_password(settings.admin_password),
                 perfil=models.Perfil.ADMIN,
                 cargo="Administrador",
             )
         )
         db.commit()
-        print(f"[setup] Usuario admin criado: {settings.admin_email}")
+        print(f"[setup] Usuario admin criado: {settings.admin_usuario}")
 
 
 def criar_caixa_inicial() -> None:
@@ -83,6 +84,7 @@ for modulo in (
     caixa,
     financeiro,
     relatorios,
+    pix,
     integracoes,
 ):
     app.include_router(modulo.router)

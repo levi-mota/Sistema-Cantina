@@ -46,7 +46,7 @@ def executar() -> None:
         db.add(
             models.Usuario(
                 nome="Administrador",
-                email="admin@cantina.local",
+                usuario="admin",
                 senha_hash=hash_password("admin123"),
                 perfil=models.Perfil.ADMIN,
                 cargo="Administrador",
@@ -54,15 +54,15 @@ def executar() -> None:
             )
         )
     equipe = [
-        ("Marina Souza", "marina@cantina.local", models.Perfil.GERENTE, "Gerente", "4200.00"),
-        ("Diego Lima", "diego@cantina.local", models.Perfil.OPERADOR, "Atendente", "2100.00"),
-        ("Paula Reis", "paula@cantina.local", models.Perfil.OPERADOR, "Caixa", "2100.00"),
+        ("Marina Souza", "marina", models.Perfil.GERENTE, "Gerente", "4200.00"),
+        ("Diego Lima", "diego", models.Perfil.OPERADOR, "Atendente", "2100.00"),
+        ("Paula Reis", "paula", models.Perfil.OPERADOR, "Caixa", "2100.00"),
     ]
-    for nome, email, perfil, cargo, salario in equipe:
+    for nome, login, perfil, cargo, salario in equipe:
         db.add(
             models.Usuario(
                 nome=nome,
-                email=email,
+                usuario=login,
                 senha_hash=hash_password("123456"),
                 perfil=perfil,
                 cargo=cargo,
@@ -203,14 +203,8 @@ def executar() -> None:
                 )
 
     # --- Vendas dos ultimos 30 dias --------------------------------------
-    formas = [
-        models.FormaPagamento.DINHEIRO,
-        models.FormaPagamento.PIX,
-        models.FormaPagamento.DEBITO,
-        models.FormaPagamento.CREDITO,
-        models.FormaPagamento.FIADO,
-    ]
-    pesos = [30, 30, 20, 15, 5]
+    formas = [models.FormaPagamento.DINHEIRO, models.FormaPagamento.PIX]
+    pesos = [55, 45]
 
     # A maioria e consumidor diverso; uma parcela informa CPF na nota.
     documentos_avulsos = ["45678912364", "12345678909", "98765432100"]
@@ -219,7 +213,7 @@ def executar() -> None:
         momento_base = datetime.now(timezone.utc) - timedelta(days=dias_atras)
         for _ in range(random.randint(3, 9)):
             forma = random.choices(formas, weights=pesos)[0]
-            cliente = random.choice(clientes) if forma == models.FormaPagamento.FIADO else None
+            cliente = random.choice(clientes) if random.random() < 0.08 else None
             documento = (
                 cliente.documento
                 if cliente
@@ -275,20 +269,24 @@ def executar() -> None:
 
             venda.subtotal = subtotal
             venda.total = subtotal
-            venda.valor_recebido = subtotal if forma != models.FormaPagamento.FIADO else 0
+            venda.valor_recebido = subtotal
 
-            if forma == models.FormaPagamento.FIADO and cliente:
-                db.add(
-                    models.Titulo(
-                        tipo=models.TipoTitulo.RECEBER,
-                        descricao=f"Venda fiado #{venda.id}",
-                        categoria="Vendas",
-                        parceiro_id=cliente.id,
-                        venda_id=venda.id,
-                        valor=subtotal,
-                        vencimento=date.today() + timedelta(days=random.randint(-10, 25)),
-                    )
-                )
+    # --- Contas a receber (lancadas a mao, fora do PDV) --------------------
+    for descricao, valor, offset, cliente in [
+        ("Coffee break reuniao de pais", "480.00", 6, clientes[-1]),
+        ("Lanches da formatura", "1250.00", -4, clientes[-1]),
+        ("Encomenda de salgados", "320.00", 12, clientes[0]),
+    ]:
+        db.add(
+            models.Titulo(
+                tipo=models.TipoTitulo.RECEBER,
+                descricao=descricao,
+                categoria="Eventos",
+                parceiro_id=cliente.id,
+                valor=Decimal(valor),
+                vencimento=date.today() + timedelta(days=offset),
+            )
+        )
 
     # --- Contas a pagar ---------------------------------------------------
     despesas = [
@@ -355,9 +353,10 @@ def executar() -> None:
 
     db.commit()
     print("Demo criada com sucesso.")
-    print("  admin@cantina.local / admin123   (ADMIN)")
-    print("  marina@cantina.local / 123456    (GERENTE)")
-    print("  diego@cantina.local / 123456     (OPERADOR)")
+    print("  admin  / admin123   (ADMIN)")
+    print("  marina / 123456     (GERENTE)")
+    print("  diego  / 123456     (OPERADOR)")
+    print("  paula  / 123456     (OPERADOR)")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 """Controle de funcionarios: cadastro, perfis de acesso e registro de ponto."""
 
+import re
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -10,6 +11,18 @@ from app.core.deps import DB, CurrentUser, Gestao
 from app.core.security import hash_password
 
 router = APIRouter(prefix="/api/funcionarios", tags=["funcionarios"])
+
+
+def normalizar_login(bruto: str) -> str:
+    """Login e sempre minusculo e sem espacos: "Levi Mota" -> "levi.mota"."""
+    login = re.sub(r"\s+", ".", (bruto or "").strip().lower())
+    login = re.sub(r"[^a-z0-9._-]", "", login)
+    if len(login) < 2:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Login invalido: use letras, numeros, ponto, hifen ou sublinhado",
+        )
+    return login
 
 
 def _ponto_out(p: models.RegistroPonto) -> schemas.PontoOut:
@@ -35,7 +48,7 @@ def listar(
     if busca:
         alvo = f"%{busca}%"
         stmt = stmt.where(
-            or_(models.Usuario.nome.ilike(alvo), models.Usuario.email.ilike(alvo))
+            or_(models.Usuario.nome.ilike(alvo), models.Usuario.usuario.ilike(alvo))
         )
     if ativo is not None:
         stmt = stmt.where(models.Usuario.ativo.is_(ativo))
@@ -44,12 +57,12 @@ def listar(
 
 @router.post("", response_model=schemas.UsuarioOut, status_code=status.HTTP_201_CREATED)
 def criar(dados: schemas.UsuarioCreate, db: DB, _: Gestao):
-    email = dados.email.lower().strip()
-    if db.scalar(select(models.Usuario).where(models.Usuario.email == email)):
-        raise HTTPException(status.HTTP_409_CONFLICT, "Ja existe um usuario com este e-mail")
+    login = normalizar_login(dados.usuario)
+    if db.scalar(select(models.Usuario).where(models.Usuario.usuario == login)):
+        raise HTTPException(status.HTTP_409_CONFLICT, f"O login '{login}' ja esta em uso")
 
-    payload = dados.model_dump(exclude={"senha", "email"})
-    usuario = models.Usuario(**payload, email=email, senha_hash=hash_password(dados.senha))
+    payload = dados.model_dump(exclude={"senha", "usuario"})
+    usuario = models.Usuario(**payload, usuario=login, senha_hash=hash_password(dados.senha))
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
@@ -73,12 +86,12 @@ def atualizar(usuario_id: int, dados: schemas.UsuarioUpdate, db: DB, _: Gestao):
     campos = dados.model_dump(exclude_unset=True)
     if senha := campos.pop("senha", None):
         usuario.senha_hash = hash_password(senha)
-    if email := campos.pop("email", None):
-        email = email.lower().strip()
-        existente = db.scalar(select(models.Usuario).where(models.Usuario.email == email))
+    if login := campos.pop("usuario", None):
+        login = normalizar_login(login)
+        existente = db.scalar(select(models.Usuario).where(models.Usuario.usuario == login))
         if existente and existente.id != usuario.id:
-            raise HTTPException(status.HTTP_409_CONFLICT, "E-mail ja utilizado")
-        usuario.email = email
+            raise HTTPException(status.HTTP_409_CONFLICT, f"O login '{login}' ja esta em uso")
+        usuario.usuario = login
 
     for campo, valor in campos.items():
         setattr(usuario, campo, valor)

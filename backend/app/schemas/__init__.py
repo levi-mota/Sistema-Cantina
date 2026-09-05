@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app import models
 
@@ -16,13 +16,13 @@ class ORMModel(BaseModel):
 # Auth / usuarios
 # --------------------------------------------------------------------------- #
 class LoginIn(BaseModel):
-    email: str
+    usuario: str
     senha: str
 
 
 class UsuarioBase(BaseModel):
     nome: str
-    email: str
+    usuario: str = Field(min_length=2, max_length=40)
     perfil: models.Perfil = models.Perfil.OPERADOR
     cargo: str | None = None
     cpf: str | None = None
@@ -39,7 +39,7 @@ class UsuarioCreate(UsuarioBase):
 
 class UsuarioUpdate(BaseModel):
     nome: str | None = None
-    email: str | None = None
+    usuario: str | None = Field(default=None, min_length=2, max_length=40)
     senha: str | None = Field(default=None, min_length=4)
     perfil: models.Perfil | None = None
     cargo: str | None = None
@@ -213,6 +213,11 @@ class VendaItemIn(BaseModel):
     desconto: Decimal = Decimal("0")
 
 
+# O PDV da cantina recebe apenas em dinheiro e PIX. As demais formas seguem
+# validas no financeiro (baixa de titulos), so nao entram pela venda.
+FORMAS_PDV = {models.FormaPagamento.DINHEIRO, models.FormaPagamento.PIX}
+
+
 class VendaIn(BaseModel):
     cliente_id: int | None = None
     # Padrao da venda e consumidor diverso; informar o documento identifica.
@@ -223,6 +228,14 @@ class VendaIn(BaseModel):
     observacao: str | None = None
     vencimento_fiado: date | None = None
     itens: list[VendaItemIn] = Field(min_length=1)
+
+    @field_validator("forma_pagamento")
+    @classmethod
+    def _forma_aceita(cls, valor: models.FormaPagamento) -> models.FormaPagamento:
+        if valor not in FORMAS_PDV:
+            aceitas = ", ".join(sorted(f.value for f in FORMAS_PDV))
+            raise ValueError(f"O PDV aceita apenas: {aceitas}")
+        return valor
 
 
 class VendaItemOut(ORMModel):

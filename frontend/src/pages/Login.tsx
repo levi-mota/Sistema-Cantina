@@ -7,7 +7,7 @@ import { Botao, Campo, Erro } from "../components/ui";
 
 export default function Login() {
   const { entrar } = useAuth();
-  const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -17,7 +17,7 @@ export default function Login() {
     setErro(null);
     setEnviando(true);
     try {
-      await entrar(email.trim(), senha);
+      await entrar(login.trim(), senha);
     } catch (err) {
       setErro(mensagemErro(err, "Nao foi possivel entrar"));
     } finally {
@@ -39,14 +39,15 @@ export default function Login() {
         <form onSubmit={enviar} className="cartao space-y-4 p-6">
           <Erro mensagem={erro} />
           <Campo
-            rotulo="E-mail"
-            type="email"
+            rotulo="Usuario"
             autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
             required
             autoFocus
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="voce@cantina.local"
+            value={login}
+            onChange={(e) => setLogin(e.target.value)}
+            placeholder="ex.: levi"
           />
           <Campo
             rotulo="Senha"
@@ -63,7 +64,7 @@ export default function Login() {
         </form>
 
         <p className="mt-4 text-center text-xs text-carvao-500">
-          Acesso de demonstracao: admin@cantina.local / admin123
+          Acesso de demonstracao: admin / admin123
         </p>
       </div>
     </div>
