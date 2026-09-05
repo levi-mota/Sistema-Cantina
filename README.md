@@ -95,10 +95,8 @@ O login é um nome curto, sem e-mail — a ferramenta é de uso interno.
 
 | Usuário | Senha | Perfil |
 | --- | --- | --- |
-| `admin` | admin123 | ADMIN |
-| `marina` | 123456 | ADMIN |
-| `diego` | 123456 | USUARIO |
-| `paula` | 123456 | USUARIO |
+| `admin` | admin123 | ADMIN — acesso total |
+| `levi` | 123456 | USUARIO — PDV e caixa |
 
 ### Acesso pelo celular
 

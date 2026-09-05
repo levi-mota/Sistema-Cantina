@@ -54,9 +54,7 @@ def executar() -> None:
             )
         )
     equipe = [
-        ("Marina Souza", "marina", models.Perfil.ADMIN, "Gerente", "4200.00"),
-        ("Diego Lima", "diego", models.Perfil.USUARIO, "Atendente", "2100.00"),
-        ("Paula Reis", "paula", models.Perfil.USUARIO, "Caixa", "2100.00"),
+        ("Levi", "levi", models.Perfil.USUARIO, "Atendente", "2100.00"),
     ]
     for nome, login, perfil, cargo, salario in equipe:
         db.add(
@@ -161,8 +159,10 @@ def executar() -> None:
     db.add_all([caixa_1, caixa_2])
     db.flush()
 
-    # O operador 0 e o admin; a equipe da frente e quem opera os caixas.
-    equipe_caixa = operadores[1:] if len(operadores) > 1 else operadores
+    # Numa cantina pequena o administrador tambem fica no balcao, entao os dois
+    # operam. Com dois nomes, os dois caixas do mesmo dia nunca caem na mesma
+    # pessoa -- ninguem opera duas gavetas ao mesmo tempo.
+    equipe_caixa = operadores
 
     turnos_por_dia: dict[int, list[models.CaixaSessao]] = {}
     for dias_atras in range(29, -1, -1):
@@ -353,10 +353,8 @@ def executar() -> None:
 
     db.commit()
     print("Demo criada com sucesso.")
-    print("  admin  / admin123   (ADMIN)")
-    print("  marina / 123456     (ADMIN)")
-    print("  diego  / 123456     (USUARIO)")
-    print("  paula  / 123456     (USUARIO)")
+    print("  admin / admin123   (ADMIN - acesso total)")
+    print("  levi  / 123456     (USUARIO - PDV e caixa)")
 
 
 if __name__ == "__main__":
