@@ -139,11 +139,6 @@ export interface Dashboard {
   ticket_medio_hoje: number;
   produtos_criticos: number;
   valor_estoque: number;
-  a_receber: number;
-  a_receber_vencido: number;
-  a_pagar: number;
-  a_pagar_vencido: number;
-  funcionarios_ativos: number;
 }
 
 export interface ResumoFinanceiro {

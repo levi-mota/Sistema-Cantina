@@ -27,6 +27,11 @@ def _intervalo(inicio: date | None, fim: date | None) -> tuple[datetime, datetim
 
 @router.get("/dashboard")
 def dashboard(db: DB, _: CurrentUser):
+    """Os quatro números do topo do painel: vendas e estoque.
+
+    O financeiro tem tela própria, então não entra aqui -- cada consulta a mais
+    é uma consulta que roda a cada abertura do painel.
+    """
     hoje_ini, hoje_fim = _intervalo(date.today(), date.today())
     mes_ini, mes_fim = _intervalo(date.today().replace(day=1), date.today())
 
@@ -63,16 +68,6 @@ def dashboard(db: DB, _: CurrentUser):
         ).where(models.Produto.ativo.is_(True))
     )
 
-    abertos = [models.StatusTitulo.ABERTO, models.StatusTitulo.PARCIAL]
-
-    def saldo_titulos(tipo: models.TipoTitulo, vencidos: bool = False) -> Decimal:
-        stmt = select(
-            func.coalesce(func.sum(models.Titulo.valor - models.Titulo.valor_pago), 0)
-        ).where(models.Titulo.tipo == tipo, models.Titulo.status.in_(abertos))
-        if vencidos:
-            stmt = stmt.where(models.Titulo.vencimento < date.today())
-        return Decimal(str(db.scalar(stmt) or 0))
-
     return {
         "vendas_hoje": vendas_hoje,
         "vendas_mes": total_vendas(mes_ini, mes_fim),
@@ -80,14 +75,6 @@ def dashboard(db: DB, _: CurrentUser):
         "ticket_medio_hoje": (vendas_hoje / qtd_hoje) if qtd_hoje else Decimal("0"),
         "produtos_criticos": criticos or 0,
         "valor_estoque": Decimal(str(valor_estoque or 0)),
-        "a_receber": saldo_titulos(models.TipoTitulo.RECEBER),
-        "a_receber_vencido": saldo_titulos(models.TipoTitulo.RECEBER, vencidos=True),
-        "a_pagar": saldo_titulos(models.TipoTitulo.PAGAR),
-        "a_pagar_vencido": saldo_titulos(models.TipoTitulo.PAGAR, vencidos=True),
-        "funcionarios_ativos": db.scalar(
-            select(func.count(models.Usuario.id)).where(models.Usuario.ativo.is_(True))
-        )
-        or 0,
     }
 
 
