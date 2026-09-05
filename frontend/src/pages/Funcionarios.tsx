@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
 import { rotulo } from "../lib/format";
+import { useAuth } from "../lib/auth";
 import type { Perfil, Usuario } from "../lib/tipos";
 import {
   Botao,
@@ -32,6 +33,7 @@ const FORM_VAZIO = {
 };
 
 export default function Funcionarios() {
+  const { usuario: eu } = useAuth();
   const [equipe, setEquipe] = useState<Usuario[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -98,6 +100,21 @@ export default function Funcionarios() {
     }
   }
 
+  /** Liga e desliga o acesso. O cadastro fica: o histórico dele aponta para cá. */
+  async function alternarAcesso(u: Usuario) {
+    const desativando = u.ativo;
+    if (desativando && !confirm(`Desativar ${u.nome}? Ele perde o acesso ao sistema.`)) return;
+
+    setErro(null);
+    try {
+      if (desativando) await api.delete(`/funcionarios/${u.id}`);
+      else await api.put(`/funcionarios/${u.id}`, { ativo: true });
+      await carregar();
+    } catch (e) {
+      setErro(mensagemErro(e));
+    }
+  }
+
   if (carregando) return <Carregando texto="Carregando a equipe..." />;
 
   return (
@@ -130,9 +147,19 @@ export default function Funcionarios() {
                     </div>
                     <Selo tom={u.ativo ? "sucesso" : "neutro"}>{u.perfil}</Selo>
                   </div>
-                  <Botao variante="secundario" className="mt-3 w-full" onClick={() => abrir(u)}>
-                    Editar
-                  </Botao>
+                  <div className="mt-3 flex gap-2">
+                    <Botao variante="secundario" className="flex-1" onClick={() => abrir(u)}>
+                      Editar
+                    </Botao>
+                    <Botao
+                      variante={u.ativo ? "perigo" : "sucesso"}
+                      className="flex-1"
+                      onClick={() => alternarAcesso(u)}
+                      disabled={u.ativo && u.id === eu?.id}
+                    >
+                      {u.ativo ? "Desativar" : "Reativar"}
+                    </Botao>
+                  </div>
                 </Cartao>
               ))}
             </div>
@@ -154,9 +181,23 @@ export default function Funcionarios() {
                       </Selo>
                     </td>
                     <td className="px-4 py-2.5">
-                      <Botao variante="secundario" onClick={() => abrir(u)}>
-                        Editar
-                      </Botao>
+                      <div className="flex gap-1.5">
+                        <Botao variante="secundario" onClick={() => abrir(u)}>
+                          Editar
+                        </Botao>
+                        <Botao
+                          variante={u.ativo ? "perigo" : "sucesso"}
+                          onClick={() => alternarAcesso(u)}
+                          disabled={u.ativo && u.id === eu?.id}
+                          title={
+                            u.ativo && u.id === eu?.id
+                              ? "Você não pode desativar a si mesmo"
+                              : undefined
+                          }
+                        >
+                          {u.ativo ? "Desativar" : "Reativar"}
+                        </Botao>
+                      </div>
                     </td>
                   </tr>
                 ))}

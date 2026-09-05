@@ -3,7 +3,7 @@
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from app import models, schemas
 from app.core.deps import DB, SomenteAdmin, exigir_admin
@@ -26,6 +26,51 @@ def normalizar_login(bruto: str) -> str:
             "Login inválido: use letras, numeros, ponto, hifen ou sublinhado",
         )
     return login
+
+
+def exigir_acesso_preservado(
+    db: DB,
+    alvo: models.Usuario,
+    quem_pediu: models.Usuario,
+    *,
+    ativo: bool | None = None,
+    perfil: models.Perfil | None = None,
+) -> None:
+    """Impede as duas mudanças que trancam alguém do lado de fora.
+
+    Um administrador que se desativa perde o próprio acesso na hora, e desativar
+    (ou rebaixar) o último administrador ativo deixa o sistema sem ninguém que
+    possa gerenciar -- inclusive sem ninguém que possa desfazer isso.
+    """
+    virando_inativo = ativo is False and alvo.ativo
+    deixando_de_ser_admin = (
+        perfil is not None and perfil != models.Perfil.ADMIN and alvo.perfil == models.Perfil.ADMIN
+    )
+
+    if virando_inativo and alvo.id == quem_pediu.id:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Você não pode desativar a si mesmo: perderia o acesso ao sistema",
+        )
+
+    if not (virando_inativo or deixando_de_ser_admin):
+        return
+
+    if alvo.perfil != models.Perfil.ADMIN or not alvo.ativo:
+        return
+
+    outros_admins = db.scalar(
+        select(func.count(models.Usuario.id)).where(
+            models.Usuario.perfil == models.Perfil.ADMIN,
+            models.Usuario.ativo.is_(True),
+            models.Usuario.id != alvo.id,
+        )
+    )
+    if not outros_admins:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Este é o último administrador ativo. Promova outro antes de mudar este.",
+        )
 
 
 @router.get("", response_model=list[schemas.UsuarioOut])
@@ -69,12 +114,15 @@ def obter(usuario_id: int, db: DB, _: SomenteAdmin):
 
 
 @router.put("/{usuario_id}", response_model=schemas.UsuarioOut)
-def atualizar(usuario_id: int, dados: schemas.UsuarioUpdate, db: DB, _: SomenteAdmin):
+def atualizar(usuario_id: int, dados: schemas.UsuarioUpdate, db: DB, gestor: SomenteAdmin):
     usuario = db.get(models.Usuario, usuario_id)
     if not usuario:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionário não encontrado")
 
     campos = dados.model_dump(exclude_unset=True)
+    exigir_acesso_preservado(
+        db, usuario, gestor, ativo=campos.get("ativo"), perfil=campos.get("perfil")
+    )
     if senha := campos.pop("senha", None):
         usuario.senha_hash = hash_password(senha)
     if login := campos.pop("usuario", None):
@@ -93,10 +141,10 @@ def atualizar(usuario_id: int, dados: schemas.UsuarioUpdate, db: DB, _: SomenteA
 
 @router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
 def desativar(usuario_id: int, db: DB, gestor: SomenteAdmin):
+    """Desativa o funcionário. O cadastro fica: o histórico dele aponta para cá."""
     usuario = db.get(models.Usuario, usuario_id)
     if not usuario:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionário não encontrado")
-    if usuario.id == gestor.id:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Você não pode desativar a si mesmo")
+    exigir_acesso_preservado(db, usuario, gestor, ativo=False)
     usuario.ativo = False
     db.commit()
