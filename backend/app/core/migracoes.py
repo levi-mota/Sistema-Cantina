@@ -1,14 +1,14 @@
-"""Aplicacao das migracoes de banco (Alembic) no boot da aplicacao.
+"""Aplicação das migracoes de banco (Alembic) no boot da aplicação.
 
-Sao tres cenarios, e o codigo escolhe sozinho:
+São tres cenarios, e o código escolhe sozinho:
 
 1. Banco novo (nenhuma tabela)      -> aplica todas as migracoes;
-2. Banco ja versionado              -> aplica so o que falta;
+2. Banco já versionado              -> aplica so o que falta;
 3. Banco antigo, criado por         -> completa o schema, marca como atual
-   `create_all` antes do Alembic       (adocao unica) e segue versionado.
+   `create_all` antes do Alembic       (adocao única) e segue versionado.
 
 O cenario 3 existe porque as primeiras versoes do projeto criavam as tabelas
-direto pelo `create_all`, sem controle de versao. Ele roda uma unica vez.
+direto pelo `create_all`, sem controle de versão. Ele roda uma única vez.
 """
 
 from pathlib import Path
@@ -67,7 +67,7 @@ def _completar_colunas_legadas(conexao) -> None:
         if not tem_caixa:
             conexao.execute(
                 text(
-                    "INSERT INTO caixas (nome, descricao, ativo, criado_em)"
+                    "INSERT INTO caixas (nome, descrição, ativo, criado_em)"
                     " VALUES ('Caixa 1', 'Caixa principal', 1, CURRENT_TIMESTAMP)"
                 )
             )
@@ -95,4 +95,4 @@ def aplicar() -> None:
     with engine.begin() as conexao:
         _completar_colunas_legadas(conexao)
     command.stamp(config, "head")
-    print("[banco] Banco existente adotado pelo controle de versao (Alembic)")
+    print("[banco] Banco existente adotado pelo controle de versão (Alembic)")

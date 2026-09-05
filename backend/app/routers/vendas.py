@@ -1,13 +1,13 @@
 """Ponto de venda (PDV).
 
 Toda venda pertence ao turno de caixa do operador que a registrou -- sem caixa
-aberto nao ha venda. O consumidor e "diverso" por padrao; digitar um CPF/CNPJ
+aberto não ha venda. O consumidor é "diverso" por padrão; digitar um CPF/CNPJ
 valido identifica a venda e, se o documento estiver cadastrado, vincula o
 cliente.
 
-Uma venda finalizada dispara duas integracoes:
+Uma venda finalizada dispara duas integrações:
   * baixa de estoque (um movimento de SAIDA por item);
-  * caixa -> a venda entra na conferencia da gaveta daquele turno.
+  * caixa -> a venda entra na conferência da gaveta daquele turno.
 """
 
 from datetime import date, datetime, time, timedelta, timezone
@@ -75,7 +75,7 @@ def listar(
 def obter(venda_id: int, db: DB, _: CurrentUser):
     venda = db.get(models.Venda, venda_id)
     if not venda:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Venda nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Venda não encontrada")
     return _venda_out(venda)
 
 
@@ -83,7 +83,7 @@ def obter(venda_id: int, db: DB, _: CurrentUser):
 def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
     cliente = db.get(models.Parceiro, dados.cliente_id) if dados.cliente_id else None
     if dados.cliente_id and not cliente:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Cliente nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Cliente não encontrado")
 
     # Consumidor diverso e o padrao: so identificamos se o documento vier.
     try:
@@ -119,7 +119,7 @@ def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
         produto = db.get(models.Produto, item.produto_id)
         if not produto or not produto.ativo:
             raise HTTPException(
-                status.HTTP_404_NOT_FOUND, f"Produto {item.produto_id} indisponivel"
+                status.HTTP_404_NOT_FOUND, f"Produto {item.produto_id} indisponível"
             )
 
         preco = Decimal(str(item.preco_unitario or produto.preco_venda))
@@ -184,12 +184,12 @@ def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
 
 @router.post("/{venda_id}/cancelar", response_model=schemas.VendaOut)
 def cancelar(venda_id: int, db: DB, gestor: SomenteAdmin):
-    """Cancela a venda, devolve os itens ao estoque e cancela o titulo gerado."""
+    """Cancela a venda, devolve os itens ao estoque e cancela o título gerado."""
     venda = db.get(models.Venda, venda_id)
     if not venda:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Venda nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Venda não encontrada")
     if venda.status == models.StatusVenda.CANCELADA:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Venda ja cancelada")
+        raise HTTPException(status.HTTP_409_CONFLICT, "Venda já cancelada")
 
     for item in venda.itens:
         produto = db.get(models.Produto, item.produto_id)
@@ -204,12 +204,12 @@ def cancelar(venda_id: int, db: DB, gestor: SomenteAdmin):
                 usuario_id=gestor.id,
             )
 
-    titulos = db.scalars(
-        select(models.Titulo).where(models.Titulo.venda_id == venda.id)
+    títulos = db.scalars(
+        select(models.Título).where(models.Título.venda_id == venda.id)
     ).all()
-    for titulo in titulos:
-        if titulo.status != models.StatusTitulo.PAGO:
-            titulo.status = models.StatusTitulo.CANCELADO
+    for titulo in títulos:
+        if titulo.status != models.StatusTítulo.PAGO:
+            titulo.status = models.StatusTítulo.CANCELADO
 
     venda.status = models.StatusVenda.CANCELADA
     db.commit()

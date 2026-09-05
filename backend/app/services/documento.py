@@ -1,6 +1,6 @@
-"""Validacao de CPF e CNPJ pelos digitos verificadores.
+"""Validação de CPF e CNPJ pelos digitos verificadores.
 
-Usado na venda (CPF/CNPJ na nota) e no cadastro de parceiros, para nao aceitar
+Usado na venda (CPF/CNPJ na nota) e no cadastro de parceiros, para não aceitar
 documento digitado errado.
 """
 
@@ -41,17 +41,17 @@ def cnpj_valido(documento: str) -> bool:
 def validar(documento: str | None) -> str | None:
     """Normaliza para digitos e valida. Devolve `None` para entrada vazia.
 
-    Levanta `ValueError` com uma mensagem pronta para o usuario final.
+    Levanta `ValueError` com uma mensagem pronta para o usuário final.
     """
     limpo = so_digitos(documento)
     if not limpo:
         return None
     if len(limpo) == 11:
         if not cpf_valido(limpo):
-            raise ValueError("CPF invalido")
+            raise ValueError("CPF inválido")
     elif len(limpo) == 14:
         if not cnpj_valido(limpo):
-            raise ValueError("CNPJ invalido")
+            raise ValueError("CNPJ inválido")
     else:
         raise ValueError("Documento deve ter 11 digitos (CPF) ou 14 (CNPJ)")
     return limpo

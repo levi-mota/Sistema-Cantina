@@ -5,7 +5,7 @@ Ordem de tentativa:
   2. BrasilAPI  -> publica, sem token
   3. ViaCEP     -> publica, sem token (somente CEP)
 
-Qualquer falha em um provedor cai para o proximo, entao o sistema continua
+Qualquer falha em um provedor cai para o próximo, entao o sistema continua
 funcionando mesmo sem credenciais.
 """
 
@@ -118,7 +118,7 @@ async def consultar_cep(cep_bruto: str) -> EnderecoOut:
                 _cache[chave] = resultado
                 return resultado
 
-    raise HTTPException(status.HTTP_404_NOT_FOUND, "CEP nao encontrado")
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "CEP não encontrado")
 
 
 # --------------------------------------------------------------------------- #
@@ -197,4 +197,4 @@ async def consultar_cnpj(cnpj_bruto: str) -> EmpresaOut:
                 _cache[chave] = resultado
                 return resultado
 
-    raise HTTPException(status.HTTP_404_NOT_FOUND, "CNPJ nao encontrado")
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "CNPJ não encontrado")

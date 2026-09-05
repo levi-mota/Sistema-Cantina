@@ -18,7 +18,7 @@ def get_current_user(
 ) -> models.Usuario:
     credenciais_invalidas = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Nao autenticado",
+        detail="Não autenticado",
         headers={"WWW-Authenticate": "Bearer"},
     )
     if not token:
@@ -42,7 +42,7 @@ def require_perfis(*perfis: models.Perfil):
         if usuario.perfil not in perfis:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Voce nao tem permissao para esta operacao",
+                detail="Você não tem permissão para esta operação",
             )
         return usuario
 

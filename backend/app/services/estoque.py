@@ -1,4 +1,4 @@
-"""Regras de movimentacao de estoque, usadas pelo modulo de estoque e pelo PDV."""
+"""Regras de movimentação de estoque, usadas pelo modulo de estoque e pelo PDV."""
 
 from decimal import Decimal
 
@@ -23,7 +23,7 @@ def movimentar(
     usuario_id: int | None = None,
     permitir_negativo: bool = False,
 ) -> models.MovimentoEstoque:
-    """Aplica um movimento ao produto e registra o historico (kardex)."""
+    """Aplica um movimento ao produto e registra o histórico (kardex)."""
     quantidade = Decimal(str(quantidade))
     atual = Decimal(str(produto.estoque_atual or 0))
 
@@ -36,7 +36,7 @@ def movimentar(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
                     f"Estoque insuficiente para '{produto.nome}': "
-                    f"disponivel {atual}, solicitado {quantidade}"
+                    f"disponível {atual}, solicitado {quantidade}"
                 ),
             )
     else:  # AJUSTE define o saldo absoluto

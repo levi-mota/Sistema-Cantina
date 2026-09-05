@@ -25,7 +25,7 @@ from app.routers import (
 
 
 def criar_admin_inicial() -> None:
-    """Garante um usuario administrador no primeiro boot."""
+    """Garante um usuário administrador no primeiro boot."""
     with SessionLocal() as db:
         if db.scalar(select(models.Usuario).limit(1)):
             return
@@ -39,11 +39,11 @@ def criar_admin_inicial() -> None:
             )
         )
         db.commit()
-        print(f"[setup] Usuario admin criado: {settings.admin_usuario}")
+        print(f"[setup] Usuário admin criado: {settings.admin_usuario}")
 
 
 def criar_caixa_inicial() -> None:
-    """Sem nenhum caixa cadastrado nao existe venda; garantimos o primeiro."""
+    """Sem nenhum caixa cadastrado não existe venda; garantimos o primeiro."""
     with SessionLocal() as db:
         if db.scalar(select(models.Caixa).limit(1)):
             return
@@ -62,7 +62,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    description="API do sistema de gestao da cantina (PDV, estoque, financeiro, relatorios).",
+    description="API do sistema de gestão da cantina (PDV, estoque, financeiro, relatórios).",
     version="1.0.0",
     lifespan=lifespan,
 )

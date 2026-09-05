@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, documentoFormatado } from "../lib/format";
+import { brl, documentoFormatado, rotulo } from "../lib/format";
 import type { CaixaSessao, Identificacao, PixCobranca, Produto, Venda } from "../lib/tipos";
 import { Botao, Campo, Cartao, Carregando, Erro, Modal, Selo, Vazio, cx } from "../components/ui";
 
@@ -300,7 +300,7 @@ export default function Pdv() {
       setIdentificacao(data);
       setClienteId(data.parceiro_id ? String(data.parceiro_id) : "");
     } catch (e) {
-      setErroDocumento(mensagemErro(e, "Documento invalido"));
+      setErroDocumento(mensagemErro(e, "Documento inválido"));
       setClienteId("");
     } finally {
       setIdentificando(false);
@@ -318,7 +318,7 @@ export default function Pdv() {
         await QRCode.toDataURL(data.brcode, { margin: 1, width: 320, errorCorrectionLevel: "M" }),
       );
     } catch (e) {
-      setErro(mensagemErro(e, "Nao foi possivel gerar o QR Code"));
+      setErro(mensagemErro(e, "Não foi possível gerar o QR Code"));
     }
   }, [pixConfigurado, total]);
 
@@ -334,7 +334,7 @@ export default function Pdv() {
       setPixCopiado(true);
       setTimeout(() => setPixCopiado(false), 2000);
     } catch {
-      setErro("Nao foi possivel copiar. Selecione o codigo e copie manualmente.");
+      setErro("Não foi possível copiar. Selecione o código e copie manualmente.");
     }
   }
 
@@ -357,7 +357,7 @@ export default function Pdv() {
       limpar();
       void carregar();
     } catch (e) {
-      setErro(mensagemErro(e, "Nao foi possivel finalizar a venda"));
+      setErro(mensagemErro(e, "Não foi possível finalizar a venda"));
     } finally {
       setFinalizando(false);
     }
@@ -426,7 +426,7 @@ export default function Pdv() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             onKeyDown={aoTeclarBusca}
-            placeholder="Buscar, ler codigo de barras ou 3* para quantidade..."
+            placeholder="Buscar, ler código de barras ou 3* para quantidade..."
             className="campo py-3 pl-9 text-base"
             autoFocus
           />
@@ -448,14 +448,14 @@ export default function Pdv() {
               <kbd className={tecla}>Enter</kbd> adicionar
               <kbd className={tecla}>F2</kbd> pagar
               <kbd className={tecla}>F4</kbd> limpar
-              <kbd className={tecla}>Alt+←</kbd> tirar ultimo
+              <kbd className={tecla}>Alt+←</kbd> tirar último
             </span>
           </div>
         ) : (
           <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
             <LockKeyhole className="h-4 w-4 shrink-0" />
             <span className="flex-1">
-              Voce nao tem caixa aberto. Abra o seu caixa para registrar vendas.
+              Você não tem caixa aberto. Abra o seu caixa para registrar vendas.
             </span>
             <Link to="/caixa" className="font-semibold underline underline-offset-2">
               Abrir caixa
@@ -498,7 +498,7 @@ export default function Pdv() {
                 >
                   <div>
                     <p className="line-clamp-2 text-sm font-semibold text-carvao-800">{p.nome}</p>
-                    <p className="mt-0.5 text-xs text-carvao-500">{p.codigo ?? "sem codigo"}</p>
+                    <p className="mt-0.5 text-xs text-carvao-500">{p.codigo ?? "sem código"}</p>
                   </div>
                   <div className="mt-3 flex items-end justify-between gap-2">
                     <span className="text-base font-bold text-marca-600">{brl(p.preco_venda)}</span>
@@ -825,7 +825,7 @@ export default function Pdv() {
             <div className="rounded-xl border border-carvao-200 p-4 text-center">
               {!pixConfigurado ? (
                 <p className="text-sm text-carvao-600">
-                  Chave PIX nao configurada. Preencha <code>PIX_CHAVE</code> no{" "}
+                  Chave PIX não configurada. Preencha <code>PIX_CHAVE</code> no{" "}
                   <code>backend/.env</code> para gerar o QR Code. A venda pode ser registrada
                   normalmente como PIX.
                 </p>
@@ -834,7 +834,7 @@ export default function Pdv() {
                   <img src={pixImagem} alt="QR Code do PIX" className="mx-auto h-52 w-52 rounded-lg" />
                   <p className="mt-2 text-2xl font-bold text-carvao-900">{brl(total)}</p>
                   <p className="text-xs text-carvao-500">
-                    {pixCobranca?.beneficiario} · o valor ja vai no QR
+                    {pixCobranca?.beneficiario} · o valor já vai no QR
                   </p>
                   <Botao
                     variante="secundario"
@@ -842,11 +842,11 @@ export default function Pdv() {
                     icone={pixCopiado ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     onClick={copiarPix}
                   >
-                    {pixCopiado ? "Codigo copiado" : "Copiar codigo (copia e cola)"}
+                    {pixCopiado ? "Código copiado" : "Copiar código (copia e cola)"}
                   </Botao>
                   <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-left text-xs text-amber-900">
                     Confirme no app do banco que o valor caiu antes de teclar Enter: o sistema gera
-                    o QR, mas nao recebe aviso do banco.
+                    o QR, mas não recebe aviso do banco.
                   </p>
                 </>
               ) : (
@@ -895,7 +895,7 @@ export default function Pdv() {
             {identificacao && !identificacao.cadastrado && (
               <p className="mt-1.5 flex items-center gap-1.5 text-xs text-carvao-500">
                 <UserRound className="h-3.5 w-3.5" />
-                {identificacao.tipo} valido, sem cadastro.
+                {identificacao.tipo} válido, sem cadastro.
               </p>
             )}
             <Campo
@@ -962,7 +962,7 @@ export default function Pdv() {
               </div>
               <div className="flex justify-between text-carvao-600">
                 <span>Pagamento</span>
-                <span>{comprovante.forma_pagamento}</span>
+                <span>{rotulo(comprovante.forma_pagamento)}</span>
               </div>
               {Number(comprovante.troco) > 0 && (
                 <div className="flex justify-between text-lg font-bold text-emerald-700">

@@ -65,3 +65,44 @@ export function cepFormatado(cep?: string | null): string {
   const d = (cep ?? "").replace(/\D/g, "");
   return d.length === 8 ? d.replace(/(\d{5})(\d{3})/, "$1-$2") : (cep ?? "-");
 }
+
+/**
+ * Rotulo de exibicao para os valores de enum da API.
+ *
+ * Os valores em si (SAIDA, CONCLUIDA, USUARIO) fazem parte do contrato e nao
+ * podem mudar; o que muda e como eles aparecem na tela.
+ */
+const ROTULOS: Record<string, string> = {
+  SAIDA: "Saída",
+  ENTRADA: "Entrada",
+  AJUSTE: "Ajuste",
+  PERDA: "Perda",
+  DINHEIRO: "Dinheiro",
+  PIX: "PIX",
+  DEBITO: "Débito",
+  CREDITO: "Crédito",
+  FIADO: "Fiado",
+  ABERTO: "Aberto",
+  PARCIAL: "Parcial",
+  PAGO: "Pago",
+  CANCELADO: "Cancelado",
+  VENCIDO: "Vencido",
+  RASCUNHO: "Rascunho",
+  ENVIADA: "Enviada",
+  CONCLUIDA: "Concluída",
+  CANCELADA: "Cancelada",
+  ABERTA: "Aberta",
+  FECHADA: "Fechada",
+  ADMIN: "Administrador",
+  USUARIO: "Usuário",
+  CLIENTE: "Cliente",
+  FORNECEDOR: "Fornecedor",
+  AMBOS: "Cliente e fornecedor",
+  SANGRIA: "Sangria",
+  SUPRIMENTO: "Suprimento",
+};
+
+export function rotulo(valor?: string | null): string {
+  if (!valor) return "-";
+  return ROTULOS[valor] ?? valor;
+}

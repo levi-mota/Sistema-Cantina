@@ -26,7 +26,7 @@ api.interceptors.response.use(
 );
 
 /** Extrai a mensagem de erro da API em um formato legivel para o usuario. */
-export function mensagemErro(erro: unknown, padrao = "Nao foi possivel concluir a operacao"): string {
+export function mensagemErro(erro: unknown, padrao = "Não foi possível concluir a operação"): string {
   if (axios.isAxiosError(erro)) {
     const detalhe = (erro.response?.data as { detail?: unknown } | undefined)?.detail;
     if (typeof detalhe === "string") return detalhe;
@@ -37,7 +37,7 @@ export function mensagemErro(erro: unknown, padrao = "Nao foi possivel concluir 
         return campo ? `${campo}: ${primeiro.msg}` : primeiro.msg;
       }
     }
-    if (erro.code === "ERR_NETWORK") return "Servidor indisponivel. O backend esta rodando?";
+    if (erro.code === "ERR_NETWORK") return "Servidor indisponível. O backend está rodando?";
   }
   return padrao;
 }

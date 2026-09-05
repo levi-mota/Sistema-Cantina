@@ -22,7 +22,7 @@ import {
   Modal,
   Selo,
   Tabela,
-  TituloPagina,
+  TítuloPagina,
   Vazio,
 } from "../components/ui";
 
@@ -126,7 +126,7 @@ export default function Caixa() {
 
   return (
     <>
-      <TituloPagina
+      <TítuloPagina
         titulo="Caixa"
         descricao="Cada caixa tem a sua gaveta, o seu turno e o seu fechamento"
         acoes={
@@ -258,10 +258,10 @@ export default function Caixa() {
       {!minhaSessao ? (
         <Cartao className="p-8 text-center">
           <LockKeyhole className="mx-auto mb-3 h-8 w-8 text-carvao-300" />
-          <p className="font-semibold text-carvao-800">Voce nao tem caixa aberto</p>
+          <p className="font-semibold text-carvao-800">Você não tem caixa aberto</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-carvao-500">
             Escolha um caixa livre acima e informe o troco inicial da gaveta. Sem caixa aberto o
-            PDV nao registra vendas.
+            PDV não registra vendas.
           </p>
         </Cartao>
       ) : (
@@ -296,7 +296,7 @@ export default function Caixa() {
             </Cartao>
 
             <Cartao className="p-4">
-              <h2 className="mb-3 font-bold text-carvao-900">Composicao do saldo</h2>
+              <h2 className="mb-3 font-bold text-carvao-900">Composição do saldo</h2>
               <Linha rotulo="Troco de abertura" valor={brl(c?.valor_abertura)} />
               <Linha
                 rotulo="Vendas em dinheiro"
@@ -308,9 +308,9 @@ export default function Caixa() {
               <Linha rotulo="Sangrias" valor={brl(c?.sangrias)} sinal="-" />
               <Linha rotulo="Saldo esperado" valor={brl(c?.valor_esperado)} destaque />
               <p className="mt-3 border-t border-carvao-100 pt-3 text-xs text-carvao-500">
-                PIX, cartao e fiado somam {brl(c?.vendas_outras_formas)} neste turno, mas nao
-                entram na conta porque nao passam pela gaveta. Recebimento de fiado em dinheiro
-                deve ser lancado aqui como suprimento.
+                PIX, cartão e fiado somam {brl(c?.vendas_outras_formas)} neste turno, mas não
+                entram na conta porque não passam pela gaveta. Recebimento de fiado em dinheiro
+                deve ser lançado aqui como suprimento.
               </p>
             </Cartao>
 
@@ -321,7 +321,7 @@ export default function Caixa() {
               {minhaSessao.movimentos.length === 0 ? (
                 <Vazio
                   titulo="Nenhuma sangria ou suprimento"
-                  descricao="A gaveta so recebeu as vendas em dinheiro ate agora."
+                  descricao="A gaveta só recebeu as vendas em dinheiro até agora."
                 />
               ) : (
                 <ul className="divide-y divide-carvao-100">
@@ -370,7 +370,7 @@ export default function Caixa() {
             <p className="text-sm text-carvao-500">
               Ao final do turno, conte o dinheiro da gaveta do {minhaSessao.caixa_nome} e informe
               o valor. O sistema compara com os {brl(c?.valor_esperado)} esperados e registra a
-              diferenca.
+              diferença.
             </p>
             <Botao
               variante="perigo"
@@ -439,7 +439,7 @@ export default function Caixa() {
               "Caixa",
               "Abertura",
               "Fechamento",
-              "Responsavel",
+              "Responsável",
               "Esperado",
               "Contado",
               "Quebra",
@@ -544,10 +544,10 @@ export default function Caixa() {
             placeholder="Ex.: Caixa 2"
           />
           <Campo
-            rotulo="Descricao"
+            rotulo="Descrição"
             value={formTerminal.descricao}
             onChange={(e) => setFormTerminal({ ...formTerminal, descricao: e.target.value })}
-            placeholder="Ex.: balcao do patio"
+            placeholder="Ex.: balcão do pátio"
           />
           <div className="flex justify-end gap-2">
             <Botao variante="secundario" type="button" onClick={() => setNovoTerminal(false)}>
@@ -592,10 +592,10 @@ export default function Caixa() {
             autoFocus
             value={formAbertura.valor}
             onChange={(e) => setFormAbertura({ ...formAbertura, valor: e.target.value })}
-            dica="Quanto de dinheiro esta nesta gaveta agora"
+            dica="Quanto de dinheiro está nesta gaveta agora"
           />
           <Campo
-            rotulo="Observacao"
+            rotulo="Observação"
             value={formAbertura.observacao}
             onChange={(e) => setFormAbertura({ ...formAbertura, observacao: e.target.value })}
             placeholder="Ex.: turno da manha"
@@ -637,7 +637,7 @@ export default function Caixa() {
           <p className="rounded-lg bg-carvao-50 px-3 py-2 text-sm text-carvao-600">
             {movimento === "SANGRIA"
               ? "Retirada de dinheiro da gaveta (cofre, pagamento na hora)."
-              : "Entrada de dinheiro na gaveta (reforco de troco, recebimento de fiado)."}{" "}
+              : "Entrada de dinheiro na gaveta (reforço de troco, recebimento de fiado)."}{" "}
             Na gaveta agora: <strong className="text-carvao-900">{brl(c?.valor_esperado)}</strong>
           </p>
           <Campo
@@ -655,7 +655,7 @@ export default function Caixa() {
             value={formMovimento.motivo}
             onChange={(e) => setFormMovimento({ ...formMovimento, motivo: e.target.value })}
             placeholder={
-              movimento === "SANGRIA" ? "Ex.: retirada para o cofre" : "Ex.: reforco de moedas"
+              movimento === "SANGRIA" ? "Ex.: retirada para o cofre" : "Ex.: reforço de moedas"
             }
           />
           <div className="flex justify-end gap-2">
@@ -706,7 +706,7 @@ export default function Caixa() {
           <Erro mensagem={erro} />
           {forcado && (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Voce esta fechando o turno de outra pessoa. O fechamento fica registrado no seu
+              Você esta fechando o turno de outra pessoa. O fechamento fica registrado no seu
               nome.
             </p>
           )}
@@ -752,7 +752,7 @@ export default function Caixa() {
           })()}
 
           <Campo
-            rotulo="Observacao"
+            rotulo="Observação"
             value={formFechamento.observacao}
             onChange={(e) =>
               setFormFechamento({ ...formFechamento, observacao: e.target.value })

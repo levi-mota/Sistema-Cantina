@@ -1,4 +1,4 @@
-"""Cadastro unico de clientes e fornecedores."""
+"""Cadastro único de clientes e fornecedores."""
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import or_, select
@@ -46,9 +46,9 @@ def listar(
 def identificar(documento: str, db: DB, _: CurrentUser):
     """Resolve um CPF/CNPJ digitado no PDV.
 
-    Valida os digitos verificadores e diz se o documento ja tem cadastro. Uma
+    Valida os digitos verificadores e diz se o documento já tem cadastro. Uma
     venda pode ser identificada mesmo sem cadastro -- e o caso comum de "CPF na
-    nota" -- entao `cadastrado: false` nao e erro.
+    nota" -- entao `cadastrado: false` não e erro.
     """
     try:
         limpo = servico_documento.validar(documento)
@@ -82,7 +82,7 @@ def criar(dados: schemas.ParceiroCreate, db: DB, _: SomenteAdmin):
         if existente:
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                f"Documento ja cadastrado para '{existente.nome}'",
+                f"Documento já cadastrado para '{existente.nome}'",
             )
 
     parceiro = models.Parceiro(**payload)
@@ -96,7 +96,7 @@ def criar(dados: schemas.ParceiroCreate, db: DB, _: SomenteAdmin):
 def obter(parceiro_id: int, db: DB, _: CurrentUser):
     parceiro = db.get(models.Parceiro, parceiro_id)
     if not parceiro:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Parceiro nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Parceiro não encontrado")
     return parceiro
 
 
@@ -104,7 +104,7 @@ def obter(parceiro_id: int, db: DB, _: CurrentUser):
 def atualizar(parceiro_id: int, dados: schemas.ParceiroUpdate, db: DB, _: SomenteAdmin):
     parceiro = db.get(models.Parceiro, parceiro_id)
     if not parceiro:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Parceiro nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Parceiro não encontrado")
 
     campos = dados.model_dump(exclude_unset=True)
     if "documento" in campos:
@@ -123,6 +123,6 @@ def atualizar(parceiro_id: int, dados: schemas.ParceiroUpdate, db: DB, _: Soment
 def desativar(parceiro_id: int, db: DB, _: SomenteAdmin):
     parceiro = db.get(models.Parceiro, parceiro_id)
     if not parceiro:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Parceiro nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Parceiro não encontrado")
     parceiro.ativo = False
     db.commit()

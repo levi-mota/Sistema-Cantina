@@ -1,12 +1,12 @@
 """Geracao do BR Code do PIX (o "copia e cola" que vira QR Code).
 
-O payload segue o padrao EMV(R) QRCPS do Banco Central: campos no formato
-ID + tamanho + valor, encerrados por um CRC16 do proprio texto.
+O payload segue o padrão EMV(R) QRCPS do Banco Central: campos no formato
+ID + tamanho + valor, encerrados por um CRC16 do próprio texto.
 
-Este e um QR **estatico com valor**: serve para o cliente pagar o valor exato da
-venda. Ele nao confirma o pagamento -- quem confirma e o operador, olhando a
-notificacao do banco. Confirmacao automatica exigiria integracao com a API PIX
-do banco (webhook de cobranca), que e outro assunto.
+Este é um QR **estático com valor**: serve para o cliente pagar o valor exato da
+venda. Ele não confirma o pagamento -- quem confirma é o operador, olhando a
+notificacao do banco. Confirmacao automática exigiria integração com a API PIX
+do banco (webhook de cobranca), que é outro assunto.
 """
 
 import re
@@ -35,7 +35,7 @@ def _campo(identificador: str, valor: str) -> str:
 
 
 def _sanitizar(texto: str, limite: int) -> str:
-    """O padrao aceita apenas ASCII imprimivel; acentos viram a letra base."""
+    """O padrão aceita apenas ASCII imprimivel; acentos viram a letra base."""
     trocas = str.maketrans("ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇáàâãäéèêëíìîïóòôõöúùûüç",
                            "AAAAAEEEEIIIIOOOOOUUUUCaaaaaeeeeiiiiooooouuuuc")
     limpo = (texto or "").translate(trocas)
@@ -44,7 +44,7 @@ def _sanitizar(texto: str, limite: int) -> str:
 
 
 def crc16(payload: str) -> str:
-    """CRC-16/CCITT-FALSE, exigido pelo padrao."""
+    """CRC-16/CCITT-FALSE, exigido pelo padrão."""
     resto = 0xFFFF
     for byte in payload.encode("utf-8"):
         resto ^= byte << 8
@@ -66,7 +66,7 @@ def gerar_brcode(valor: float, identificador: str = "***") -> str:
     if not configurado():
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "Chave PIX nao configurada. Preencha PIX_CHAVE no arquivo .env do backend.",
+            "Chave PIX não configurada. Preencha PIX_CHAVE no arquivo .env do backend.",
         )
     if valor <= 0:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Valor deve ser maior que zero")

@@ -76,14 +76,14 @@ const MENU: ItemMenu[] = [
   },
   {
     para: "/relatorios",
-    texto: "Relatorios",
-    curto: "Relatorios",
+    texto: "Relatórios",
+    curto: "Relatórios",
     icone: BarChart3,
     perfis: ["ADMIN"],
   },
   {
     para: "/funcionarios",
-    texto: "Funcionarios",
+    texto: "Funcionários",
     curto: "Equipe",
     icone: UserCog,
     perfis: ["ADMIN"],
@@ -228,7 +228,7 @@ export default function Layout() {
             />
             <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white pb-20 shadow-xl">
               <div className="flex items-center justify-between border-b border-carvao-100 px-5 py-3">
-                <span className="font-bold text-carvao-900">Mais opcoes</span>
+                <span className="font-bold text-carvao-900">Mais opções</span>
                 <button
                   onClick={() => setMaisAberto(false)}
                   className="rounded-lg p-1.5 text-carvao-400 active:bg-carvao-100"

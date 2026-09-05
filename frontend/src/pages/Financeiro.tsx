@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Plus } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataBr, hojeIso } from "../lib/format";
-import type { FormaPagamento, Parceiro, ResumoFinanceiro, StatusTitulo, Titulo, TipoTitulo } from "../lib/tipos";
+import { brl, dataBr, hojeIso, rotulo } from "../lib/format";
+import type { FormaPagamento, Parceiro, ResumoFinanceiro, StatusTítulo, Título, TipoTítulo } from "../lib/tipos";
 import {
   Botao,
   Campo,
@@ -14,7 +14,7 @@ import {
   Selo,
   Seletor,
   Tabela,
-  TituloPagina,
+  TítuloPagina,
   Vazio,
 } from "../components/ui";
 
@@ -23,15 +23,15 @@ const FORMAS: FormaPagamento[] = ["DINHEIRO", "PIX", "DEBITO", "CREDITO"];
 const CATEGORIAS_PAGAR = [
   "Mercadorias",
   "Pessoal",
-  "Ocupacao",
+  "Ocupação",
   "Utilidades",
   "Insumos",
   "Impostos",
   "Outros",
 ];
-const CATEGORIAS_RECEBER = ["Vendas", "Servicos", "Eventos", "Outros"];
+const CATEGORIAS_RECEBER = ["Vendas", "Serviços", "Eventos", "Outros"];
 
-function tomStatus(t: Titulo): "sucesso" | "perigo" | "alerta" | "neutro" | "info" {
+function tomStatus(t: Título): "sucesso" | "perigo" | "alerta" | "neutro" | "info" {
   if (t.status === "PAGO") return "sucesso";
   if (t.status === "CANCELADO") return "neutro";
   if (t.vencido) return "perigo";
@@ -39,19 +39,19 @@ function tomStatus(t: Titulo): "sucesso" | "perigo" | "alerta" | "neutro" | "inf
   return "alerta";
 }
 
-export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
+export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
   const pagar = tipo === "PAGAR";
-  const rotulo = pagar ? "Contas a pagar" : "Contas a receber";
+  const tituloTela = pagar ? "Contas a pagar" : "Contas a receber";
 
-  const [titulos, setTitulos] = useState<Titulo[]>([]);
+  const [títulos, setTítulos] = useState<Título[]>([]);
   const [resumo, setResumo] = useState<ResumoFinanceiro | null>(null);
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
-  const [filtroStatus, setFiltroStatus] = useState<StatusTitulo | "">("");
+  const [filtroStatus, setFiltroStatus] = useState<StatusTítulo | "">("");
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
   const [novoAberto, setNovoAberto] = useState(false);
-  const [baixando, setBaixando] = useState<Titulo | null>(null);
+  const [baixando, setBaixando] = useState<Título | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   const [form, setForm] = useState({
@@ -73,12 +73,12 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
   const carregar = useCallback(async () => {
     try {
       const [t, r] = await Promise.all([
-        api.get<Titulo[]>("/financeiro/titulos", {
+        api.get<Título[]>("/financeiro/títulos", {
           params: { tipo, status_titulo: filtroStatus || undefined },
         }),
         api.get<ResumoFinanceiro>("/financeiro/resumo"),
       ]);
-      setTitulos(t.data);
+      setTítulos(t.data);
       setResumo(r.data);
     } catch (e) {
       setErro(mensagemErro(e));
@@ -105,7 +105,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
     setSalvando(true);
     setErro(null);
     try {
-      await api.post("/financeiro/titulos", {
+      await api.post("/financeiro/títulos", {
         tipo,
         descricao: form.descricao,
         categoria: form.categoria || null,
@@ -120,7 +120,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
       setForm({ ...form, descricao: "", valor: "", observacao: "", parcelas: "1" });
       await carregar();
     } catch (err) {
-      setErro(mensagemErro(err, "Nao foi possivel criar o titulo"));
+      setErro(mensagemErro(err, "Não foi possível criar o título"));
     } finally {
       setSalvando(false);
     }
@@ -132,7 +132,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
     setSalvando(true);
     setErro(null);
     try {
-      await api.post(`/financeiro/titulos/${baixando.id}/baixar`, {
+      await api.post(`/financeiro/títulos/${baixando.id}/baixar`, {
         valor: Number(baixa.valor),
         data: baixa.data,
         forma_pagamento: baixa.forma_pagamento,
@@ -140,23 +140,23 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
       setBaixando(null);
       await carregar();
     } catch (err) {
-      setErro(mensagemErro(err, "Nao foi possivel registrar a baixa"));
+      setErro(mensagemErro(err, "Não foi possível registrar a baixa"));
     } finally {
       setSalvando(false);
     }
   }
 
-  async function cancelar(t: Titulo) {
-    if (!confirm(`Cancelar o titulo "${t.descricao}"?`)) return;
+  async function cancelar(t: Título) {
+    if (!confirm(`Cancelar o título "${t.descricao}"?`)) return;
     try {
-      await api.post(`/financeiro/titulos/${t.id}/cancelar`);
+      await api.post(`/financeiro/títulos/${t.id}/cancelar`);
       await carregar();
     } catch (err) {
       setErro(mensagemErro(err));
     }
   }
 
-  if (carregando) return <Carregando texto={`Carregando ${rotulo.toLowerCase()}...`} />;
+  if (carregando) return <Carregando texto={`Carregando ${tituloTela.toLowerCase()}...`} />;
 
   const total = pagar ? resumo?.a_pagar_total : resumo?.a_receber_total;
   const vencido = pagar ? resumo?.a_pagar_vencido : resumo?.a_receber_vencido;
@@ -164,8 +164,8 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
 
   return (
     <>
-      <TituloPagina
-        titulo={rotulo}
+      <TítuloPagina
+        titulo={tituloTela}
         descricao={
           pagar
             ? "Despesas, fornecedores e compras a prazo"
@@ -184,7 +184,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
         {[
           { rotulo: "Em aberto", valor: total, tom: "text-carvao-900" },
           { rotulo: "Vencido", valor: vencido, tom: "text-red-600" },
-          { rotulo: "Proximos 7 dias", valor: proximos, tom: "text-amber-600" },
+          { rotulo: "Próximos 7 dias", valor: proximos, tom: "text-amber-600" },
         ].map((c) => (
           <Cartao key={c.rotulo} className="p-3 sm:p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-carvao-500">
@@ -198,7 +198,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
       <div className="mb-4">
         <Seletor
           value={filtroStatus}
-          onChange={(e) => setFiltroStatus(e.target.value as StatusTitulo | "")}
+          onChange={(e) => setFiltroStatus(e.target.value as StatusTítulo | "")}
           vazio="Todos os status"
           className="sm:max-w-56"
           opcoes={[
@@ -210,14 +210,14 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
         />
       </div>
 
-      {titulos.length === 0 ? (
+      {títulos.length === 0 ? (
         <Cartao>
-          <Vazio titulo="Nenhum titulo" descricao="Nada lancado com esses filtros." />
+          <Vazio titulo="Nenhum título" descricao="Nada lançado com esses filtros." />
         </Cartao>
       ) : (
         <>
           <div className="space-y-2 lg:hidden">
-            {titulos.map((t) => (
+            {títulos.map((t) => (
               <Cartao key={t.id} className="p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -226,7 +226,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
                       {t.parceiro_nome ?? t.categoria ?? "-"} · vence {dataBr(t.vencimento)}
                     </p>
                   </div>
-                  <Selo tom={tomStatus(t)}>{t.vencido && t.status !== "PAGO" ? "VENCIDO" : t.status}</Selo>
+                  <Selo tom={tomStatus(t)}>{t.vencido && t.status !== "PAGO" ? "Vencido" : rotulo(t.status)}</Selo>
                 </div>
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-sm text-carvao-600">
@@ -259,17 +259,17 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
           <Cartao className="hidden overflow-hidden lg:block">
             <Tabela
               cabecalho={[
-                "Descricao",
+                "Descrição",
                 pagar ? "Fornecedor" : "Cliente",
                 "Categoria",
                 "Vencimento",
                 "Valor",
                 "Saldo",
                 "Status",
-                "Acoes",
+                "Ações",
               ]}
             >
-              {titulos.map((t) => (
+              {títulos.map((t) => (
                 <tr key={t.id} className="hover:bg-carvao-50/60">
                   <td className="px-4 py-2.5 font-medium text-carvao-800">
                     {t.descricao}
@@ -286,7 +286,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
                   <td className="px-4 py-2.5 font-semibold text-carvao-900">{brl(t.saldo)}</td>
                   <td className="px-4 py-2.5">
                     <Selo tom={tomStatus(t)}>
-                      {t.vencido && t.status !== "PAGO" ? "VENCIDO" : t.status}
+                      {t.vencido && t.status !== "PAGO" ? "Vencido" : rotulo(t.status)}
                     </Selo>
                   </td>
                   <td className="px-4 py-2.5">
@@ -327,7 +327,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
         <form onSubmit={criar} className="space-y-4">
           <Erro mensagem={erro} />
           <Campo
-            rotulo="Descricao"
+            rotulo="Descrição"
             required
             value={form.descricao}
             onChange={(e) => setForm({ ...form, descricao: e.target.value })}
@@ -348,7 +348,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
               rotulo={pagar ? "Fornecedor" : "Cliente"}
               value={form.parceiro_id}
               onChange={(e) => setForm({ ...form, parceiro_id: e.target.value })}
-              vazio="Nao informar"
+              vazio="Não informar"
               opcoes={parceiros.map((p) => ({ valor: p.id, texto: p.nome }))}
             />
             <Campo
@@ -374,7 +374,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
               max="48"
               value={form.parcelas}
               onChange={(e) => setForm({ ...form, parcelas: e.target.value })}
-              dica="O valor total sera dividido"
+              dica="O valor total será dividido"
             />
             <Campo
               rotulo="Intervalo entre parcelas (dias)"
@@ -385,7 +385,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
             />
           </div>
           <Campo
-            rotulo="Observacao"
+            rotulo="Observação"
             value={form.observacao}
             onChange={(e) => setForm({ ...form, observacao: e.target.value })}
           />

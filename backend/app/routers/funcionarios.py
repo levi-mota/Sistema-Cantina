@@ -1,4 +1,4 @@
-"""Cadastro de funcionarios e perfis de acesso. Restrito a administradores."""
+"""Cadastro de funcionários e perfis de acesso. Restrito a administradores."""
 
 import re
 
@@ -17,13 +17,13 @@ router = APIRouter(
 
 
 def normalizar_login(bruto: str) -> str:
-    """Login e sempre minusculo e sem espacos: "Levi Mota" -> "levi.mota"."""
+    """O login é sempre minúsculo e sem espaços: "Levi Mota" -> "levi.mota"."""
     login = re.sub(r"\s+", ".", (bruto or "").strip().lower())
     login = re.sub(r"[^a-z0-9._-]", "", login)
     if len(login) < 2:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Login invalido: use letras, numeros, ponto, hifen ou sublinhado",
+            "Login inválido: use letras, numeros, ponto, hifen ou sublinhado",
         )
     return login
 
@@ -50,7 +50,7 @@ def listar(
 def criar(dados: schemas.UsuarioCreate, db: DB, _: SomenteAdmin):
     login = normalizar_login(dados.usuario)
     if db.scalar(select(models.Usuario).where(models.Usuario.usuario == login)):
-        raise HTTPException(status.HTTP_409_CONFLICT, f"O login '{login}' ja esta em uso")
+        raise HTTPException(status.HTTP_409_CONFLICT, f"O login '{login}' já está em uso")
 
     payload = dados.model_dump(exclude={"senha", "usuario"})
     usuario = models.Usuario(**payload, usuario=login, senha_hash=hash_password(dados.senha))
@@ -64,7 +64,7 @@ def criar(dados: schemas.UsuarioCreate, db: DB, _: SomenteAdmin):
 def obter(usuario_id: int, db: DB, _: SomenteAdmin):
     usuario = db.get(models.Usuario, usuario_id)
     if not usuario:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionario nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionário não encontrado")
     return usuario
 
 
@@ -72,7 +72,7 @@ def obter(usuario_id: int, db: DB, _: SomenteAdmin):
 def atualizar(usuario_id: int, dados: schemas.UsuarioUpdate, db: DB, _: SomenteAdmin):
     usuario = db.get(models.Usuario, usuario_id)
     if not usuario:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionario nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionário não encontrado")
 
     campos = dados.model_dump(exclude_unset=True)
     if senha := campos.pop("senha", None):
@@ -81,7 +81,7 @@ def atualizar(usuario_id: int, dados: schemas.UsuarioUpdate, db: DB, _: SomenteA
         login = normalizar_login(login)
         existente = db.scalar(select(models.Usuario).where(models.Usuario.usuario == login))
         if existente and existente.id != usuario.id:
-            raise HTTPException(status.HTTP_409_CONFLICT, f"O login '{login}' ja esta em uso")
+            raise HTTPException(status.HTTP_409_CONFLICT, f"O login '{login}' já está em uso")
         usuario.usuario = login
 
     for campo, valor in campos.items():
@@ -95,8 +95,8 @@ def atualizar(usuario_id: int, dados: schemas.UsuarioUpdate, db: DB, _: SomenteA
 def desativar(usuario_id: int, db: DB, gestor: SomenteAdmin):
     usuario = db.get(models.Usuario, usuario_id)
     if not usuario:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionario nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Funcionário não encontrado")
     if usuario.id == gestor.id:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Voce nao pode desativar a si mesmo")
+        raise HTTPException(status.HTTP_409_CONFLICT, "Você não pode desativar a si mesmo")
     usuario.ativo = False
     db.commit()

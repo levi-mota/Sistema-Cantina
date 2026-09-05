@@ -17,7 +17,7 @@ export default function Login() {
     try {
       await entrar(login.trim(), senha);
     } catch (err) {
-      setErro(mensagemErro(err, "Nao foi possivel entrar"));
+      setErro(mensagemErro(err, "Não foi possível entrar"));
     } finally {
       setEnviando(false);
     }
@@ -40,8 +40,8 @@ export default function Login() {
           {/* Sem rotulo acima: o nome do campo fica dentro da caixa. O
               aria-label mantem o campo anunciado para leitores de tela. */}
           <Campo
-            aria-label="Usuario"
-            placeholder="Usuario"
+            aria-label="Usuário"
+            placeholder="Usuário"
             autoComplete="username"
             autoCapitalize="none"
             spellCheck={false}

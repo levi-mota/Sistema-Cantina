@@ -25,8 +25,8 @@ import {
 
 import { api, mensagemErro } from "../lib/api";
 import { brl, dataBr } from "../lib/format";
-import type { Dashboard, Produto, Titulo } from "../lib/tipos";
-import { Cartao, Carregando, Erro, Selo, TituloPagina, Vazio } from "../components/ui";
+import type { Dashboard, Produto, Título } from "../lib/tipos";
+import { Cartao, Carregando, Erro, Selo, TítuloPagina, Vazio } from "../components/ui";
 
 interface PontoGrafico {
   dia: string;
@@ -86,7 +86,7 @@ export default function Painel() {
   const [serie, setSerie] = useState<PontoGrafico[]>([]);
   const [pagamentos, setPagamentos] = useState<FatiaPagamento[]>([]);
   const [criticos, setCriticos] = useState<Produto[]>([]);
-  const [vencendo, setVencendo] = useState<Titulo[]>([]);
+  const [vencendo, setVencendo] = useState<Título[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -96,7 +96,7 @@ export default function Painel() {
       api.get<PontoGrafico[]>("/relatorios/vendas-por-dia"),
       api.get<FatiaPagamento[]>("/relatorios/vendas-por-pagamento"),
       api.get<Produto[]>("/estoque/produtos", { params: { somente_criticos: true, limite: 6 } }),
-      api.get<Titulo[]>("/financeiro/titulos", { params: { status_titulo: "ABERTO", limite: 6 } }),
+      api.get<Título[]>("/financeiro/títulos", { params: { status_titulo: "ABERTO", limite: 6 } }),
     ])
       .then(([d, s, p, c, t]) => {
         setDados(d.data);
@@ -115,9 +115,9 @@ export default function Painel() {
 
   return (
     <>
-      <TituloPagina
+      <TítuloPagina
         titulo="Painel"
-        descricao="Visao geral da cantina: vendas, estoque e financeiro"
+        descricao="Visão geral da cantina: vendas, estoque e financeiro"
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -129,9 +129,9 @@ export default function Painel() {
           para="/pdv"
         />
         <Indicador
-          titulo="Vendas no mes"
+          titulo="Vendas no mês"
           valor={brl(dados.vendas_mes)}
-          detalhe="Acumulado do mes corrente"
+          detalhe="Acumulado do mês corrente"
           icone={TrendingUp}
           tom="verde"
           para="/relatorios"
@@ -155,15 +155,15 @@ export default function Painel() {
         <Indicador
           titulo="Valor em estoque"
           valor={brl(dados.valor_estoque)}
-          detalhe="Ao custo medio"
+          detalhe="Ao custo médio"
           icone={Boxes}
           tom="azul"
           para="/estoque"
         />
         <Indicador
-          titulo="Itens criticos"
+          titulo="Itens críticos"
           valor={String(dados.produtos_criticos)}
-          detalhe="No minimo ou abaixo"
+          detalhe="No mínimo ou abaixo"
           icone={AlertTriangle}
           tom={dados.produtos_criticos > 0 ? "vermelho" : "verde"}
           para="/estoque"
@@ -178,7 +178,7 @@ export default function Painel() {
         <Indicador
           titulo="Equipe ativa"
           valor={String(dados.funcionarios_ativos)}
-          detalhe="Funcionarios cadastrados"
+          detalhe="Funcionários cadastrados"
           icone={TrendingUp}
           para="/funcionarios"
         />
@@ -186,7 +186,7 @@ export default function Painel() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Cartao className="p-4 lg:col-span-2">
-          <h2 className="mb-4 font-bold text-carvao-900">Vendas dos ultimos 30 dias</h2>
+          <h2 className="mb-4 font-bold text-carvao-900">Vendas dos últimos 30 dias</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={serie} margin={{ left: -18, right: 8, top: 4 }}>
@@ -231,7 +231,7 @@ export default function Painel() {
         <Cartao className="p-4">
           <h2 className="mb-4 font-bold text-carvao-900">Formas de pagamento</h2>
           {pagamentos.length === 0 ? (
-            <Vazio titulo="Sem vendas no periodo" />
+            <Vazio titulo="Sem vendas no período" />
           ) : (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -273,13 +273,13 @@ export default function Painel() {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Cartao className="p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-bold text-carvao-900">Estoque critico</h2>
+            <h2 className="font-bold text-carvao-900">Estoque crítico</h2>
             <Link to="/estoque" className="text-sm font-semibold text-marca-600 hover:underline">
               Ver estoque
             </Link>
           </div>
           {criticos.length === 0 ? (
-            <Vazio titulo="Tudo em ordem" descricao="Nenhum produto abaixo do minimo." />
+            <Vazio titulo="Tudo em ordem" descricao="Nenhum produto abaixo do mínimo." />
           ) : (
             <ul className="divide-y divide-carvao-100">
               {criticos.map((p) => (
@@ -287,7 +287,7 @@ export default function Painel() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-carvao-800">{p.nome}</p>
                     <p className="text-xs text-carvao-500">
-                      Minimo {Number(p.estoque_minimo)} {p.unidade}
+                      Mínimo {Number(p.estoque_minimo)} {p.unidade}
                     </p>
                   </div>
                   <Selo tom={Number(p.estoque_atual) <= 0 ? "perigo" : "alerta"}>
@@ -301,7 +301,7 @@ export default function Painel() {
 
         <Cartao className="p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-bold text-carvao-900">Titulos em aberto</h2>
+            <h2 className="font-bold text-carvao-900">Títulos em aberto</h2>
             <Link
               to="/contas-a-pagar"
               className="text-sm font-semibold text-marca-600 hover:underline"

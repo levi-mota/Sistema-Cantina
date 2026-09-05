@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataBr } from "../lib/format";
+import { brl, dataBr, rotulo } from "../lib/format";
 import type { Perfil, Usuario } from "../lib/tipos";
 import {
   Botao,
@@ -14,13 +14,13 @@ import {
   Selo,
   Seletor,
   Tabela,
-  TituloPagina,
+  TítuloPagina,
   Vazio,
 } from "../components/ui";
 
 const PERFIS: { valor: Perfil; texto: string }[] = [
   { valor: "ADMIN", texto: "Administrador (acesso total)" },
-  { valor: "USUARIO", texto: "Usuario (PDV e caixa)" },
+  { valor: "USUARIO", texto: "Usuário (PDV e caixa)" },
 ];
 
 const FORM_VAZIO = {
@@ -107,7 +107,7 @@ export default function Funcionarios() {
       setModal(null);
       await carregar();
     } catch (err) {
-      setErro(mensagemErro(err, "Nao foi possivel salvar o funcionario"));
+      setErro(mensagemErro(err, "Não foi possível salvar o funcionário"));
     } finally {
       setSalvando(false);
     }
@@ -117,12 +117,12 @@ export default function Funcionarios() {
 
   return (
     <>
-      <TituloPagina
-        titulo="Funcionarios"
+      <TítuloPagina
+        titulo="Funcionários"
         descricao="Equipe e perfis de acesso"
         acoes={
           <Botao icone={<Plus className="h-4 w-4" />} onClick={() => abrir("novo")}>
-            Novo funcionario
+            Novo funcionário
           </Botao>
         }
       />
@@ -131,7 +131,7 @@ export default function Funcionarios() {
 
       {equipe.length === 0 ? (
           <Cartao>
-            <Vazio titulo="Nenhum funcionario" />
+            <Vazio titulo="Nenhum funcionário" />
           </Cartao>
         ) : (
           <>
@@ -154,7 +154,7 @@ export default function Funcionarios() {
 
             <Cartao className="hidden overflow-hidden lg:block">
               <Tabela
-                cabecalho={["Nome", "Perfil", "Cargo", "Contato", "Admissao", "Salario", "Acoes"]}
+                cabecalho={["Nome", "Perfil", "Cargo", "Contato", "Admissao", "Salário", "Ações"]}
               >
                 {equipe.map((u) => (
                   <tr key={u.id} className={u.ativo ? "hover:bg-carvao-50/60" : "opacity-60"}>
@@ -164,7 +164,7 @@ export default function Funcionarios() {
                     </td>
                     <td className="px-4 py-2.5">
                       <Selo tom={u.perfil === "ADMIN" ? "marca" : "neutro"}>
-                        {u.perfil}
+                        {rotulo(u.perfil)}
                       </Selo>
                     </td>
                     <td className="px-4 py-2.5 text-carvao-600">{u.cargo ?? "-"}</td>
@@ -187,7 +187,7 @@ export default function Funcionarios() {
 
       <Modal
         aberto={!!modal}
-        titulo={modal === "novo" ? "Novo funcionario" : "Editar funcionario"}
+        titulo={modal === "novo" ? "Novo funcionário" : "Editar funcionário"}
         aoFechar={() => setModal(null)}
       >
         <form onSubmit={salvar} className="space-y-4">
@@ -200,7 +200,7 @@ export default function Funcionarios() {
               onChange={(e) => setForm({ ...form, nome: e.target.value })}
             />
             <Campo
-              rotulo="Usuario (login)"
+              rotulo="Usuário (login)"
               required
               autoCapitalize="none"
               spellCheck={false}
@@ -238,7 +238,7 @@ export default function Funcionarios() {
               onChange={(e) => setForm({ ...form, telefone: e.target.value })}
             />
             <Campo
-              rotulo="Salario (R$)"
+              rotulo="Salário (R$)"
               type="number"
               step="0.01"
               min="0"
@@ -258,7 +258,7 @@ export default function Funcionarios() {
                 onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
                 className="h-4 w-4 accent-marca-600"
               />
-              Funcionario ativo
+              Funcionário ativo
             </label>
           </div>
           <div className="flex justify-end gap-2">

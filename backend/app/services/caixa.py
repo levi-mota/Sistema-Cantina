@@ -1,15 +1,15 @@
-"""Regras da sessao de caixa.
+"""Regras da sessão de caixa.
 
-A cantina pode ter varios caixas (terminais), cada um com a sua propria gaveta.
-Um caixa comporta no maximo um turno aberto por vez, e um operador comporta no
-maximo um turno aberto por vez -- e por esse turno que as vendas dele entram.
+A cantina pode ter varios caixas (terminais), cada um com a sua própria gaveta.
+Um caixa comporta no máximo um turno aberto por vez, e um operador comporta no
+máximo um turno aberto por vez -- é por esse turno que as vendas dele entram.
 
-A conferencia responde a uma unica pergunta: quanto deveria estar nesta gaveta
-agora? A conta e sempre a mesma:
+A conferência responde a uma única pergunta: quanto deveria estar nesta gaveta
+agora? A conta é sempre a mesma:
 
     abertura + vendas em dinheiro + suprimentos - sangrias
 
-Vendas em PIX, cartao e fiado nao entram porque nao passam pela gaveta.
+Vendas em PIX, cartao e fiado não entram porque não passam pela gaveta.
 """
 
 from decimal import Decimal
@@ -33,7 +33,7 @@ def sessoes_abertas(db: Session) -> list[models.CaixaSessao]:
 
 
 def sessao_do_caixa(db: Session, caixa_id: int) -> models.CaixaSessao | None:
-    """Turno aberto de um caixa especifico, se houver."""
+    """Turno aberto de um caixa específico, se houver."""
     return db.scalar(
         select(models.CaixaSessao).where(
             models.CaixaSessao.caixa_id == caixa_id,
@@ -58,13 +58,13 @@ def exigir_sessao_do_usuario(db: Session, usuario_id: int) -> models.CaixaSessao
     if not sessao:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "Voce nao tem um caixa aberto. Abra o seu caixa para registrar vendas.",
+            "Você não tem um caixa aberto. Abra o seu caixa para registrar vendas.",
         )
     return sessao
 
 
 def conferir(db: Session, sessao: models.CaixaSessao) -> schemas.ConferenciaOut:
-    """Monta a composicao do saldo esperado da sessao."""
+    """Monta a composição do saldo esperado da sessão."""
 
     def total_vendas(*formas: models.FormaPagamento) -> tuple[Decimal, int]:
         linha = db.execute(

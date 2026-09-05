@@ -1,4 +1,4 @@
-"""Estoque: categorias, produtos e movimentacoes (kardex)."""
+"""Estoque: categorias, produtos e movimentações (kardex)."""
 
 from datetime import date, timedelta
 from decimal import Decimal
@@ -50,7 +50,7 @@ def listar_categorias(db: DB, _: CurrentUser):
 )
 def criar_categoria(dados: schemas.CategoriaIn, db: DB, _: SomenteAdmin):
     if db.scalar(select(models.Categoria).where(models.Categoria.nome == dados.nome)):
-        raise HTTPException(status.HTTP_409_CONFLICT, "Categoria ja existe")
+        raise HTTPException(status.HTTP_409_CONFLICT, "Categoria já existe")
     categoria = models.Categoria(**dados.model_dump())
     db.add(categoria)
     db.commit()
@@ -62,7 +62,7 @@ def criar_categoria(dados: schemas.CategoriaIn, db: DB, _: SomenteAdmin):
 def excluir_categoria(categoria_id: int, db: DB, _: SomenteAdmin):
     categoria = db.get(models.Categoria, categoria_id)
     if not categoria:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoria nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoria não encontrada")
     em_uso = db.scalar(
         select(models.Produto).where(models.Produto.categoria_id == categoria_id).limit(1)
     )
@@ -109,7 +109,7 @@ def criar_produto(dados: schemas.ProdutoCreate, db: DB, usuario: SomenteAdmin):
     estoque_inicial = Decimal(str(payload.pop("estoque_inicial", 0) or 0))
     if payload.get("codigo"):
         if db.scalar(select(models.Produto).where(models.Produto.codigo == payload["codigo"])):
-            raise HTTPException(status.HTTP_409_CONFLICT, "Codigo ja cadastrado")
+            raise HTTPException(status.HTTP_409_CONFLICT, "Código já cadastrado")
 
     produto = models.Produto(**payload)
     db.add(produto)
@@ -134,7 +134,7 @@ def criar_produto(dados: schemas.ProdutoCreate, db: DB, usuario: SomenteAdmin):
 def obter_produto(produto_id: int, db: DB, _: CurrentUser):
     produto = db.get(models.Produto, produto_id)
     if not produto:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado")
     return _produto_out(produto)
 
 
@@ -142,7 +142,7 @@ def obter_produto(produto_id: int, db: DB, _: CurrentUser):
 def atualizar_produto(produto_id: int, dados: schemas.ProdutoUpdate, db: DB, _: SomenteAdmin):
     produto = db.get(models.Produto, produto_id)
     if not produto:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado")
     for campo, valor in dados.model_dump(exclude_unset=True).items():
         setattr(produto, campo, valor)
     db.commit()
@@ -154,7 +154,7 @@ def atualizar_produto(produto_id: int, dados: schemas.ProdutoUpdate, db: DB, _: 
 def desativar_produto(produto_id: int, db: DB, _: SomenteAdmin):
     produto = db.get(models.Produto, produto_id)
     if not produto:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado")
     produto.ativo = False
     db.commit()
 
@@ -198,14 +198,14 @@ def listar_movimentos(
 
 @router.post("/movimentos", response_model=schemas.ProdutoOut, status_code=201)
 def registrar_movimento(dados: schemas.MovimentoIn, db: DB, usuario: SomenteAdmin):
-    """Entrada, saida, perda ou ajuste de inventario.
+    """Entrada, saída, perda ou ajuste de inventário.
 
     Uma entrada de compra pode gerar automaticamente a conta a pagar do
-    fornecedor (integracao estoque -> financeiro).
+    fornecedor (integração estoque -> financeiro).
     """
     produto = db.get(models.Produto, dados.produto_id)
     if not produto:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado")
 
     servico.movimentar(
         db,
@@ -221,12 +221,12 @@ def registrar_movimento(dados: schemas.MovimentoIn, db: DB, usuario: SomenteAdmi
         if not dados.custo_unitario:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                "Informe o custo unitario para gerar a conta a pagar",
+                "Informe o custo unitário para gerar a conta a pagar",
             )
         total = Decimal(str(dados.custo_unitario)) * Decimal(str(dados.quantidade))
         db.add(
-            models.Titulo(
-                tipo=models.TipoTitulo.PAGAR,
+            models.Título(
+                tipo=models.TipoTítulo.PAGAR,
                 descricao=f"Compra de {dados.quantidade} x {produto.nome}",
                 categoria="Mercadorias",
                 parceiro_id=dados.fornecedor_id or produto.fornecedor_id,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowDownUp, History, Package, Plus, Search } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataHora, hojeIso, qtd } from "../lib/format";
+import { brl, dataHora, hojeIso, qtd, rotulo } from "../lib/format";
 import type { Categoria, Movimento, Parceiro, Produto, TipoMovimento } from "../lib/tipos";
 import {
   Botao,
@@ -14,15 +14,15 @@ import {
   Selo,
   Seletor,
   Tabela,
-  TituloPagina,
+  TítuloPagina,
   Vazio,
 } from "../components/ui";
 
 const TIPOS_MOVIMENTO: { valor: TipoMovimento; texto: string }[] = [
-  { valor: "ENTRADA", texto: "Entrada (compra/reposicao)" },
-  { valor: "SAIDA", texto: "Saida (consumo/uso interno)" },
+  { valor: "ENTRADA", texto: "Entrada (compra/reposição)" },
+  { valor: "SAIDA", texto: "Saída (consumo/uso interno)" },
   { valor: "PERDA", texto: "Perda (quebra/vencimento)" },
-  { valor: "AJUSTE", texto: "Ajuste de inventario (define o saldo)" },
+  { valor: "AJUSTE", texto: "Ajuste de inventário (define o saldo)" },
 ];
 
 const FORM_VAZIO = {
@@ -146,7 +146,7 @@ export default function Estoque() {
       setProdutoModal(null);
       await carregar();
     } catch (err) {
-      setErro(mensagemErro(err, "Nao foi possivel salvar o produto"));
+      setErro(mensagemErro(err, "Não foi possível salvar o produto"));
     } finally {
       setSalvando(false);
     }
@@ -171,7 +171,7 @@ export default function Estoque() {
       setMovProduto(null);
       await carregar();
     } catch (err) {
-      setErro(mensagemErro(err, "Nao foi possivel registrar o movimento"));
+      setErro(mensagemErro(err, "Não foi possível registrar o movimento"));
     } finally {
       setSalvando(false);
     }
@@ -194,9 +194,9 @@ export default function Estoque() {
 
   return (
     <>
-      <TituloPagina
+      <TítuloPagina
         titulo="Estoque"
-        descricao="Produtos, saldos e movimentacoes"
+        descricao="Produtos, saldos e movimentações"
         acoes={
           <Botao icone={<Plus className="h-4 w-4" />} onClick={() => abrirProduto("novo")}>
             Novo produto
@@ -216,7 +216,7 @@ export default function Estoque() {
             }`}
           >
             {valor === "produtos" ? <Package className="h-4 w-4" /> : <History className="h-4 w-4" />}
-            {valor === "produtos" ? "Produtos" : "Movimentacoes"}
+            {valor === "produtos" ? "Produtos" : "Movimentações"}
           </button>
         ))}
       </div>
@@ -229,7 +229,7 @@ export default function Estoque() {
               <input
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por nome ou codigo..."
+                placeholder="Buscar por nome ou código..."
                 className="campo pl-9"
               />
             </div>
@@ -246,7 +246,7 @@ export default function Estoque() {
                 onChange={(e) => setSomenteCriticos(e.target.checked)}
                 className="h-4 w-4 accent-marca-600"
               />
-              So criticos
+              Só críticos
             </label>
           </div>
 
@@ -264,7 +264,7 @@ export default function Estoque() {
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-carvao-900">{p.nome}</p>
                         <p className="text-xs text-carvao-500">
-                          {p.codigo ?? "sem codigo"} · {p.categoria_nome ?? "sem categoria"}
+                          {p.codigo ?? "sem código"} · {p.categoria_nome ?? "sem categoria"}
                         </p>
                       </div>
                       <Selo
@@ -315,7 +315,7 @@ export default function Estoque() {
                     "Venda",
                     "Margem",
                     "Estoque",
-                    "Acoes",
+                    "Ações",
                   ]}
                 >
                   {produtos.map((p) => (
@@ -363,7 +363,7 @@ export default function Estoque() {
       ) : (
         <Cartao className="overflow-hidden">
           {movimentos.length === 0 ? (
-            <Vazio titulo="Sem movimentacoes" />
+            <Vazio titulo="Sem movimentações" />
           ) : (
             <Tabela cabecalho={["Data", "Produto", "Tipo", "Qtd", "Saldo", "Motivo"]}>
               {movimentos.map((m) => (
@@ -384,7 +384,7 @@ export default function Estoque() {
                               : "neutro"
                       }
                     >
-                      {m.tipo}
+                      {rotulo(m.tipo)}
                     </Selo>
                   </td>
                   <td className="px-4 py-2.5 text-carvao-700">{qtd(m.quantidade)}</td>
@@ -414,7 +414,7 @@ export default function Estoque() {
               className="sm:col-span-1"
             />
             <Campo
-              rotulo="Codigo / codigo de barras"
+              rotulo="Código / código de barras"
               value={form.codigo}
               onChange={(e) => setForm({ ...form, codigo: e.target.value })}
             />
@@ -439,7 +439,7 @@ export default function Estoque() {
               dica="UN, KG, L, CX..."
             />
             <Campo
-              rotulo="Estoque minimo"
+              rotulo="Estoque mínimo"
               type="number"
               step="0.001"
               min="0"
@@ -447,7 +447,7 @@ export default function Estoque() {
               onChange={(e) => setForm({ ...form, estoque_minimo: e.target.value })}
             />
             <Campo
-              rotulo="Preco de custo (R$)"
+              rotulo="Preço de custo (R$)"
               type="number"
               step="0.01"
               min="0"
@@ -455,7 +455,7 @@ export default function Estoque() {
               onChange={(e) => setForm({ ...form, preco_custo: e.target.value })}
             />
             <Campo
-              rotulo="Preco de venda (R$)"
+              rotulo="Preço de venda (R$)"
               type="number"
               step="0.01"
               min="0"
@@ -517,13 +517,13 @@ export default function Estoque() {
           {movForm.tipo === "ENTRADA" && (
             <>
               <Campo
-                rotulo="Custo unitario (R$)"
+                rotulo="Custo unitário (R$)"
                 type="number"
                 step="0.01"
                 min="0"
                 value={movForm.custo_unitario}
                 onChange={(e) => setMovForm({ ...movForm, custo_unitario: e.target.value })}
-                dica="Recalcula o custo medio do produto"
+                dica="Recalcula o custo médio do produto"
               />
               <label className="flex items-center gap-2 text-sm text-carvao-700">
                 <input
@@ -547,7 +547,7 @@ export default function Estoque() {
             </>
           )}
           <Campo
-            rotulo="Motivo / observacao"
+            rotulo="Motivo / observação"
             value={movForm.motivo}
             onChange={(e) => setMovForm({ ...movForm, motivo: e.target.value })}
           />

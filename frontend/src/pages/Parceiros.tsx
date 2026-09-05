@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Building2, Plus, Search, Sparkles, User } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { cepFormatado, documentoFormatado, telefoneFormatado } from "../lib/format";
+import { cepFormatado, documentoFormatado, rotulo, telefoneFormatado } from "../lib/format";
 import type { Empresa, Endereco, Parceiro, TipoParceiro, TipoPessoa } from "../lib/tipos";
 import {
   Botao,
@@ -14,7 +14,7 @@ import {
   Selo,
   Seletor,
   Tabela,
-  TituloPagina,
+  TítuloPagina,
   Vazio,
 } from "../components/ui";
 
@@ -124,7 +124,7 @@ export default function Parceiros() {
       }));
       setAviso(`Dados preenchidos via ${data.fonte}${data.situacao ? ` · ${data.situacao}` : ""}`);
     } catch (e) {
-      setAviso(mensagemErro(e, "CNPJ nao encontrado"));
+      setAviso(mensagemErro(e, "CNPJ não encontrado"));
     } finally {
       setConsultando(null);
     }
@@ -149,7 +149,7 @@ export default function Parceiros() {
       }));
       setAviso(`Endereco preenchido via ${data.fonte}`);
     } catch (e) {
-      setAviso(mensagemErro(e, "CEP nao encontrado"));
+      setAviso(mensagemErro(e, "CEP não encontrado"));
     } finally {
       setConsultando(null);
     }
@@ -166,7 +166,7 @@ export default function Parceiros() {
       setModal(null);
       await carregar();
     } catch (err) {
-      setErro(mensagemErro(err, "Nao foi possivel salvar o cadastro"));
+      setErro(mensagemErro(err, "Não foi possível salvar o cadastro"));
     } finally {
       setSalvando(false);
     }
@@ -176,9 +176,9 @@ export default function Parceiros() {
 
   return (
     <>
-      <TituloPagina
+      <TítuloPagina
         titulo="Clientes e fornecedores"
-        descricao="Cadastro unico, com preenchimento automatico por CNPJ e CEP"
+        descricao="Cadastro único, com preenchimento automático por CNPJ e CEP"
         acoes={
           <Botao icone={<Plus className="h-4 w-4" />} onClick={() => abrir("novo")}>
             Novo cadastro
@@ -227,7 +227,7 @@ export default function Parceiros() {
                         {documentoFormatado(p.documento)} · {telefoneFormatado(p.telefone)}
                       </p>
                     </div>
-                    <Selo tom={p.tipo === "FORNECEDOR" ? "info" : "marca"}>{p.tipo}</Selo>
+                    <Selo tom={p.tipo === "FORNECEDOR" ? "info" : "marca"}>{rotulo(p.tipo)}</Selo>
                   </div>
                   {p.cidade && (
                     <p className="mt-1 text-xs text-carvao-500">
@@ -259,7 +259,7 @@ export default function Parceiros() {
                     </div>
                   </td>
                   <td className="px-4 py-2.5">
-                    <Selo tom={p.tipo === "FORNECEDOR" ? "info" : "marca"}>{p.tipo}</Selo>
+                    <Selo tom={p.tipo === "FORNECEDOR" ? "info" : "marca"}>{rotulo(p.tipo)}</Selo>
                   </td>
                   <td className="px-4 py-2.5 text-carvao-600">
                     {documentoFormatado(p.documento)}
@@ -313,8 +313,8 @@ export default function Parceiros() {
               value={form.tipo_pessoa}
               onChange={(e) => setForm({ ...form, tipo_pessoa: e.target.value as TipoPessoa })}
               opcoes={[
-                { valor: "FISICA", texto: "Fisica (CPF)" },
-                { valor: "JURIDICA", texto: "Juridica (CNPJ)" },
+                { valor: "FISICA", texto: "Física (CPF)" },
+                { valor: "JURIDICA", texto: "Jurídica (CNPJ)" },
               ]}
             />
 
@@ -344,7 +344,7 @@ export default function Parceiros() {
             </div>
 
             <Campo
-              rotulo={form.tipo_pessoa === "JURIDICA" ? "Razao social" : "Nome completo"}
+              rotulo={form.tipo_pessoa === "JURIDICA" ? "Razão social" : "Nome completo"}
               required
               value={form.nome}
               onChange={(e) => setForm({ ...form, nome: e.target.value })}
@@ -393,7 +393,7 @@ export default function Parceiros() {
               onChange={(e) => setForm({ ...form, logradouro: e.target.value })}
             />
             <Campo
-              rotulo="Numero"
+              rotulo="Número"
               value={form.numero}
               onChange={(e) => setForm({ ...form, numero: e.target.value })}
             />
@@ -421,7 +421,7 @@ export default function Parceiros() {
           </div>
 
           <label className="block">
-            <span className="rotulo">Observacoes</span>
+            <span className="rotulo">Observações</span>
             <textarea
               rows={2}
               value={form.observacoes}

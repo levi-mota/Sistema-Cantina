@@ -13,7 +13,7 @@ import {
 
 import { api, mensagemErro } from "../lib/api";
 import { brl, dataBr, dataHora, hojeIso, porcentagem, primeiroDiaDoMes, qtd } from "../lib/format";
-import { Botao, Campo, Cartao, Carregando, Erro, Selo, Tabela, TituloPagina, Vazio } from "../components/ui";
+import { Botao, Campo, Cartao, Carregando, Erro, Selo, Tabela, TítuloPagina, Vazio } from "../components/ui";
 
 interface MaisVendido {
   produto_id: number;
@@ -171,15 +171,15 @@ export default function Relatorios() {
 
   return (
     <>
-      <TituloPagina
-        titulo="Relatorios"
-        descricao="Resultado, formas de pagamento, produtos campeoes, curva ABC e quebras de caixa"
+      <TítuloPagina
+        titulo="Relatórios"
+        descricao="Resultado, formas de pagamento, produtos campeões, curva ABC e quebras de caixa"
       />
 
       <Cartao className="mb-4 p-4">
         <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <Campo
-            rotulo="Inicio"
+            rotulo="Início"
             type="date"
             value={inicio}
             onChange={(e) => setInicio(e.target.value)}
@@ -210,7 +210,7 @@ export default function Relatorios() {
                 },
                 { r: "Despesas pagas", v: brl(dre.despesas_pagas), t: "text-red-600" },
                 {
-                  r: "Resultado do periodo",
+                  r: "Resultado do período",
                   v: brl(dre.resultado),
                   t: dre.resultado >= 0 ? "text-emerald-600" : "text-red-600",
                 },
@@ -243,7 +243,7 @@ export default function Relatorios() {
               </Botao>
             </div>
             {porDia.length === 0 ? (
-              <Vazio titulo="Sem vendas no periodo" />
+              <Vazio titulo="Sem vendas no período" />
             ) : (
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -287,7 +287,7 @@ export default function Relatorios() {
                 </Botao>
               </div>
               {maisVendidos.length === 0 ? (
-                <Vazio titulo="Sem dados no periodo" />
+                <Vazio titulo="Sem dados no período" />
               ) : (
                 <Tabela cabecalho={["Produto", "Qtd", "Faturamento", "Lucro bruto"]}>
                   {maisVendidos.map((p) => (
@@ -321,7 +321,7 @@ export default function Relatorios() {
                 </Botao>
               </div>
               {abc.length === 0 ? (
-                <Vazio titulo="Sem dados no periodo" />
+                <Vazio titulo="Sem dados no período" />
               ) : (
                 <div className="max-h-96 overflow-y-auto">
                   <Tabela cabecalho={["Produto", "Faturamento", "Part.", "Classe"]}>
@@ -354,7 +354,7 @@ export default function Relatorios() {
                 <div>
                   <h2 className="font-bold text-carvao-900">Recebimento por forma de pagamento</h2>
                   <p className="text-xs text-carvao-500">
-                    Quanto entrou em cada forma. O dinheiro e o que deve bater com a gaveta; o
+                    Quanto entrou em cada forma. O dinheiro é o que deve bater com a gaveta; o
                     PIX, com o extrato do banco.
                   </p>
                 </div>
@@ -472,7 +472,7 @@ export default function Relatorios() {
               <div>
                 <h2 className="font-bold text-carvao-900">Quebras de caixa por operador</h2>
                 <p className="text-xs text-carvao-500">
-                  Diferenca entre o dinheiro contado e o esperado nos turnos fechados. A quebra e
+                  Diferença entre o dinheiro contado e o esperado nos turnos fechados. A quebra é
                   de quem operou a gaveta, mesmo que outra pessoa tenha fechado o turno.
                 </p>
               </div>
@@ -487,7 +487,7 @@ export default function Relatorios() {
 
             {quebras.length === 0 ? (
               <Vazio
-                titulo="Nenhum turno fechado no periodo"
+                titulo="Nenhum turno fechado no período"
                 descricao="As quebras aparecem aqui conforme os caixas forem fechados."
               />
             ) : (
@@ -618,7 +618,7 @@ export default function Relatorios() {
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-carvao-100 px-4 py-3">
                 <h2 className="flex items-center gap-2 font-bold text-carvao-900">
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  Turnos com maior diferenca
+                  Turnos com maior diferença
                 </h2>
                 <Botao
                   variante="secundario"
@@ -636,8 +636,8 @@ export default function Relatorios() {
                   "Fechado em",
                   "Esperado",
                   "Contado",
-                  "Diferenca",
-                  "Observacao",
+                  "Diferença",
+                  "Observação",
                 ]}
               >
                 {turnosRuins.map((t) => (

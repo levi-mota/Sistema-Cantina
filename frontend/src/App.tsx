@@ -24,7 +24,7 @@ function SomenteAdmin({ children }: { children: ReactNode }) {
 function Rotas() {
   const { usuario, carregando, pode, sessaoId } = useAuth();
 
-  if (carregando) return <Carregando texto="Carregando sessao..." />;
+  if (carregando) return <Carregando texto="Carregando sessão..." />;
 
   if (!usuario) {
     return (

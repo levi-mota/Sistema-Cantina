@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataHora, qtd } from "../lib/format";
+import { brl, dataHora, qtd, rotulo } from "../lib/format";
 import type { ListaCompra, Produto, StatusCompra, SugestaoCompra } from "../lib/tipos";
 import {
   Botao,
@@ -22,7 +22,7 @@ import {
   Modal,
   Selo,
   Seletor,
-  TituloPagina,
+  TítuloPagina,
   Vazio,
   cx,
 } from "../components/ui";
@@ -70,7 +70,7 @@ export default function Compras() {
   const [salvando, setSalvando] = useState(false);
 
   const [editor, setEditor] = useState<ListaCompra | "nova" | null>(null);
-  const [titulo, setTitulo] = useState("");
+  const [titulo, setTítulo] = useState("");
   const [comprador, setComprador] = useState("");
   const [observacao, setObservacao] = useState("");
   const [itens, setItens] = useState<ItemRascunho[]>([]);
@@ -109,12 +109,12 @@ export default function Compras() {
     setProdutoParaAdicionar("");
     if (lista === "nova") {
       const hoje = new Date().toLocaleDateString("pt-BR");
-      setTitulo(`Compras ${hoje}`);
+      setTítulo(`Compras ${hoje}`);
       setComprador("");
       setObservacao("");
       setItens([]);
     } else {
-      setTitulo(lista.titulo);
+      setTítulo(lista.titulo);
       setComprador(lista.comprador ?? "");
       setObservacao(lista.observacao ?? "");
       setItens(
@@ -132,7 +132,7 @@ export default function Compras() {
     }
   }
 
-  /** Traz os produtos no minimo ou abaixo, sem duplicar o que ja esta na lista. */
+  /** Traz os produtos no mínimo ou abaixo, sem duplicar o que ja esta na lista. */
   async function puxarSugestao() {
     setErro(null);
     try {
@@ -151,7 +151,7 @@ export default function Compras() {
             quantidade: String(Number(s.sugestao)),
             observacao: "",
           }));
-        if (novos.length === 0) setErro("Nenhum produto novo abaixo do minimo.");
+        if (novos.length === 0) setErro("Nenhum produto novo abaixo do mínimo.");
         return [...atual, ...novos];
       });
     } catch (e) {
@@ -202,7 +202,7 @@ export default function Compras() {
       setEditor(null);
       await carregar();
     } catch (e) {
-      setErro(mensagemErro(e, "Nao foi possivel salvar a lista"));
+      setErro(mensagemErro(e, "Não foi possível salvar a lista"));
     } finally {
       setSalvando(false);
     }
@@ -247,7 +247,7 @@ export default function Compras() {
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
     } catch {
-      setErro("Nao foi possivel copiar. Selecione o texto e copie manualmente.");
+      setErro("Não foi possível copiar. Selecione o texto e copie manualmente.");
     }
   }
 
@@ -255,7 +255,7 @@ export default function Compras() {
 
   return (
     <>
-      <TituloPagina
+      <TítuloPagina
         titulo="Compras"
         descricao="Monte o que precisa ser comprado e mande a lista para o comprador"
         acoes={
@@ -272,8 +272,8 @@ export default function Compras() {
           <ClipboardList className="mx-auto mb-3 h-8 w-8 text-carvao-300" />
           <p className="font-semibold text-carvao-800">Nenhuma lista de compras</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-carvao-500">
-            Crie uma lista e use a sugestao automatica: ela traz tudo o que esta no estoque
-            minimo ou abaixo, com a quantidade que recompoe o saldo.
+            Crie uma lista e use a sugestão automática: ela traz tudo o que está no estoque
+            mínimo ou abaixo, com a quantidade que recompõe o saldo.
           </p>
           <Botao className="mt-4" onClick={() => abrirEditor("nova")}>
             Criar a primeira lista
@@ -287,7 +287,7 @@ export default function Compras() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-bold text-carvao-900">{l.titulo}</h2>
-                    <Selo tom={TONS[l.status]}>{l.status}</Selo>
+                    <Selo tom={TONS[l.status]}>{rotulo(l.status)}</Selo>
                   </div>
                   <p className="mt-0.5 text-sm text-carvao-500">
                     {l.quantidade_itens} item(ns) · {brl(l.total_estimado)} estimados
@@ -301,7 +301,7 @@ export default function Compras() {
 
                 <div className="flex flex-wrap gap-2">
                   <Botao variante="secundario" onClick={() => abrirRelatorio(l)}>
-                    Relatorio
+                    Relatório
                   </Botao>
                   {l.status === "RASCUNHO" && (
                     <>
@@ -362,10 +362,10 @@ export default function Compras() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Campo
-              rotulo="Titulo"
+              rotulo="Título"
               required
               value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
+              onChange={(e) => setTítulo(e.target.value)}
             />
             <Campo
               rotulo="Comprador"
@@ -399,7 +399,7 @@ export default function Compras() {
           {itens.length === 0 ? (
             <Vazio
               titulo="Lista vazia"
-              descricao="Use a sugestao automatica ou escolha os produtos acima."
+              descricao="Use a sugestão automática ou escolha os produtos acima."
             />
           ) : (
             <div className="max-h-80 overflow-y-auto rounded-lg border border-carvao-100">
@@ -463,13 +463,13 @@ export default function Compras() {
           )}
 
           <label className="block">
-            <span className="rotulo">Observacao para o comprador</span>
+            <span className="rotulo">Observação para o comprador</span>
             <textarea
               rows={2}
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
               className="campo"
-              placeholder="Ex.: dar preferencia ao fornecedor da rua 7"
+              placeholder="Ex.: dar preferência ao fornecedor da rua 7"
             />
           </label>
 
@@ -496,7 +496,7 @@ export default function Compras() {
       {/* Relatorio para o comprador */}
       <Modal
         aberto={!!relatorio}
-        titulo="Relatorio para o comprador"
+        titulo="Relatório para o comprador"
         aoFechar={() => setRelatorio(null)}
         largura="max-w-lg"
       >

@@ -1,4 +1,4 @@
-"""Schemas Pydantic (entrada/saida da API)."""
+"""Schemas Pydantic (entrada/saída da API)."""
 
 from datetime import date, datetime
 from decimal import Decimal
@@ -199,7 +199,7 @@ class VendaItemIn(BaseModel):
 
 
 # O PDV da cantina recebe apenas em dinheiro e PIX. As demais formas seguem
-# validas no financeiro (baixa de titulos), so nao entram pela venda.
+# validas no financeiro (baixa de títulos), so nao entram pela venda.
 FORMAS_PDV = {models.FormaPagamento.DINHEIRO, models.FormaPagamento.PIX}
 
 
@@ -257,8 +257,8 @@ class VendaOut(ORMModel):
 # --------------------------------------------------------------------------- #
 # Financeiro
 # --------------------------------------------------------------------------- #
-class TituloBase(BaseModel):
-    tipo: models.TipoTitulo
+class TítuloBase(BaseModel):
+    tipo: models.TipoTítulo
     descricao: str
     categoria: str | None = None
     parceiro_id: int | None = None
@@ -267,19 +267,19 @@ class TituloBase(BaseModel):
     observacao: str | None = None
 
 
-class TituloCreate(TituloBase):
+class TítuloCreate(TítuloBase):
     parcelas: int = Field(default=1, ge=1, le=48)
     intervalo_dias: int = Field(default=30, ge=1, le=365)
 
 
-class TituloUpdate(BaseModel):
+class TítuloUpdate(BaseModel):
     descricao: str | None = None
     categoria: str | None = None
     parceiro_id: int | None = None
     valor: Decimal | None = None
     vencimento: date | None = None
     observacao: str | None = None
-    status: models.StatusTitulo | None = None
+    status: models.StatusTítulo | None = None
 
 
 class BaixaIn(BaseModel):
@@ -289,14 +289,14 @@ class BaixaIn(BaseModel):
     observacao: str | None = None
 
 
-class TituloOut(ORMModel, TituloBase):
+class TítuloOut(ORMModel, TítuloBase):
     id: int
     parceiro_nome: str | None = None
     venda_id: int | None = None
     valor_pago: Decimal
     saldo: Decimal
     quitado_em: date | None = None
-    status: models.StatusTitulo
+    status: models.StatusTítulo
     forma_pagamento: models.FormaPagamento | None = None
     vencido: bool = False
     criado_em: datetime
@@ -391,7 +391,7 @@ class MovimentoCaixaOut(ORMModel):
 
 
 class ConferenciaOut(BaseModel):
-    """Composicao do valor que deveria estar na gaveta agora."""
+    """Composição do valor que deveria estar na gaveta agora."""
 
     valor_abertura: Decimal
     vendas_dinheiro: Decimal
@@ -479,7 +479,7 @@ class ListaCompraOut(ORMModel):
 
 
 class SugestaoCompra(BaseModel):
-    """Produto abaixo do minimo, com a quantidade que recompoe o estoque."""
+    """Produto abaixo do mínimo, com a quantidade que recompoe o estoque."""
 
     produto_id: int
     produto: str

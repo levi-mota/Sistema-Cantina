@@ -1,8 +1,8 @@
-"""Compras: monta a lista de reposicao e gera o relatorio para o comprador.
+"""Compras: monta a lista de reposição e gera o relatório para o comprador.
 
-A lista nasce de uma sugestao (o que esta abaixo do minimo), e ajustada a mao e
-vira um texto pronto para mandar a quem vai comprar. Ela nao mexe no estoque --
-a entrada e feita no modulo de estoque quando a mercadoria chegar.
+A lista nasce de uma sugestão (o que está abaixo do mínimo), é ajustada à mão e
+vira um texto pronto para mandar a quem vai comprar. Ela não mexe no estoque --
+a entrada é feita no módulo de estoque quando a mercadoria chegar.
 """
 
 from datetime import datetime, timezone
@@ -67,7 +67,7 @@ def _montar_itens(db: DB, lista: models.ListaCompra, itens: list[schemas.ItemCom
         produto = db.get(models.Produto, entrada.produto_id)
         if not produto:
             raise HTTPException(
-                status.HTTP_404_NOT_FOUND, f"Produto {entrada.produto_id} nao encontrado"
+                status.HTTP_404_NOT_FOUND, f"Produto {entrada.produto_id} não encontrado"
             )
         lista.itens.append(
             models.ItemListaCompra(
@@ -81,7 +81,7 @@ def _montar_itens(db: DB, lista: models.ListaCompra, itens: list[schemas.ItemCom
 
 
 def _quantidade_legivel(valor: Decimal) -> str:
-    """3.000 -> "3"; 1.500 -> "1,5". O comprador le a lista, nao o banco."""
+    """3.000 -> "3"; 1.500 -> "1,5". O comprador le a lista, não o banco."""
     inteiro = valor.to_integral_value()
     if valor == inteiro:
         return str(int(inteiro))
@@ -92,7 +92,7 @@ def _exigir_editavel(lista: models.ListaCompra) -> None:
     if lista.status != models.StatusCompra.RASCUNHO:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"Lista {lista.status.value.lower()} nao pode mais ser alterada",
+            f"Lista {lista.status.value.lower()} não pode mais ser alterada",
         )
 
 
@@ -101,10 +101,10 @@ def _exigir_editavel(lista: models.ListaCompra) -> None:
 # --------------------------------------------------------------------------- #
 @router.get("/sugestao", response_model=list[schemas.SugestaoCompra])
 def sugestao(db: DB, _: CurrentUser, cobertura: int = 2):
-    """Produtos no minimo ou abaixo, com a quantidade que recompoe o estoque.
+    """Produtos no mínimo ou abaixo, com a quantidade que recompoe o estoque.
 
-    `cobertura` e quantas vezes o estoque minimo se quer ter apos a compra: com
-    minimo 10, estoque 4 e cobertura 2, a sugestao e comprar 16.
+    `cobertura` e quantas vezes o estoque mínimo se quer ter após a compra: com
+    mínimo 10, estoque 4 e cobertura 2, a sugestão é comprar 16.
     """
     produtos = db.scalars(
         select(models.Produto)
@@ -160,7 +160,7 @@ def listar(
 def obter(lista_id: int, db: DB, _: CurrentUser):
     lista = db.get(models.ListaCompra, lista_id)
     if not lista:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista não encontrada")
     return _lista_out(lista)
 
 
@@ -184,7 +184,7 @@ def criar(dados: schemas.ListaCompraIn, db: DB, usuario: CurrentUser):
 def atualizar(lista_id: int, dados: schemas.ListaCompraUpdate, db: DB, _: CurrentUser):
     lista = db.get(models.ListaCompra, lista_id)
     if not lista:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista não encontrada")
     _exigir_editavel(lista)
 
     campos = dados.model_dump(exclude_unset=True)
@@ -203,7 +203,7 @@ def atualizar(lista_id: int, dados: schemas.ListaCompraUpdate, db: DB, _: Curren
 def excluir(lista_id: int, db: DB, _: CurrentUser):
     lista = db.get(models.ListaCompra, lista_id)
     if not lista:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista não encontrada")
     db.delete(lista)
     db.commit()
 
@@ -213,9 +213,9 @@ def mudar_status(lista_id: int, novo: models.StatusCompra, db: DB, _: CurrentUse
     """Marca a lista como enviada ao comprador, concluida ou cancelada."""
     lista = db.get(models.ListaCompra, lista_id)
     if not lista:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista não encontrada")
     if not lista.itens and novo != models.StatusCompra.CANCELADA:
-        raise HTTPException(status.HTTP_409_CONFLICT, "A lista nao tem itens")
+        raise HTTPException(status.HTTP_409_CONFLICT, "A lista não tem itens")
 
     agora = datetime.now(timezone.utc)
     lista.status = novo
@@ -238,11 +238,11 @@ def relatorio(lista_id: int, db: DB, _: CurrentUser):
     """Texto pronto para mandar ao comprador (WhatsApp, e-mail, impressao).
 
     Os itens saem agrupados por fornecedor: quem compra costuma fazer uma
-    parada por fornecedor, nao uma por produto.
+    parada por fornecedor, não uma por produto.
     """
     lista = db.get(models.ListaCompra, lista_id)
     if not lista:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista não encontrada")
 
     saida = _lista_out(lista)
     por_fornecedor: dict[str, list[schemas.ItemCompraOut]] = {}

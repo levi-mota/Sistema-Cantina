@@ -32,7 +32,7 @@ Quantidade = Numeric(12, 3)
 class Perfil(StrEnum):
     """Dois niveis apenas.
 
-    ADMIN ve e faz tudo. USUARIO opera a frente de caixa: PDV e o proprio
+    ADMIN ve e faz tudo. USUARIO opera a frente de caixa: PDV e o próprio
     turno, mais a consulta de produtos que o PDV precisa.
     """
 
@@ -72,12 +72,12 @@ class FormaPagamento(StrEnum):
     FIADO = "FIADO"
 
 
-class TipoTitulo(StrEnum):
+class TipoTítulo(StrEnum):
     PAGAR = "PAGAR"
     RECEBER = "RECEBER"
 
 
-class StatusTitulo(StrEnum):
+class StatusTítulo(StrEnum):
     ABERTO = "ABERTO"
     PARCIAL = "PARCIAL"
     PAGO = "PAGO"
@@ -259,11 +259,11 @@ class VendaItem(Base):
 # --------------------------------------------------------------------------- #
 # Financeiro (contas a pagar / receber)
 # --------------------------------------------------------------------------- #
-class Titulo(Base):
-    __tablename__ = "titulos"
+class Título(Base):
+    __tablename__ = "títulos"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tipo: Mapped[TipoTitulo] = mapped_column(Enum(TipoTitulo), index=True)
+    tipo: Mapped[TipoTítulo] = mapped_column(Enum(TipoTítulo), index=True)
     descricao: Mapped[str] = mapped_column(String(200))
     categoria: Mapped[str | None] = mapped_column(String(80))
     parceiro_id: Mapped[int | None] = mapped_column(ForeignKey("parceiros.id"))
@@ -272,8 +272,8 @@ class Titulo(Base):
     valor_pago: Mapped[float] = mapped_column(Dinheiro, default=0)
     vencimento: Mapped[date] = mapped_column(Date, index=True)
     quitado_em: Mapped[date | None] = mapped_column(Date)
-    status: Mapped[StatusTitulo] = mapped_column(
-        Enum(StatusTitulo), default=StatusTitulo.ABERTO, index=True
+    status: Mapped[StatusTítulo] = mapped_column(
+        Enum(StatusTítulo), default=StatusTítulo.ABERTO, index=True
     )
     forma_pagamento: Mapped[FormaPagamento | None] = mapped_column(Enum(FormaPagamento))
     observacao: Mapped[str | None] = mapped_column(Text)
@@ -286,7 +286,7 @@ class Titulo(Base):
 # Caixa (controle do dinheiro fisico da gaveta, por turno)
 # --------------------------------------------------------------------------- #
 class Caixa(Base):
-    """Um ponto de venda fisico: cada caixa tem a sua propria gaveta."""
+    """Um ponto de venda fisico: cada caixa tem a sua própria gaveta."""
 
     __tablename__ = "caixas"
 

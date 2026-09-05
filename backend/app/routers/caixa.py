@@ -1,4 +1,4 @@
-"""Caixas (terminais) e sessoes: abertura, sangria/suprimento e fechamento.
+"""Caixas (terminais) e sessões: abertura, sangria/suprimento e fechamento.
 
 A cantina pode ter varios caixas. Cada um tem a sua gaveta, o seu turno e o seu
 fechamento; um operador opera um caixa por vez, e as vendas dele entram no turno
@@ -57,7 +57,7 @@ def listar_terminais(db: DB, usuario: CurrentUser, apenas_ativos: bool = True):
 def criar_terminal(dados: schemas.CaixaIn, db: DB, _: SomenteAdmin):
     nome = dados.nome.strip()
     if db.scalar(select(models.Caixa).where(models.Caixa.nome == nome)):
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Ja existe um caixa chamado '{nome}'")
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Já existe um caixa chamado '{nome}'")
     terminal = models.Caixa(**{**dados.model_dump(), "nome": nome})
     db.add(terminal)
     db.commit()
@@ -69,10 +69,10 @@ def criar_terminal(dados: schemas.CaixaIn, db: DB, _: SomenteAdmin):
 def atualizar_terminal(terminal_id: int, dados: schemas.CaixaIn, db: DB, _: SomenteAdmin):
     terminal = db.get(models.Caixa, terminal_id)
     if not terminal:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Caixa nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Caixa não encontrado")
     if not dados.ativo and servico.sessao_do_caixa(db, terminal_id):
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "Feche o turno deste caixa antes de desativa-lo"
+            status.HTTP_409_CONFLICT, "Feche o turno deste caixa antes de desativá-lo"
         )
     for campo, valor in dados.model_dump().items():
         setattr(terminal, campo, valor)
@@ -83,18 +83,18 @@ def atualizar_terminal(terminal_id: int, dados: schemas.CaixaIn, db: DB, _: Some
 
 @router.delete("/terminais/{terminal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def excluir_terminal(terminal_id: int, db: DB, _: SomenteAdmin):
-    """Remove o caixa. Se ele ja tem historico, e desativado em vez de apagado.
+    """Remove o caixa. Se ele já tem histórico, e desativado em vez de apagado.
 
-    Apagar um caixa com turnos levaria junto a conferencia daqueles turnos, que
+    Apagar um caixa com turnos levaria junto a conferência daqueles turnos, que
     e justamente o registro que o modulo existe para guardar.
     """
     terminal = db.get(models.Caixa, terminal_id)
     if not terminal:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Caixa nao encontrado")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Caixa não encontrado")
 
     if servico.sessao_do_caixa(db, terminal_id):
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "Feche o turno aberto deste caixa antes de remove-lo"
+            status.HTTP_409_CONFLICT, "Feche o turno aberto deste caixa antes de removê-lo"
         )
 
     tem_historico = db.scalar(
@@ -121,7 +121,7 @@ def atual(db: DB, usuario: CurrentUser):
 
 @router.get("/abertas", response_model=list[schemas.CaixaOut])
 def abertas(db: DB, _: CurrentUser):
-    """Todos os turnos abertos agora, para a gerencia acompanhar."""
+    """Todos os turnos abertos agora, para a gerência acompanhar."""
     return [servico.montar_saida(db, s) for s in servico.sessoes_abertas(db)]
 
 
@@ -153,7 +153,7 @@ def listar(
 def obter(sessao_id: int, db: DB, _: CurrentUser):
     sessao = db.get(models.CaixaSessao, sessao_id)
     if not sessao:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessao de caixa nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão de caixa não encontrada")
     return servico.montar_saida(db, sessao)
 
 
@@ -161,14 +161,14 @@ def obter(sessao_id: int, db: DB, _: CurrentUser):
 def abrir(dados: schemas.AberturaIn, db: DB, usuario: CurrentUser):
     terminal = db.get(models.Caixa, dados.caixa_id)
     if not terminal or not terminal.ativo:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Caixa nao encontrado ou inativo")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Caixa não encontrado ou inativo")
 
     ocupado = servico.sessao_do_caixa(db, terminal.id)
     if ocupado:
         operador = ocupado.usuario_abertura.nome if ocupado.usuario_abertura else "outro operador"
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"O caixa '{terminal.nome}' ja esta aberto por {operador}",
+            f"O caixa '{terminal.nome}' já está aberto por {operador}",
         )
 
     minha = servico.sessao_do_usuario(db, usuario.id)
@@ -176,7 +176,7 @@ def abrir(dados: schemas.AberturaIn, db: DB, usuario: CurrentUser):
         nome = minha.caixa.nome if minha.caixa else f"#{minha.caixa_id}"
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"Voce ja tem o caixa '{nome}' aberto. Feche-o antes de abrir outro.",
+            f"Você já tem o caixa '{nome}' aberto. Feche-o antes de abrir outro.",
         )
 
     sessao = models.CaixaSessao(
@@ -193,7 +193,7 @@ def abrir(dados: schemas.AberturaIn, db: DB, usuario: CurrentUser):
 
 @router.post("/movimentos", response_model=schemas.CaixaOut, status_code=status.HTTP_201_CREATED)
 def lancar_movimento(dados: schemas.MovimentoCaixaIn, db: DB, usuario: CurrentUser):
-    """Sangria (retirada) ou suprimento (reforco) na gaveta do proprio turno."""
+    """Sangria (retirada) ou suprimento (reforco) na gaveta do próprio turno."""
     sessao = servico.exigir_sessao_do_usuario(db, usuario.id)
 
     if dados.tipo == models.TipoMovimentoCaixa.SANGRIA:
@@ -201,7 +201,7 @@ def lancar_movimento(dados: schemas.MovimentoCaixaIn, db: DB, usuario: CurrentUs
         if Decimal(str(dados.valor)) > disponivel:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Sangria maior que o disponivel na gaveta (R$ {disponivel})",
+                f"Sangria maior que o disponível na gaveta (R$ {disponivel})",
             )
 
     db.add(
@@ -242,14 +242,14 @@ def fechar(dados: schemas.FechamentoIn, db: DB, usuario: CurrentUser):
 def fechar_forcado(sessao_id: int, dados: schemas.FechamentoIn, db: DB, gestor: SomenteAdmin):
     """Fecha o turno de outro operador (esqueceu de fechar, saiu do turno).
 
-    Restrito a gerencia: e uma conferencia feita por terceiro, entao fica
+    Restrito a gerencia: é uma conferência feita por terceiro, entao fica
     registrado quem fechou.
     """
     sessao = db.get(models.CaixaSessao, sessao_id)
     if not sessao:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessao de caixa nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão de caixa não encontrada")
     if sessao.status == models.StatusCaixa.FECHADA:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Este turno ja esta fechado")
+        raise HTTPException(status.HTTP_409_CONFLICT, "Este turno já está fechado")
 
     conferencia = servico.conferir(db, sessao)
     informado = Decimal(str(dados.valor_informado))
@@ -271,19 +271,19 @@ def reabrir(sessao_id: int, db: DB, _: SomenteAdmin):
     """Reabre um turno fechado por engano. Restrito a gerencia."""
     sessao = db.get(models.CaixaSessao, sessao_id)
     if not sessao:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessao de caixa nao encontrada")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão de caixa não encontrada")
     if sessao.status == models.StatusCaixa.ABERTA:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Esta sessao ja esta aberta")
+        raise HTTPException(status.HTTP_409_CONFLICT, "Esta sessão já está aberta")
 
     if servico.sessao_do_caixa(db, sessao.caixa_id):
         nome = sessao.caixa.nome if sessao.caixa else f"#{sessao.caixa_id}"
         raise HTTPException(
-            status.HTTP_409_CONFLICT, f"O caixa '{nome}' ja tem um turno aberto"
+            status.HTTP_409_CONFLICT, f"O caixa '{nome}' já tem um turno aberto"
         )
     if servico.sessao_do_usuario(db, sessao.usuario_abertura_id):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "O operador deste turno ja tem outro caixa aberto",
+            "O operador deste turno já tem outro caixa aberto",
         )
 
     sessao.status = models.StatusCaixa.ABERTA

@@ -14,9 +14,9 @@ def login(dados: schemas.LoginIn, db: DB):
         select(models.Usuario).where(models.Usuario.usuario == dados.usuario.lower().strip())
     )
     if not usuario or not verify_password(dados.senha, usuario.senha_hash):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuario ou senha invalidos")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuário ou senha inválidos")
     if not usuario.ativo:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Usuario inativo")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Usuário inativo")
 
     token = create_access_token(str(usuario.id), {"perfil": usuario.perfil.value})
     return schemas.TokenOut(
