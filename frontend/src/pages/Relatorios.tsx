@@ -171,10 +171,7 @@ export default function Relatorios() {
 
   return (
     <>
-      <TituloPagina
-        titulo="Relatórios"
-        descricao="Resultado, formas de pagamento, produtos campeões, curva ABC e quebras de caixa"
-      />
+      <TituloPagina titulo="Relatórios" />
 
       <Cartao className="mb-4 p-4">
         <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
@@ -306,12 +303,7 @@ export default function Relatorios() {
 
             <Cartao className="overflow-hidden">
               <div className="flex items-center justify-between border-b border-carvao-100 px-4 py-3">
-                <div>
-                  <h2 className="font-bold text-carvao-900">Curva ABC</h2>
-                  <p className="text-xs text-carvao-500">
-                    A = 80% do faturamento · B = ate 95% · C = cauda
-                  </p>
-                </div>
+                <h2 className="font-bold text-carvao-900">Curva ABC</h2>
                 <Botao
                   variante="secundario"
                   icone={<Download className="h-4 w-4" />}
@@ -351,13 +343,7 @@ export default function Relatorios() {
           {pagamentos && pagamentos.formas.length > 0 && (
             <Cartao className="mt-4 overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-carvao-100 px-4 py-3">
-                <div>
-                  <h2 className="font-bold text-carvao-900">Recebimento por forma de pagamento</h2>
-                  <p className="text-xs text-carvao-500">
-                    Quanto entrou em cada forma. O dinheiro é o que deve bater com a gaveta; o
-                    PIX, com o extrato do banco.
-                  </p>
-                </div>
+                <h2 className="font-bold text-carvao-900">Recebimento por forma de pagamento</h2>
                 <Botao
                   variante="secundario"
                   icone={<Download className="h-4 w-4" />}
@@ -469,13 +455,7 @@ export default function Relatorios() {
           {/* Quebras de caixa por operador */}
           <Cartao className="mt-4 overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-carvao-100 px-4 py-3">
-              <div>
-                <h2 className="font-bold text-carvao-900">Quebras de caixa por operador</h2>
-                <p className="text-xs text-carvao-500">
-                  Diferença entre o dinheiro contado e o esperado nos turnos fechados. A quebra é
-                  de quem operou a gaveta, mesmo que outra pessoa tenha fechado o turno.
-                </p>
-              </div>
+              <h2 className="font-bold text-carvao-900">Quebras de caixa por operador</h2>
               <Botao
                 variante="secundario"
                 icone={<Download className="h-4 w-4" />}
