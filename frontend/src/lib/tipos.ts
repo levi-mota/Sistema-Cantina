@@ -106,8 +106,10 @@ export interface Venda {
   id: number;
   cliente_id?: number | null;
   cliente_nome?: string | null;
+  documento_cliente?: string | null;
   usuario_nome?: string | null;
   caixa_sessao_id?: number | null;
+  caixa_nome?: string | null;
   status: StatusVenda;
   forma_pagamento: FormaPagamento;
   subtotal: string;
@@ -209,8 +211,30 @@ export interface Conferencia {
   total_vendas: string;
 }
 
+export interface CaixaTerminal {
+  id: number;
+  nome: string;
+  descricao?: string | null;
+  ativo: boolean;
+  sessao_id?: number | null;
+  sessao_operador?: string | null;
+  sessao_aberta_em?: string | null;
+  minha_sessao: boolean;
+}
+
+export interface Identificacao {
+  documento: string;
+  tipo: "CPF" | "CNPJ";
+  cadastrado: boolean;
+  parceiro_id?: number | null;
+  nome?: string | null;
+  limite_credito?: string | null;
+}
+
 export interface CaixaSessao {
   id: number;
+  caixa_id: number;
+  caixa_nome?: string | null;
   status: StatusCaixa;
   usuario_abertura_id: number;
   usuario_abertura_nome?: string | null;

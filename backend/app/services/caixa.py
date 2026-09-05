@@ -1,6 +1,10 @@
 """Regras da sessao de caixa.
 
-A conferencia responde a uma unica pergunta: quanto deveria estar na gaveta
+A cantina pode ter varios caixas (terminais), cada um com a sua propria gaveta.
+Um caixa comporta no maximo um turno aberto por vez, e um operador comporta no
+maximo um turno aberto por vez -- e por esse turno que as vendas dele entram.
+
+A conferencia responde a uma unica pergunta: quanto deveria estar nesta gaveta
 agora? A conta e sempre a mesma:
 
     abertura + vendas em dinheiro + suprimentos - sangrias
@@ -17,21 +21,44 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 
 
-def sessao_aberta(db: Session) -> models.CaixaSessao | None:
-    """Retorna a sessao em aberto, se houver. Existe no maximo uma por vez."""
-    return db.scalar(
-        select(models.CaixaSessao)
-        .where(models.CaixaSessao.status == models.StatusCaixa.ABERTA)
-        .order_by(models.CaixaSessao.id.desc())
+def sessoes_abertas(db: Session) -> list[models.CaixaSessao]:
+    """Todos os turnos abertos no momento, um por caixa."""
+    return list(
+        db.scalars(
+            select(models.CaixaSessao)
+            .where(models.CaixaSessao.status == models.StatusCaixa.ABERTA)
+            .order_by(models.CaixaSessao.caixa_id)
+        ).all()
     )
 
 
-def exigir_sessao_aberta(db: Session) -> models.CaixaSessao:
-    sessao = sessao_aberta(db)
+def sessao_do_caixa(db: Session, caixa_id: int) -> models.CaixaSessao | None:
+    """Turno aberto de um caixa especifico, se houver."""
+    return db.scalar(
+        select(models.CaixaSessao).where(
+            models.CaixaSessao.caixa_id == caixa_id,
+            models.CaixaSessao.status == models.StatusCaixa.ABERTA,
+        )
+    )
+
+
+def sessao_do_usuario(db: Session, usuario_id: int) -> models.CaixaSessao | None:
+    """Turno que este operador tem aberto, se houver."""
+    return db.scalar(
+        select(models.CaixaSessao).where(
+            models.CaixaSessao.usuario_abertura_id == usuario_id,
+            models.CaixaSessao.status == models.StatusCaixa.ABERTA,
+        )
+    )
+
+
+def exigir_sessao_do_usuario(db: Session, usuario_id: int) -> models.CaixaSessao:
+    """Toda venda pertence ao turno do operador que a registrou."""
+    sessao = sessao_do_usuario(db, usuario_id)
     if not sessao:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "Nenhum caixa aberto. Abra o caixa antes de registrar vendas em dinheiro.",
+            "Voce nao tem um caixa aberto. Abra o seu caixa para registrar vendas.",
         )
     return sessao
 
@@ -89,6 +116,8 @@ def montar_saida(
 ) -> schemas.CaixaOut:
     saida = schemas.CaixaOut(
         id=sessao.id,
+        caixa_id=sessao.caixa_id,
+        caixa_nome=sessao.caixa.nome if sessao.caixa else None,
         status=sessao.status,
         usuario_abertura_id=sessao.usuario_abertura_id,
         usuario_abertura_nome=sessao.usuario_abertura.nome if sessao.usuario_abertura else None,

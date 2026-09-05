@@ -1,9 +1,14 @@
 """Ponto de venda (PDV).
 
+Toda venda pertence ao turno de caixa do operador que a registrou -- sem caixa
+aberto nao ha venda. O consumidor e "diverso" por padrao; digitar um CPF/CNPJ
+valido identifica a venda e, se o documento estiver cadastrado, vincula o
+cliente.
+
 Uma venda finalizada dispara tres integracoes:
   * baixa de estoque (um movimento de SAIDA por item);
   * financeiro -> venda no fiado gera uma conta a receber do cliente;
-  * caixa -> a venda se vincula ao turno aberto, para conferir a gaveta.
+  * caixa -> a venda entra na conferencia da gaveta daquele turno.
 """
 
 from datetime import date, datetime, time, timedelta, timezone
@@ -13,9 +18,9 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app import models, schemas
-from app.core.config import settings
 from app.core.deps import DB, CurrentUser, Gestao
 from app.services import caixa as servico_caixa
+from app.services import documento as servico_documento
 from app.services import estoque as servico_estoque
 
 router = APIRouter(prefix="/api/vendas", tags=["pdv"])
@@ -26,9 +31,11 @@ def _venda_out(v: models.Venda) -> schemas.VendaOut:
         id=v.id,
         cliente_id=v.cliente_id,
         cliente_nome=v.cliente.nome if v.cliente else None,
+        documento_cliente=v.documento_cliente,
         usuario_id=v.usuario_id,
         usuario_nome=v.usuario.nome if v.usuario else None,
         caixa_sessao_id=v.caixa_sessao_id,
+        caixa_nome=v.caixa_sessao.caixa.nome if v.caixa_sessao and v.caixa_sessao.caixa else None,
         status=v.status,
         forma_pagamento=v.forma_pagamento,
         subtotal=Decimal(str(v.subtotal)),
@@ -85,17 +92,28 @@ def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
     if dados.cliente_id and not cliente:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Cliente nao encontrado")
 
-    # Dinheiro passa pela gaveta, entao precisa de um turno aberto para ser
-    # conferido no fechamento. As demais formas apenas se vinculam se houver.
-    if dados.forma_pagamento == models.FormaPagamento.DINHEIRO and settings.exigir_caixa_aberto:
-        sessao = servico_caixa.exigir_sessao_aberta(db)
-    else:
-        sessao = servico_caixa.sessao_aberta(db)
+    # Consumidor diverso e o padrao: so identificamos se o documento vier.
+    try:
+        documento = servico_documento.validar(dados.documento_cliente)
+    except ValueError as erro:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(erro)) from erro
+
+    # Documento cadastrado vincula o cliente automaticamente.
+    if documento and not cliente:
+        cliente = db.scalar(
+            select(models.Parceiro).where(models.Parceiro.documento == documento)
+        )
+    # Cliente escolhido sem documento digitado herda o documento do cadastro.
+    if cliente and not documento:
+        documento = cliente.documento
+
+    sessao = servico_caixa.exigir_sessao_do_usuario(db, usuario.id)
 
     venda = models.Venda(
-        cliente_id=dados.cliente_id,
+        cliente_id=cliente.id if cliente else None,
+        documento_cliente=documento,
         usuario_id=usuario.id,
-        caixa_sessao_id=sessao.id if sessao else None,
+        caixa_sessao_id=sessao.id,
         forma_pagamento=dados.forma_pagamento,
         observacao=dados.observacao,
         status=models.StatusVenda.FINALIZADA,

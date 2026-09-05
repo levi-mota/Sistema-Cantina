@@ -5,7 +5,7 @@ from sqlalchemy import or_, select
 
 from app import models, schemas
 from app.core.deps import DB, CurrentUser
-from app.services.integracoes import so_digitos
+from app.services import documento as servico_documento
 
 router = APIRouter(prefix="/api/parceiros", tags=["parceiros"])
 
@@ -42,10 +42,39 @@ def listar(
     return db.scalars(stmt.order_by(models.Parceiro.nome).limit(limite)).all()
 
 
+@router.get("/identificar/{documento}", response_model=schemas.IdentificacaoOut)
+def identificar(documento: str, db: DB, _: CurrentUser):
+    """Resolve um CPF/CNPJ digitado no PDV.
+
+    Valida os digitos verificadores e diz se o documento ja tem cadastro. Uma
+    venda pode ser identificada mesmo sem cadastro -- e o caso comum de "CPF na
+    nota" -- entao `cadastrado: false` nao e erro.
+    """
+    try:
+        limpo = servico_documento.validar(documento)
+    except ValueError as erro:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(erro)) from erro
+    if not limpo:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Informe um documento")
+
+    parceiro = db.scalar(select(models.Parceiro).where(models.Parceiro.documento == limpo))
+    return schemas.IdentificacaoOut(
+        documento=limpo,
+        tipo="CPF" if len(limpo) == 11 else "CNPJ",
+        cadastrado=parceiro is not None,
+        parceiro_id=parceiro.id if parceiro else None,
+        nome=parceiro.nome if parceiro else None,
+        limite_credito=parceiro.limite_credito if parceiro else None,
+    )
+
+
 @router.post("", response_model=schemas.ParceiroOut, status_code=status.HTTP_201_CREATED)
 def criar(dados: schemas.ParceiroCreate, db: DB, _: CurrentUser):
     payload = dados.model_dump()
-    payload["documento"] = so_digitos(payload.get("documento") or "") or None
+    try:
+        payload["documento"] = servico_documento.validar(payload.get("documento"))
+    except ValueError as erro:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(erro)) from erro
 
     if payload["documento"]:
         existente = db.scalar(
@@ -80,7 +109,10 @@ def atualizar(parceiro_id: int, dados: schemas.ParceiroUpdate, db: DB, _: Curren
 
     campos = dados.model_dump(exclude_unset=True)
     if "documento" in campos:
-        campos["documento"] = so_digitos(campos["documento"] or "") or None
+        try:
+            campos["documento"] = servico_documento.validar(campos["documento"])
+        except ValueError as erro:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(erro)) from erro
     for campo, valor in campos.items():
         setattr(parceiro, campo, valor)
     db.commit()

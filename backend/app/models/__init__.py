@@ -220,6 +220,9 @@ class Venda(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     cliente_id: Mapped[int | None] = mapped_column(ForeignKey("parceiros.id"))
+    # CPF/CNPJ informado na venda. Independe de cadastro: o padrao e consumidor
+    # diverso, e digitar o documento identifica a venda mesmo sem parceiro.
+    documento_cliente: Mapped[str | None] = mapped_column(String(14), index=True)
     usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
     caixa_sessao_id: Mapped[int | None] = mapped_column(
         ForeignKey("caixa_sessoes.id"), index=True
@@ -240,6 +243,7 @@ class Venda(Base):
 
     cliente: Mapped[Parceiro | None] = relationship(lazy="joined")
     usuario: Mapped[Usuario | None] = relationship(lazy="joined")
+    caixa_sessao: Mapped["CaixaSessao | None"] = relationship(lazy="joined")
     itens: Mapped[list["VendaItem"]] = relationship(
         back_populates="venda", cascade="all, delete-orphan", lazy="selectin"
     )
@@ -291,10 +295,23 @@ class Titulo(Base):
 # --------------------------------------------------------------------------- #
 # Caixa (controle do dinheiro fisico da gaveta, por turno)
 # --------------------------------------------------------------------------- #
+class Caixa(Base):
+    """Um ponto de venda fisico: cada caixa tem a sua propria gaveta."""
+
+    __tablename__ = "caixas"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nome: Mapped[str] = mapped_column(String(60), unique=True)
+    descricao: Mapped[str | None] = mapped_column(String(200))
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+
 class CaixaSessao(Base):
     __tablename__ = "caixa_sessoes"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    caixa_id: Mapped[int] = mapped_column(ForeignKey("caixas.id"), index=True)
     status: Mapped[StatusCaixa] = mapped_column(
         Enum(StatusCaixa), default=StatusCaixa.ABERTA, index=True
     )
@@ -312,6 +329,7 @@ class CaixaSessao(Base):
     observacao_abertura: Mapped[str | None] = mapped_column(Text)
     observacao_fechamento: Mapped[str | None] = mapped_column(Text)
 
+    caixa: Mapped[Caixa] = relationship(lazy="joined")
     usuario_abertura: Mapped[Usuario] = relationship(
         foreign_keys=[usuario_abertura_id], lazy="joined"
     )

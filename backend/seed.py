@@ -79,7 +79,7 @@ def executar() -> None:
             tipo_pessoa=models.TipoPessoa.JURIDICA,
             nome="Distribuidora Bom Sabor LTDA",
             nome_fantasia="Bom Sabor",
-            documento="12345678000199",
+            documento="12345678000195",
             telefone="1133224455",
             cidade="Sao Paulo",
             uf="SP",
@@ -89,7 +89,7 @@ def executar() -> None:
             tipo_pessoa=models.TipoPessoa.JURIDICA,
             nome="Bebidas Central S.A.",
             nome_fantasia="Central Bebidas",
-            documento="98765432000188",
+            documento="98765432000198",
             telefone="1144556677",
             cidade="Guarulhos",
             uf="SP",
@@ -97,7 +97,7 @@ def executar() -> None:
         models.Parceiro(
             tipo=models.TipoParceiro.CLIENTE,
             nome="Joao Pereira",
-            documento="12345678901",
+            documento="12345678909",
             telefone="11988887777",
             limite_credito=Decimal("150.00"),
         ),
@@ -112,7 +112,7 @@ def executar() -> None:
             tipo=models.TipoParceiro.CLIENTE,
             nome="Escola Municipal Vila Nova",
             tipo_pessoa=models.TipoPessoa.JURIDICA,
-            documento="11222333000144",
+            documento="11222333000181",
             limite_credito=Decimal("2000.00"),
         ),
     ]
@@ -154,8 +154,14 @@ def executar() -> None:
     # --- Sessoes de caixa -------------------------------------------------
     # Um turno de ontem ja fechado (com uma pequena quebra) e o turno de hoje
     # aberto, para o PDV funcionar assim que a demo subir.
+    caixa_1 = models.Caixa(nome="Caixa 1", descricao="Balcao principal")
+    caixa_2 = models.Caixa(nome="Caixa 2", descricao="Balcao do patio (pico do intervalo)")
+    db.add_all([caixa_1, caixa_2])
+    db.flush()
+
     ontem = datetime.now(timezone.utc) - timedelta(days=1)
     turno_ontem = models.CaixaSessao(
+        caixa_id=caixa_1.id,
         status=models.StatusCaixa.FECHADA,
         usuario_abertura_id=operadores[0].id,
         usuario_fechamento_id=operadores[0].id,
@@ -165,6 +171,7 @@ def executar() -> None:
         observacao_abertura="Troco inicial em moedas e notas de 2 e 5",
     )
     turno_hoje = models.CaixaSessao(
+        caixa_id=caixa_1.id,
         status=models.StatusCaixa.ABERTA,
         usuario_abertura_id=operadores[0].id,
         valor_abertura=Decimal("100.00"),
@@ -194,13 +201,22 @@ def executar() -> None:
     ]
     pesos = [30, 30, 20, 15, 5]
 
+    # A maioria e consumidor diverso; uma parcela informa CPF na nota.
+    documentos_avulsos = ["45678912364", "12345678909", "98765432100"]
+
     for dias_atras in range(29, -1, -1):
         momento_base = datetime.now(timezone.utc) - timedelta(days=dias_atras)
         for _ in range(random.randint(3, 9)):
             forma = random.choices(formas, weights=pesos)[0]
             cliente = random.choice(clientes) if forma == models.FormaPagamento.FIADO else None
+            documento = (
+                cliente.documento
+                if cliente
+                else (random.choice(documentos_avulsos) if random.random() < 0.25 else None)
+            )
             venda = models.Venda(
                 cliente_id=cliente.id if cliente else None,
+                documento_cliente=documento,
                 usuario_id=random.choice(operadores).id,
                 caixa_sessao_id=(
                     turno_hoje.id

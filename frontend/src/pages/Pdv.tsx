@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { LockKeyhole, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import { BadgeCheck, LockKeyhole, Minus, Plus, Search, ShoppingCart, Trash2, UserRound } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, hojeIso } from "../lib/format";
-import type { CaixaSessao, FormaPagamento, Parceiro, Produto, Venda } from "../lib/tipos";
+import { brl, documentoFormatado, hojeIso } from "../lib/format";
+import type {
+  CaixaSessao,
+  FormaPagamento,
+  Identificacao,
+  Parceiro,
+  Produto,
+  Venda,
+} from "../lib/tipos";
 import { Botao, Campo, Cartao, Carregando, Erro, Modal, Selo, Seletor, Vazio } from "../components/ui";
 
 interface ItemCarrinho {
@@ -32,6 +39,10 @@ export default function Pdv() {
   const [pagamentoAberto, setPagamentoAberto] = useState(false);
   const [forma, setForma] = useState<FormaPagamento>("DINHEIRO");
   const [clienteId, setClienteId] = useState("");
+  const [documento, setDocumento] = useState("");
+  const [identificacao, setIdentificacao] = useState<Identificacao | null>(null);
+  const [erroDocumento, setErroDocumento] = useState<string | null>(null);
+  const [identificando, setIdentificando] = useState(false);
   const [desconto, setDesconto] = useState("0");
   const [recebido, setRecebido] = useState("");
   const [vencimento, setVencimento] = useState(hojeIso(30));
@@ -105,7 +116,31 @@ export default function Pdv() {
     setDesconto("0");
     setRecebido("");
     setClienteId("");
+    setDocumento("");
+    setIdentificacao(null);
+    setErroDocumento(null);
     setForma("DINHEIRO");
+  }
+
+  /** Resolve o CPF/CNPJ digitado: valida e diz se ja existe cadastro. */
+  async function identificarConsumidor() {
+    const limpo = documento.replace(/\D/g, "");
+    setIdentificacao(null);
+    setErroDocumento(null);
+    if (!limpo) return;
+
+    setIdentificando(true);
+    try {
+      const { data } = await api.get<Identificacao>(`/parceiros/identificar/${limpo}`);
+      setIdentificacao(data);
+      // Documento ja cadastrado vincula o cliente (e habilita o fiado).
+      setClienteId(data.parceiro_id ? String(data.parceiro_id) : "");
+    } catch (e) {
+      setErroDocumento(mensagemErro(e, "Documento invalido"));
+      setClienteId("");
+    } finally {
+      setIdentificando(false);
+    }
   }
 
   /** Enter no campo de busca adiciona o unico produto correspondente (leitor de codigo). */
@@ -122,6 +157,7 @@ export default function Pdv() {
     try {
       const { data } = await api.post<Venda>("/vendas", {
         cliente_id: clienteId ? Number(clienteId) : null,
+        documento_cliente: documento.replace(/\D/g, "") || null,
         forma_pagamento: forma,
         desconto: Number(desconto || 0),
         valor_recebido: forma === "DINHEIRO" ? Number(recebido || 0) : 0,
@@ -160,12 +196,17 @@ export default function Pdv() {
           </div>
         </div>
 
-        {!caixa && (
+        {caixa ? (
+          <div className="mb-4 flex items-center gap-2 text-sm text-carvao-500">
+            <BadgeCheck className="h-4 w-4 text-emerald-600" />
+            Vendendo em <strong className="text-carvao-700">{caixa.caixa_nome}</strong> · turno #
+            {caixa.id}
+          </div>
+        ) : (
           <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
             <LockKeyhole className="h-4 w-4 shrink-0" />
             <span className="flex-1">
-              Caixa fechado: vendas em dinheiro estao bloqueadas. PIX, cartao e fiado seguem
-              liberados.
+              Voce nao tem caixa aberto. Abra o seu caixa para registrar vendas.
             </span>
             <Link
               to="/caixa"
@@ -280,13 +321,13 @@ export default function Pdv() {
           </div>
           <Botao
             className="mt-3 w-full py-3 text-base"
-            disabled={carrinho.length === 0}
+            disabled={carrinho.length === 0 || !caixa}
             onClick={() => {
               setRecebido("");
               setPagamentoAberto(true);
             }}
           >
-            Finalizar venda
+            {caixa ? "Finalizar venda" : "Abra o caixa para vender"}
           </Botao>
         </div>
       </Cartao>
@@ -307,26 +348,84 @@ export default function Pdv() {
             opcoes={FORMAS.map((f) => ({ valor: f.valor, texto: f.texto }))}
           />
 
-          {(forma === "FIADO" || clienteId) && (
+          {/* Consumidor diverso e o padrao; digitar CPF/CNPJ identifica a venda. */}
+          <div>
+            <span className="rotulo">CPF / CNPJ na nota (opcional)</span>
+            <div className="flex gap-2">
+              <input
+                value={documento}
+                onChange={(e) => {
+                  setDocumento(e.target.value);
+                  setIdentificacao(null);
+                  setErroDocumento(null);
+                  setClienteId("");
+                }}
+                onBlur={identificarConsumidor}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void identificarConsumidor();
+                  }
+                }}
+                inputMode="numeric"
+                placeholder="Deixe vazio para consumidor diverso"
+                className="campo"
+              />
+              <Botao
+                type="button"
+                variante="secundario"
+                carregando={identificando}
+                onClick={identificarConsumidor}
+                className="shrink-0"
+              >
+                Identificar
+              </Botao>
+            </div>
+
+            {erroDocumento && (
+              <p className="mt-1 text-xs font-medium text-red-600">{erroDocumento}</p>
+            )}
+
+            {identificacao &&
+              (identificacao.cadastrado ? (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-700">
+                  <BadgeCheck className="h-3.5 w-3.5" />
+                  {identificacao.nome}
+                  {Number(identificacao.limite_credito) > 0 &&
+                    ` · limite ${brl(identificacao.limite_credito)}`}
+                </p>
+              ) : (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-carvao-500">
+                  <UserRound className="h-3.5 w-3.5" />
+                  {identificacao.tipo} valido, sem cadastro. A venda sai identificada pelo
+                  documento.
+                </p>
+              ))}
+
+            {!documento && !identificacao && (
+              <p className="mt-1.5 text-xs text-carvao-400">Consumidor diverso</p>
+            )}
+          </div>
+
+          {/* O fiado precisa de cadastro: e ele que tem limite de credito. */}
+          {forma === "FIADO" && (
             <Seletor
-              rotulo={forma === "FIADO" ? "Cliente (obrigatorio)" : "Cliente"}
+              rotulo="Cliente do fiado (obrigatorio)"
               value={clienteId}
-              onChange={(e) => setClienteId(e.target.value)}
-              vazio="Consumidor nao identificado"
+              onChange={(e) => {
+                setClienteId(e.target.value);
+                const escolhido = clientes.find((c) => String(c.id) === e.target.value);
+                if (escolhido?.documento) {
+                  setDocumento(escolhido.documento);
+                  setIdentificacao(null);
+                  setErroDocumento(null);
+                }
+              }}
+              vazio="Selecione o cliente"
               opcoes={clientes.map((c) => ({
                 valor: c.id,
                 texto: `${c.nome}${Number(c.limite_credito) > 0 ? ` · limite ${brl(c.limite_credito)}` : ""}`,
               }))}
-            />
-          )}
-
-          {forma !== "FIADO" && !clienteId && (
-            <Seletor
-              rotulo="Cliente (opcional)"
-              value={clienteId}
-              onChange={(e) => setClienteId(e.target.value)}
-              vazio="Consumidor nao identificado"
-              opcoes={clientes.map((c) => ({ valor: c.id, texto: c.nome }))}
             />
           )}
 
@@ -360,9 +459,9 @@ export default function Pdv() {
             />
           )}
 
-          {forma === "DINHEIRO" && !caixa && (
+          {!caixa && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Abra o caixa para receber em dinheiro, ou escolha outra forma de pagamento.
+              Abra o seu caixa para registrar vendas.
             </div>
           )}
 
@@ -399,7 +498,7 @@ export default function Pdv() {
               variante="sucesso"
               className="flex-1"
               carregando={finalizando}
-              disabled={(forma === "FIADO" && !clienteId) || (forma === "DINHEIRO" && !caixa)}
+              disabled={!caixa || (forma === "FIADO" && !clienteId) || !!erroDocumento}
               onClick={finalizar}
             >
               Confirmar
@@ -435,6 +534,15 @@ export default function Pdv() {
               <div className="flex justify-between text-carvao-600">
                 <span>Pagamento</span>
                 <span>{comprovante.forma_pagamento}</span>
+              </div>
+              <div className="flex justify-between text-carvao-600">
+                <span>Consumidor</span>
+                <span>
+                  {comprovante.cliente_nome ??
+                    (comprovante.documento_cliente
+                      ? documentoFormatado(comprovante.documento_cliente)
+                      : "Diverso")}
+                </span>
               </div>
               {Number(comprovante.troco) > 0 && (
                 <div className="flex justify-between font-semibold text-emerald-700">

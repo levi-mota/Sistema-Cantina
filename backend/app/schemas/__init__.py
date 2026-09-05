@@ -215,6 +215,8 @@ class VendaItemIn(BaseModel):
 
 class VendaIn(BaseModel):
     cliente_id: int | None = None
+    # Padrao da venda e consumidor diverso; informar o documento identifica.
+    documento_cliente: str | None = None
     forma_pagamento: models.FormaPagamento = models.FormaPagamento.DINHEIRO
     desconto: Decimal = Decimal("0")
     valor_recebido: Decimal = Decimal("0")
@@ -237,9 +239,11 @@ class VendaOut(ORMModel):
     id: int
     cliente_id: int | None = None
     cliente_nome: str | None = None
+    documento_cliente: str | None = None
     usuario_id: int | None = None
     usuario_nome: str | None = None
     caixa_sessao_id: int | None = None
+    caixa_nome: str | None = None
     status: models.StatusVenda
     forma_pagamento: models.FormaPagamento
     subtotal: Decimal
@@ -300,6 +304,17 @@ class TituloOut(ORMModel, TituloBase):
     criado_em: datetime
 
 
+class IdentificacaoOut(BaseModel):
+    """Resultado da busca por CPF/CNPJ no momento da venda."""
+
+    documento: str
+    tipo: str  # "CPF" ou "CNPJ"
+    cadastrado: bool
+    parceiro_id: int | None = None
+    nome: str | None = None
+    limite_credito: Decimal | None = None
+
+
 # --------------------------------------------------------------------------- #
 # Integracoes
 # --------------------------------------------------------------------------- #
@@ -333,7 +348,26 @@ class EmpresaOut(BaseModel):
 # --------------------------------------------------------------------------- #
 # Caixa
 # --------------------------------------------------------------------------- #
+class CaixaIn(BaseModel):
+    nome: str = Field(min_length=1, max_length=60)
+    descricao: str | None = None
+    ativo: bool = True
+
+
+class CaixaTerminalOut(ORMModel):
+    id: int
+    nome: str
+    descricao: str | None = None
+    ativo: bool
+    # Preenchidos quando existe um turno aberto neste caixa.
+    sessao_id: int | None = None
+    sessao_operador: str | None = None
+    sessao_aberta_em: datetime | None = None
+    minha_sessao: bool = False
+
+
 class AberturaIn(BaseModel):
+    caixa_id: int
     valor_abertura: Decimal = Field(default=Decimal("0"), ge=0)
     observacao: str | None = None
 
@@ -375,6 +409,8 @@ class ConferenciaOut(BaseModel):
 
 class CaixaOut(ORMModel):
     id: int
+    caixa_id: int
+    caixa_nome: str | None = None
     status: models.StatusCaixa
     usuario_abertura_id: int
     usuario_abertura_nome: str | None = None
