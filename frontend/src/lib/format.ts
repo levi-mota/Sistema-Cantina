@@ -1,0 +1,67 @@
+const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const numero = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 });
+
+export function brl(valor: string | number | null | undefined): string {
+  return moeda.format(Number(valor ?? 0));
+}
+
+export function qtd(valor: string | number | null | undefined): string {
+  return numero.format(Number(valor ?? 0));
+}
+
+export function porcentagem(valor: string | number | null | undefined, casas = 1): string {
+  return `${Number(valor ?? 0).toFixed(casas)}%`;
+}
+
+/** Datas ISO vem do backend em UTC, sem sufixo Z; normalizamos antes de exibir. */
+function paraData(iso: string): Date {
+  const temFuso = /Z|[+-]\d{2}:\d{2}$/.test(iso);
+  return new Date(temFuso || !iso.includes("T") ? iso : `${iso}Z`);
+}
+
+export function dataHora(iso?: string | null): string {
+  if (!iso) return "-";
+  return paraData(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+export function hora(iso?: string | null): string {
+  if (!iso) return "-";
+  return paraData(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Datas puras (YYYY-MM-DD) nao devem sofrer conversao de fuso. */
+export function dataBr(iso?: string | null): string {
+  if (!iso) return "-";
+  const [ano, mes, dia] = iso.slice(0, 10).split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+export function hojeIso(deslocamentoDias = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + deslocamentoDias);
+  return d.toISOString().slice(0, 10);
+}
+
+export function primeiroDiaDoMes(): string {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1).toLocaleDateString("sv-SE");
+}
+
+export function documentoFormatado(doc?: string | null): string {
+  const d = (doc ?? "").replace(/\D/g, "");
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  return doc ?? "-";
+}
+
+export function telefoneFormatado(tel?: string | null): string {
+  const d = (tel ?? "").replace(/\D/g, "");
+  if (d.length === 11) return d.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  if (d.length === 10) return d.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+  return tel ?? "-";
+}
+
+export function cepFormatado(cep?: string | null): string {
+  const d = (cep ?? "").replace(/\D/g, "");
+  return d.length === 8 ? d.replace(/(\d{5})(\d{3})/, "$1-$2") : (cep ?? "-");
+}

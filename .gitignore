@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Banco de dados local
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Ambiente
+.env
+.env.*
+!.env.example
+
+# Editores e SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
