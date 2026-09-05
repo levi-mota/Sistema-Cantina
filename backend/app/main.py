@@ -6,7 +6,8 @@ from sqlalchemy import select
 
 from app import models
 from app.core.config import settings
-from app.core.database import Base, SessionLocal, engine
+from app.core import migracoes
+from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.routers import (
     auth,
@@ -19,45 +20,6 @@ from app.routers import (
     relatorios,
     vendas,
 )
-
-
-def migrar_colunas_novas() -> None:
-    """Adiciona colunas novas a bancos criados por versoes anteriores.
-
-    `create_all` cria tabelas que faltam, mas nao altera as existentes; para um
-    projeto com SQLite este empurrao simples evita ter que apagar o banco.
-    """
-    with engine.begin() as conexao:
-
-        def colunas(tabela: str) -> set[str]:
-            linhas = conexao.exec_driver_sql(f"PRAGMA table_info({tabela})").fetchall()
-            return {linha[1] for linha in linhas}
-
-        vendas = colunas("vendas")
-        if vendas and "caixa_sessao_id" not in vendas:
-            conexao.exec_driver_sql("ALTER TABLE vendas ADD COLUMN caixa_sessao_id INTEGER")
-            print("[setup] Coluna vendas.caixa_sessao_id adicionada")
-        if vendas and "documento_cliente" not in vendas:
-            conexao.exec_driver_sql("ALTER TABLE vendas ADD COLUMN documento_cliente VARCHAR(14)")
-            print("[setup] Coluna vendas.documento_cliente adicionada")
-
-        # Sessoes passaram a pertencer a um caixa. Turnos antigos vao para o
-        # primeiro caixa cadastrado, criado aqui se ainda nao existir.
-        sessoes = colunas("caixa_sessoes")
-        if sessoes and "caixa_id" not in sessoes:
-            existe = conexao.exec_driver_sql("SELECT id FROM caixas ORDER BY id LIMIT 1").fetchone()
-            if existe:
-                padrao = existe[0]
-            else:
-                conexao.exec_driver_sql(
-                    "INSERT INTO caixas (nome, descricao, ativo, criado_em)"
-                    " VALUES ('Caixa 1', 'Caixa principal', 1, CURRENT_TIMESTAMP)"
-                )
-                padrao = conexao.exec_driver_sql("SELECT last_insert_rowid()").fetchone()[0]
-            conexao.exec_driver_sql(
-                f"ALTER TABLE caixa_sessoes ADD COLUMN caixa_id INTEGER NOT NULL DEFAULT {padrao}"
-            )
-            print(f"[setup] Coluna caixa_sessoes.caixa_id adicionada (caixa padrao {padrao})")
 
 
 def criar_admin_inicial() -> None:
@@ -90,8 +52,7 @@ def criar_caixa_inicial() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    migrar_colunas_novas()
+    migracoes.aplicar()
     criar_admin_inicial()
     criar_caixa_inicial()
     yield

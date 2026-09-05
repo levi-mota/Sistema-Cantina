@@ -27,3 +27,6 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 *.log
+
+# Execucao dos scripts (pids e logs)
+scripts/.run/

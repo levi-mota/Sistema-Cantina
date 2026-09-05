@@ -36,41 +36,57 @@ Sistema cantina/
 │   │   │   └── integracoes.py   consulta de CNPJ e CEP
 │   │   ├── services/       regras de negócio (estoque, caixa, documentos, APIs)
 │   │   └── main.py         aplicação FastAPI
+│   ├── migracoes/          migrações do banco (Alembic)
+│   │   └── versions/       uma migração por mudança de schema
 │   ├── seed.py             dados de demonstração
+│   ├── alembic.ini
 │   ├── requirements.txt
 │   └── .env.example
-└── frontend/
-    └── src/
-        ├── components/     Layout (sidebar + barra inferior) e biblioteca de UI
-        ├── lib/            cliente HTTP, autenticação, formatação, tipos
-        └── pages/          uma página por módulo
+├── frontend/
+│   └── src/
+│       ├── components/     Layout (sidebar + barra inferior) e biblioteca de UI
+│       ├── lib/            cliente HTTP, autenticação, formatação, tipos
+│       └── pages/          uma página por módulo
+└── scripts/                preparar, iniciar, parar, migrar, recriar-banco
 ```
 
 ---
 
 ## Como rodar
 
-### 1. Backend
+Os scripts em `scripts/` cuidam de tudo (cada `.ps1` tem um `.bat` para dois cliques):
+
+```powershell
+cd scripts
+.\preparar.ps1 -ComDemo   # uma vez: dependencias, .env e banco de exemplo
+.\iniciar.ps1             # sobe backend + frontend e abre o navegador
+```
+
+O `iniciar` imprime os endereços — incluindo o do celular na mesma rede — e
+encerra os dois serviços com Ctrl+C. Detalhes e solução de problemas em
+[scripts/README.md](scripts/README.md).
+
+<details>
+<summary>Rodando na mão, sem os scripts</summary>
 
 ```bash
+# backend
 cd backend
 python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt
 cp .env.example .env
-.venv/Scripts/python seed.py
+.venv/Scripts/python seed.py          # opcional: dados de demonstração
 .venv/Scripts/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
 
-API em <http://localhost:8000> · documentação interativa em <http://localhost:8000/docs>.
-
-### 2. Frontend
-
-```bash
+# frontend (outro terminal)
 cd frontend
 npm install
 npm run dev
 ```
 
+</details>
+
+API em <http://localhost:8000> · documentação interativa em <http://localhost:8000/docs>.
 Sistema em <http://localhost:5173>. O Vite já faz proxy de `/api` para o backend.
 
 ### Acessos de demonstração
@@ -83,8 +99,8 @@ Sistema em <http://localhost:5173>. O Vite já faz proxy de `/api` para o backen
 
 ### Acesso pelo celular
 
-Backend e frontend já sobem escutando na rede local. Descubra o IP do PC
-(`ipconfig`) e abra no celular `http://SEU_IP:5173`, com o celular no mesmo Wi-Fi.
+Backend e frontend sobem escutando na rede local, e o `iniciar.ps1` já mostra o
+endereço pronto. Basta abri-lo no celular, com ele no mesmo Wi-Fi.
 
 ---
 
@@ -156,6 +172,28 @@ APIBRASIL_DEVICE_TOKEN="seu-device-token"
 
 Com o token preenchido a ApiBrasil vira o provedor principal; se ela falhar ou ficar
 indisponível, a consulta cai automaticamente para os provedores públicos.
+
+---
+
+## Migrações de banco
+
+O schema é versionado com Alembic e **as migrações pendentes são aplicadas
+sozinhas ao iniciar** — em uso normal não há nada a fazer. Um banco criado por
+versões anteriores (antes do Alembic) é adotado automaticamente na primeira
+subida, sem perder dados.
+
+Quando o schema mudar:
+
+```powershell
+cd scripts
+.\migrar.ps1 criar -Mensagem "descreve a mudanca"   # gera a partir dos modelos
+.\migrar.ps1 status                                 # confere a versão
+.\migrar.ps1 aplicar                                # aplica
+```
+
+Revise o arquivo gerado em `backend/migracoes/versions/` antes de aplicar: o
+autogenerate acerta colunas e tabelas novas, mas lê uma renomeação como "apagou
+uma coluna e criou outra" — e isso é perda de dados.
 
 ---
 

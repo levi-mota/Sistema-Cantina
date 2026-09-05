@@ -10,7 +10,8 @@ from decimal import Decimal
 from sqlalchemy import select
 
 from app import models
-from app.core.database import Base, SessionLocal, engine
+from app.core import migracoes
+from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.services.estoque import movimentar
 
@@ -33,7 +34,7 @@ PRODUTOS = [
 
 
 def executar() -> None:
-    Base.metadata.create_all(bind=engine)
+    migracoes.aplicar()
     db = SessionLocal()
 
     if db.scalar(select(models.Produto).limit(1)):
