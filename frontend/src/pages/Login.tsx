@@ -37,8 +37,11 @@ export default function Login() {
 
         <form onSubmit={enviar} className="cartao space-y-4 p-6">
           <Erro mensagem={erro} />
+          {/* Sem rotulo acima: o nome do campo fica dentro da caixa. O
+              aria-label mantem o campo anunciado para leitores de tela. */}
           <Campo
-            rotulo="Usuario"
+            aria-label="Usuario"
+            placeholder="Usuario"
             autoComplete="username"
             autoCapitalize="none"
             spellCheck={false}
@@ -46,25 +49,22 @@ export default function Login() {
             autoFocus
             value={login}
             onChange={(e) => setLogin(e.target.value)}
-            placeholder="ex.: levi"
+            className="py-2.5"
           />
           <Campo
-            rotulo="Senha"
+            aria-label="Senha"
+            placeholder="Senha"
             type="password"
             autoComplete="current-password"
             required
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
-            placeholder="••••••••"
+            className="py-2.5"
           />
           <Botao type="submit" carregando={enviando} className="w-full">
             Entrar
           </Botao>
         </form>
-
-        <p className="mt-4 text-center text-xs text-carvao-500">
-          Acesso de demonstracao: admin / admin123
-        </p>
       </div>
     </div>
   );
