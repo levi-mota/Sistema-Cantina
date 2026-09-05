@@ -5,10 +5,10 @@ __pycache__/
 venv/
 *.egg-info/
 
-# Banco de dados local
+# Banco de dados local, incluindo os backups que os scripts geram
 *.db
-*.db-shm
-*.db-wal
+*.db-*
+*.db.*
 
 # Node
 node_modules/
