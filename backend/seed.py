@@ -152,45 +152,55 @@ def executar() -> None:
         )
         produtos.append(produto)
 
-    # --- Sessoes de caixa -------------------------------------------------
-    # Um turno de ontem ja fechado (com uma pequena quebra) e o turno de hoje
-    # aberto, para o PDV funcionar assim que a demo subir.
+    # --- Caixas e turnos --------------------------------------------------
+    # Um turno por caixa em cada dia dos ultimos 30 dias, revezando entre os
+    # operadores. Os turnos passados sao fechados no final do script, depois
+    # que as vendas ja estao vinculadas, para a conferencia bater de verdade.
     caixa_1 = models.Caixa(nome="Caixa 1", descricao="Balcao principal")
     caixa_2 = models.Caixa(nome="Caixa 2", descricao="Balcao do patio (pico do intervalo)")
     db.add_all([caixa_1, caixa_2])
     db.flush()
 
-    ontem = datetime.now(timezone.utc) - timedelta(days=1)
-    turno_ontem = models.CaixaSessao(
-        caixa_id=caixa_1.id,
-        status=models.StatusCaixa.FECHADA,
-        usuario_abertura_id=operadores[0].id,
-        usuario_fechamento_id=operadores[0].id,
-        aberto_em=ontem.replace(hour=8, minute=0),
-        fechado_em=ontem.replace(hour=18, minute=30),
-        valor_abertura=Decimal("100.00"),
-        observacao_abertura="Troco inicial em moedas e notas de 2 e 5",
-    )
-    turno_hoje = models.CaixaSessao(
-        caixa_id=caixa_1.id,
-        status=models.StatusCaixa.ABERTA,
-        usuario_abertura_id=operadores[0].id,
-        valor_abertura=Decimal("100.00"),
-        observacao_abertura="Abertura do turno da manha",
-    )
-    db.add_all([turno_ontem, turno_hoje])
+    # O operador 0 e o admin; a equipe da frente e quem opera os caixas.
+    equipe_caixa = operadores[1:] if len(operadores) > 1 else operadores
+
+    turnos_por_dia: dict[int, list[models.CaixaSessao]] = {}
+    for dias_atras in range(29, -1, -1):
+        dia = datetime.now(timezone.utc) - timedelta(days=dias_atras)
+        do_dia = []
+        for indice, caixa in enumerate([caixa_1, caixa_2]):
+            # O Caixa 2 so abre nos dias de movimento maior.
+            if caixa is caixa_2 and dias_atras % 3 == 0:
+                continue
+            operador = equipe_caixa[(dias_atras + indice) % len(equipe_caixa)]
+            sessao = models.CaixaSessao(
+                caixa_id=caixa.id,
+                status=models.StatusCaixa.ABERTA,
+                usuario_abertura_id=operador.id,
+                aberto_em=dia.replace(hour=7, minute=30),
+                valor_abertura=Decimal("100.00"),
+                observacao_abertura="Abertura do turno",
+            )
+            db.add(sessao)
+            do_dia.append(sessao)
+        turnos_por_dia[dias_atras] = do_dia
     db.flush()
 
-    db.add(
-        models.MovimentoCaixa(
-            sessao_id=turno_ontem.id,
-            tipo=models.TipoMovimentoCaixa.SANGRIA,
-            valor=Decimal("150.00"),
-            motivo="Retirada para o cofre",
-            usuario_id=operadores[0].id,
-            criado_em=ontem.replace(hour=15, minute=0),
-        )
-    )
+    # Sangrias em alguns turnos, como acontece quando a gaveta enche.
+    for dias_atras, sessoes in turnos_por_dia.items():
+        for sessao in sessoes:
+            if random.random() < 0.3:
+                dia = datetime.now(timezone.utc) - timedelta(days=dias_atras)
+                db.add(
+                    models.MovimentoCaixa(
+                        sessao_id=sessao.id,
+                        tipo=models.TipoMovimentoCaixa.SANGRIA,
+                        valor=Decimal(random.choice([50, 100, 150])),
+                        motivo="Retirada para o cofre",
+                        usuario_id=sessao.usuario_abertura_id,
+                        criado_em=dia.replace(hour=15, minute=0),
+                    )
+                )
 
     # --- Vendas dos ultimos 30 dias --------------------------------------
     formas = [
@@ -219,13 +229,7 @@ def executar() -> None:
                 cliente_id=cliente.id if cliente else None,
                 documento_cliente=documento,
                 usuario_id=random.choice(operadores).id,
-                caixa_sessao_id=(
-                    turno_hoje.id
-                    if dias_atras == 0
-                    else turno_ontem.id
-                    if dias_atras == 1
-                    else None
-                ),
+                caixa_sessao_id=random.choice(turnos_por_dia[dias_atras]).id,
                 forma_pagamento=forma,
                 criado_em=momento_base.replace(
                     hour=random.randint(8, 18), minute=random.randint(0, 59)
@@ -311,15 +315,43 @@ def executar() -> None:
 
     db.flush()
 
-    # Fecha o turno de ontem usando a conferencia real, com uma quebra de -3,50
-    # para a tela de historico ja nascer com um caso interessante.
+    # --- Fechamento dos turnos passados -----------------------------------
+    # A maioria fecha certo. Um dos operadores erra o troco com mais frequencia,
+    # para o relatorio de quebras por operador ter o que mostrar.
     from app.services.caixa import conferir
 
-    conferencia = conferir(db, turno_ontem)
-    turno_ontem.valor_esperado = conferencia.valor_esperado
-    turno_ontem.valor_informado = conferencia.valor_esperado - Decimal("3.50")
-    turno_ontem.diferenca = Decimal("-3.50")
-    turno_ontem.observacao_fechamento = "Faltou troco; conferido com o gerente"
+    descuidado = equipe_caixa[-1].id
+    justificativas = [
+        "Erro de troco no pico do intervalo",
+        "Conferido com o gerente",
+        "Nota de 10 a menos na gaveta",
+        "Cliente pagou depois; ajustado",
+    ]
+
+    for dias_atras, sessoes in turnos_por_dia.items():
+        for sessao in sessoes:
+            if dias_atras == 0 and sessao.caixa_id == caixa_1.id:
+                continue  # o turno de hoje no Caixa 1 fica aberto para o PDV
+
+            conferencia = conferir(db, sessao)
+            propenso = sessao.usuario_abertura_id == descuidado
+            sorteio = random.random()
+            if sorteio < (0.45 if propenso else 0.8):
+                quebra = Decimal("0.00")
+            elif sorteio < (0.85 if propenso else 0.92):
+                quebra = Decimal(str(-round(random.uniform(0.5, 12), 2)))
+            else:
+                quebra = Decimal(str(round(random.uniform(0.5, 5), 2)))
+
+            dia = datetime.now(timezone.utc) - timedelta(days=dias_atras)
+            sessao.status = models.StatusCaixa.FECHADA
+            sessao.fechado_em = dia.replace(hour=18, minute=30)
+            sessao.usuario_fechamento_id = sessao.usuario_abertura_id
+            sessao.valor_esperado = conferencia.valor_esperado
+            sessao.valor_informado = conferencia.valor_esperado + quebra
+            sessao.diferenca = quebra
+            if quebra != 0:
+                sessao.observacao_fechamento = random.choice(justificativas)
 
     db.commit()
     print("Demo criada com sucesso.")

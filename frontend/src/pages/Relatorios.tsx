@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Download } from "lucide-react";
+import { AlertTriangle, Download } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -11,7 +11,7 @@ import {
 } from "recharts";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataBr, hojeIso, porcentagem, primeiroDiaDoMes, qtd } from "../lib/format";
+import { brl, dataBr, dataHora, hojeIso, porcentagem, primeiroDiaDoMes, qtd } from "../lib/format";
 import { Botao, Campo, Cartao, Carregando, Erro, Selo, Tabela, TituloPagina, Vazio } from "../components/ui";
 
 interface MaisVendido {
@@ -45,6 +45,34 @@ interface VendaDia {
   quantidade: number;
 }
 
+interface QuebraOperador {
+  usuario_id: number;
+  operador: string;
+  turnos: number;
+  turnos_exatos: number;
+  turnos_com_sobra: number;
+  turnos_com_falta: number;
+  sobras: string;
+  faltas: string;
+  saldo: string;
+  maior_falta: string;
+  movimentado: string;
+  falta_percentual: number;
+  precisao: number;
+}
+
+interface TurnoComQuebra {
+  sessao_id: number;
+  caixa: string | null;
+  operador: string | null;
+  fechado_por: string | null;
+  fechado_em: string | null;
+  esperado: string;
+  contado: string;
+  diferenca: string;
+  observacao: string | null;
+}
+
 /** Gera um CSV a partir de qualquer lista e dispara o download no navegador. */
 function baixarCsv(nome: string, linhas: object[]) {
   if (linhas.length === 0) return;
@@ -72,6 +100,8 @@ export default function Relatorios() {
   const [maisVendidos, setMaisVendidos] = useState<MaisVendido[]>([]);
   const [abc, setAbc] = useState<LinhaAbc[]>([]);
   const [porDia, setPorDia] = useState<VendaDia[]>([]);
+  const [quebras, setQuebras] = useState<QuebraOperador[]>([]);
+  const [turnosRuins, setTurnosRuins] = useState<TurnoComQuebra[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -80,18 +110,24 @@ export default function Relatorios() {
     setErro(null);
     const params = { inicio, fim };
     try {
-      const [d, m, a, v] = await Promise.all([
+      const [d, m, a, v, q, t] = await Promise.all([
         api.get<Dre>("/relatorios/dre-simplificado", { params }),
         api.get<MaisVendido[]>("/relatorios/produtos-mais-vendidos", {
           params: { ...params, limite: 10 },
         }),
         api.get<LinhaAbc[]>("/relatorios/curva-abc", { params }),
         api.get<VendaDia[]>("/relatorios/vendas-por-dia", { params }),
+        api.get<QuebraOperador[]>("/relatorios/quebras-por-operador", { params }),
+        api.get<TurnoComQuebra[]>("/relatorios/quebras-detalhe", {
+          params: { ...params, limite: 10 },
+        }),
       ]);
       setDre(d.data);
       setMaisVendidos(m.data);
       setAbc(a.data);
       setPorDia(v.data);
+      setQuebras(q.data);
+      setTurnosRuins(t.data);
     } catch (e) {
       setErro(mensagemErro(e));
     } finally {
@@ -107,7 +143,7 @@ export default function Relatorios() {
     <>
       <TituloPagina
         titulo="Relatorios"
-        descricao="Resultado do periodo, produtos campeoes e curva ABC"
+        descricao="Resultado do periodo, produtos campeoes, curva ABC e quebras de caixa"
       />
 
       <Cartao className="mb-4 p-4">
@@ -280,6 +316,207 @@ export default function Relatorios() {
               )}
             </Cartao>
           </div>
+
+          {/* Quebras de caixa por operador */}
+          <Cartao className="mt-4 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-carvao-100 px-4 py-3">
+              <div>
+                <h2 className="font-bold text-carvao-900">Quebras de caixa por operador</h2>
+                <p className="text-xs text-carvao-500">
+                  Diferenca entre o dinheiro contado e o esperado nos turnos fechados. A quebra e
+                  de quem operou a gaveta, mesmo que outra pessoa tenha fechado o turno.
+                </p>
+              </div>
+              <Botao
+                variante="secundario"
+                icone={<Download className="h-4 w-4" />}
+                onClick={() => baixarCsv(`quebras_operador_${inicio}_a_${fim}`, quebras)}
+              >
+                CSV
+              </Botao>
+            </div>
+
+            {quebras.length === 0 ? (
+              <Vazio
+                titulo="Nenhum turno fechado no periodo"
+                descricao="As quebras aparecem aqui conforme os caixas forem fechados."
+              />
+            ) : (
+              <>
+                <div className="hidden lg:block">
+                  <Tabela
+                    cabecalho={[
+                      "Operador",
+                      "Turnos",
+                      "Fechou certo",
+                      "Faltou",
+                      "Sobrou",
+                      "Saldo",
+                      "Maior falta",
+                      "Falta / gaveta",
+                    ]}
+                  >
+                    {quebras.map((q) => {
+                      const saldo = Number(q.saldo);
+                      return (
+                        <tr key={q.usuario_id} className="hover:bg-carvao-50/60">
+                          <td className="px-4 py-2.5 font-medium text-carvao-800">{q.operador}</td>
+                          <td className="px-4 py-2.5 text-carvao-600">{q.turnos}</td>
+                          <td className="px-4 py-2.5">
+                            <Selo
+                              tom={
+                                q.precisao >= 80
+                                  ? "sucesso"
+                                  : q.precisao >= 60
+                                    ? "alerta"
+                                    : "perigo"
+                              }
+                            >
+                              {q.turnos_exatos} de {q.turnos} ({porcentagem(q.precisao, 0)})
+                            </Selo>
+                          </td>
+                          <td className="px-4 py-2.5 text-red-600">
+                            {brl(q.faltas)}
+                            <span className="ml-1 text-xs text-carvao-400">
+                              ({q.turnos_com_falta}x)
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-carvao-600">
+                            {brl(q.sobras)}
+                            <span className="ml-1 text-xs text-carvao-400">
+                              ({q.turnos_com_sobra}x)
+                            </span>
+                          </td>
+                          <td
+                            className={`px-4 py-2.5 font-bold ${
+                              saldo < 0
+                                ? "text-red-600"
+                                : saldo > 0
+                                  ? "text-sky-700"
+                                  : "text-emerald-600"
+                            }`}
+                          >
+                            {brl(q.saldo)}
+                          </td>
+                          <td className="px-4 py-2.5 text-carvao-600">{brl(q.maior_falta)}</td>
+                          <td className="px-4 py-2.5">
+                            <span
+                              className={
+                                q.falta_percentual >= 1
+                                  ? "font-semibold text-red-600"
+                                  : "text-carvao-600"
+                              }
+                            >
+                              {porcentagem(q.falta_percentual, 2)}
+                            </span>
+                            <p className="text-xs text-carvao-400">de {brl(q.movimentado)}</p>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Tabela>
+                </div>
+
+                {/* Celular: um cartao por operador */}
+                <ul className="divide-y divide-carvao-100 lg:hidden">
+                  {quebras.map((q) => (
+                    <li key={q.usuario_id} className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-carvao-900">{q.operador}</p>
+                          <p className="text-xs text-carvao-500">
+                            {q.turnos} turno(s) · fechou certo em {q.turnos_exatos}
+                          </p>
+                        </div>
+                        <Selo
+                          tom={
+                            q.precisao >= 80 ? "sucesso" : q.precisao >= 60 ? "alerta" : "perigo"
+                          }
+                        >
+                          {porcentagem(q.precisao, 0)}
+                        </Selo>
+                      </div>
+                      <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                          <p className="text-xs text-carvao-500">Faltou</p>
+                          <p className="font-semibold text-red-600">{brl(q.faltas)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-carvao-500">Sobrou</p>
+                          <p className="font-semibold text-carvao-700">{brl(q.sobras)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-carvao-500">Saldo</p>
+                          <p
+                            className={`font-semibold ${
+                              Number(q.saldo) < 0 ? "text-red-600" : "text-emerald-600"
+                            }`}
+                          >
+                            {brl(q.saldo)}
+                          </p>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Cartao>
+
+          {/* Turnos que puxaram o resultado para baixo */}
+          {turnosRuins.length > 0 && (
+            <Cartao className="mt-4 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-carvao-100 px-4 py-3">
+                <h2 className="flex items-center gap-2 font-bold text-carvao-900">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Turnos com maior diferenca
+                </h2>
+                <Botao
+                  variante="secundario"
+                  icone={<Download className="h-4 w-4" />}
+                  onClick={() => baixarCsv(`turnos_com_quebra_${inicio}_a_${fim}`, turnosRuins)}
+                >
+                  CSV
+                </Botao>
+              </div>
+              <Tabela
+                cabecalho={[
+                  "Turno",
+                  "Caixa",
+                  "Operador",
+                  "Fechado em",
+                  "Esperado",
+                  "Contado",
+                  "Diferenca",
+                  "Observacao",
+                ]}
+              >
+                {turnosRuins.map((t) => (
+                  <tr key={t.sessao_id} className="hover:bg-carvao-50/60">
+                    <td className="px-4 py-2.5 font-medium text-carvao-800">#{t.sessao_id}</td>
+                    <td className="px-4 py-2.5 text-carvao-600">{t.caixa}</td>
+                    <td className="px-4 py-2.5 text-carvao-600">
+                      {t.operador}
+                      {t.fechado_por && t.fechado_por !== t.operador && (
+                        <p className="text-xs text-carvao-400">fechado por {t.fechado_por}</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-carvao-600">
+                      {dataHora(t.fechado_em)}
+                    </td>
+                    <td className="px-4 py-2.5 text-carvao-600">{brl(t.esperado)}</td>
+                    <td className="px-4 py-2.5 text-carvao-600">{brl(t.contado)}</td>
+                    <td className="px-4 py-2.5">
+                      <Selo tom={Number(t.diferenca) < 0 ? "perigo" : "info"}>
+                        {brl(t.diferenca)}
+                      </Selo>
+                    </td>
+                    <td className="px-4 py-2.5 text-carvao-500">{t.observacao ?? "-"}</td>
+                  </tr>
+                ))}
+              </Tabela>
+            </Cartao>
+          )}
         </>
       )}
     </>

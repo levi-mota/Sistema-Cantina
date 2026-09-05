@@ -126,7 +126,8 @@ endereço pronto. Basta abri-lo no celular, com ele no mesmo Wi-Fi.
 * **Contas a pagar / a receber** — títulos com parcelamento, baixa total ou parcial,
   cancelamento e destaque de vencidos.
 * **Relatórios** — painel, faturamento por dia, mais vendidos, formas de pagamento,
-  DRE simplificado (receita − CMV − despesas pagas) e curva ABC. Exportação em CSV.
+  DRE simplificado (receita − CMV − despesas pagas), curva ABC e **quebras de caixa
+  por operador**. Exportação em CSV.
 * **Funcionários** — cadastro, perfis de acesso e registro de ponto.
 * **Clientes e fornecedores** — cadastro único com preenchimento automático por
   CNPJ e CEP, e limite de crédito usado pelo fiado no PDV. CPF e CNPJ são validados
@@ -172,6 +173,21 @@ APIBRASIL_DEVICE_TOKEN="seu-device-token"
 
 Com o token preenchido a ApiBrasil vira o provedor principal; se ela falhar ou ficar
 indisponível, a consulta cai automaticamente para os provedores públicos.
+
+### Quebras de caixa por operador
+
+Consolida as diferenças dos turnos fechados no período, uma linha por operador:
+turnos, quantos fecharam certo, quanto faltou, quanto sobrou, saldo, maior falta e
+quanto a falta representa do dinheiro que passou pela gaveta. Abaixo, os turnos de
+maior diferença, com a justificativa registrada no fechamento.
+
+Duas escolhas que mudam a leitura:
+
+* **A quebra é de quem operou a gaveta**, não de quem fechou o turno — um gerente
+  pode fechar o turno de quem esqueceu, e isso não transfere a diferença para ele.
+* **Falta e sobra aparecem separadas.** Quem tem +50 num turno e −50 em outro fecha
+  com saldo zero, mas não é o mesmo caso de quem acerta todos os dias; só a coluna
+  "fechou certo" distingue os dois.
 
 ---
 

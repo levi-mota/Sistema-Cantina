@@ -4,7 +4,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from app import models
 from app.core.deps import DB, CurrentUser
@@ -239,3 +239,127 @@ def curva_abc(db: DB, _: CurrentUser, inicio: date | None = None, fim: date | No
             }
         )
     return resultado
+
+
+# --------------------------------------------------------------------------- #
+# Quebras de caixa
+# --------------------------------------------------------------------------- #
+# A quebra e atribuida a quem OPEROU o turno (abriu), nao a quem fechou: um
+# gerente pode fechar o turno de quem esqueceu, e a diferenca continua sendo do
+# operador que trabalhou com aquela gaveta.
+TURNO_FECHADO = models.CaixaSessao.status == models.StatusCaixa.FECHADA
+
+
+def _periodo_turnos(inicio: date | None, fim: date | None):
+    ini, f = _intervalo(inicio, fim)
+    return models.CaixaSessao.fechado_em.between(ini, f)
+
+
+@router.get("/quebras-por-operador")
+def quebras_por_operador(
+    db: DB, _: CurrentUser, inicio: date | None = None, fim: date | None = None
+):
+    """Resumo das diferencas de caixa por operador no periodo.
+
+    Sobra e falta aparecem separadas de proposito: um operador com +50 num turno
+    e -50 em outro tem saldo zero, mas nao e o mesmo caso de quem fecha certo
+    todos os dias.
+    """
+    diferenca = models.CaixaSessao.diferenca
+    positiva = case((diferenca > 0, diferenca), else_=0)
+    negativa = case((diferenca < 0, diferenca), else_=0)
+
+    linhas = db.execute(
+        select(
+            models.CaixaSessao.usuario_abertura_id,
+            models.Usuario.nome,
+            func.count(models.CaixaSessao.id),
+            func.coalesce(func.sum(diferenca), 0),
+            func.coalesce(func.sum(positiva), 0),
+            func.coalesce(func.sum(negativa), 0),
+            func.sum(case((diferenca > 0, 1), else_=0)),
+            func.sum(case((diferenca < 0, 1), else_=0)),
+            func.sum(case((diferenca == 0, 1), else_=0)),
+            func.coalesce(func.min(diferenca), 0),
+            func.coalesce(func.sum(models.CaixaSessao.valor_esperado), 0),
+        )
+        .join(models.Usuario, models.Usuario.id == models.CaixaSessao.usuario_abertura_id)
+        .where(TURNO_FECHADO, _periodo_turnos(inicio, fim))
+        .group_by(models.CaixaSessao.usuario_abertura_id, models.Usuario.nome)
+        .order_by(func.coalesce(func.sum(negativa), 0))
+    ).all()
+
+    resultado = []
+    for (
+        usuario_id,
+        nome,
+        turnos,
+        saldo,
+        sobras,
+        faltas,
+        qtd_sobras,
+        qtd_faltas,
+        qtd_exatos,
+        maior_falta,
+        esperado,
+    ) in linhas:
+        esperado = Decimal(str(esperado or 0))
+        faltas = abs(Decimal(str(faltas or 0)))
+        resultado.append(
+            {
+                "usuario_id": usuario_id,
+                "operador": nome,
+                "turnos": turnos,
+                "turnos_exatos": qtd_exatos or 0,
+                "turnos_com_sobra": qtd_sobras or 0,
+                "turnos_com_falta": qtd_faltas or 0,
+                "sobras": Decimal(str(sobras or 0)),
+                "faltas": faltas,
+                "saldo": Decimal(str(saldo or 0)),
+                "maior_falta": abs(Decimal(str(maior_falta or 0))),
+                "movimentado": esperado,
+                # Quanto a falta representa do dinheiro que passou pela gaveta.
+                "falta_percentual": (faltas / esperado * 100) if esperado > 0 else Decimal("0"),
+                "precisao": (Decimal(qtd_exatos or 0) / turnos * 100) if turnos else Decimal("0"),
+            }
+        )
+    return resultado
+
+
+@router.get("/quebras-detalhe")
+def quebras_detalhe(
+    db: DB,
+    _: CurrentUser,
+    inicio: date | None = None,
+    fim: date | None = None,
+    usuario_id: int | None = None,
+    apenas_com_quebra: bool = True,
+    limite: int = 100,
+):
+    """Turnos fechados do periodo, do pior para o melhor."""
+    stmt = (
+        select(models.CaixaSessao)
+        .where(TURNO_FECHADO, _periodo_turnos(inicio, fim))
+        .order_by(models.CaixaSessao.diferenca)
+        .limit(limite)
+    )
+    if usuario_id:
+        stmt = stmt.where(models.CaixaSessao.usuario_abertura_id == usuario_id)
+    if apenas_com_quebra:
+        stmt = stmt.where(models.CaixaSessao.diferenca != 0)
+
+    return [
+        {
+            "sessao_id": s.id,
+            "caixa": s.caixa.nome if s.caixa else None,
+            "operador": s.usuario_abertura.nome if s.usuario_abertura else None,
+            "fechado_por": s.usuario_fechamento.nome if s.usuario_fechamento else None,
+            "aberto_em": s.aberto_em,
+            "fechado_em": s.fechado_em,
+            "esperado": Decimal(str(s.valor_esperado or 0)),
+            "contado": Decimal(str(s.valor_informado or 0)),
+            "diferenca": Decimal(str(s.diferenca or 0)),
+            "observacao": s.observacao_fechamento,
+        }
+        for s in db.scalars(stmt).all()
+    ]
