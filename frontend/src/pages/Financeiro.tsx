@@ -3,7 +3,7 @@ import { CheckCircle2, Plus } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
 import { brl, dataBr, hojeIso, rotulo } from "../lib/format";
-import type { FormaPagamento, Parceiro, ResumoFinanceiro, StatusTítulo, Título, TipoTítulo } from "../lib/tipos";
+import type { FormaPagamento, Parceiro, ResumoFinanceiro, StatusTitulo, Titulo, TipoTitulo } from "../lib/tipos";
 import {
   Botao,
   Campo,
@@ -14,7 +14,7 @@ import {
   Selo,
   Seletor,
   Tabela,
-  TítuloPagina,
+  TituloPagina,
   Vazio,
 } from "../components/ui";
 
@@ -31,7 +31,7 @@ const CATEGORIAS_PAGAR = [
 ];
 const CATEGORIAS_RECEBER = ["Vendas", "Serviços", "Eventos", "Outros"];
 
-function tomStatus(t: Título): "sucesso" | "perigo" | "alerta" | "neutro" | "info" {
+function tomStatus(t: Titulo): "sucesso" | "perigo" | "alerta" | "neutro" | "info" {
   if (t.status === "PAGO") return "sucesso";
   if (t.status === "CANCELADO") return "neutro";
   if (t.vencido) return "perigo";
@@ -39,19 +39,19 @@ function tomStatus(t: Título): "sucesso" | "perigo" | "alerta" | "neutro" | "in
   return "alerta";
 }
 
-export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
+export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
   const pagar = tipo === "PAGAR";
   const tituloTela = pagar ? "Contas a pagar" : "Contas a receber";
 
-  const [títulos, setTítulos] = useState<Título[]>([]);
+  const [titulos, setTitulos] = useState<Titulo[]>([]);
   const [resumo, setResumo] = useState<ResumoFinanceiro | null>(null);
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
-  const [filtroStatus, setFiltroStatus] = useState<StatusTítulo | "">("");
+  const [filtroStatus, setFiltroStatus] = useState<StatusTitulo | "">("");
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
   const [novoAberto, setNovoAberto] = useState(false);
-  const [baixando, setBaixando] = useState<Título | null>(null);
+  const [baixando, setBaixando] = useState<Titulo | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   const [form, setForm] = useState({
@@ -73,12 +73,12 @@ export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
   const carregar = useCallback(async () => {
     try {
       const [t, r] = await Promise.all([
-        api.get<Título[]>("/financeiro/títulos", {
+        api.get<Titulo[]>("/financeiro/titulos", {
           params: { tipo, status_titulo: filtroStatus || undefined },
         }),
         api.get<ResumoFinanceiro>("/financeiro/resumo"),
       ]);
-      setTítulos(t.data);
+      setTitulos(t.data);
       setResumo(r.data);
     } catch (e) {
       setErro(mensagemErro(e));
@@ -105,7 +105,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
     setSalvando(true);
     setErro(null);
     try {
-      await api.post("/financeiro/títulos", {
+      await api.post("/financeiro/titulos", {
         tipo,
         descricao: form.descricao,
         categoria: form.categoria || null,
@@ -120,7 +120,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
       setForm({ ...form, descricao: "", valor: "", observacao: "", parcelas: "1" });
       await carregar();
     } catch (err) {
-      setErro(mensagemErro(err, "Não foi possível criar o título"));
+      setErro(mensagemErro(err, "Não foi possível criar o titulo"));
     } finally {
       setSalvando(false);
     }
@@ -132,7 +132,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
     setSalvando(true);
     setErro(null);
     try {
-      await api.post(`/financeiro/títulos/${baixando.id}/baixar`, {
+      await api.post(`/financeiro/titulos/${baixando.id}/baixar`, {
         valor: Number(baixa.valor),
         data: baixa.data,
         forma_pagamento: baixa.forma_pagamento,
@@ -146,10 +146,10 @@ export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
     }
   }
 
-  async function cancelar(t: Título) {
-    if (!confirm(`Cancelar o título "${t.descricao}"?`)) return;
+  async function cancelar(t: Titulo) {
+    if (!confirm(`Cancelar o titulo "${t.descricao}"?`)) return;
     try {
-      await api.post(`/financeiro/títulos/${t.id}/cancelar`);
+      await api.post(`/financeiro/titulos/${t.id}/cancelar`);
       await carregar();
     } catch (err) {
       setErro(mensagemErro(err));
@@ -164,7 +164,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
 
   return (
     <>
-      <TítuloPagina
+      <TituloPagina
         titulo={tituloTela}
         descricao={
           pagar
@@ -198,7 +198,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
       <div className="mb-4">
         <Seletor
           value={filtroStatus}
-          onChange={(e) => setFiltroStatus(e.target.value as StatusTítulo | "")}
+          onChange={(e) => setFiltroStatus(e.target.value as StatusTitulo | "")}
           vazio="Todos os status"
           className="sm:max-w-56"
           opcoes={[
@@ -210,14 +210,14 @@ export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
         />
       </div>
 
-      {títulos.length === 0 ? (
+      {titulos.length === 0 ? (
         <Cartao>
-          <Vazio titulo="Nenhum título" descricao="Nada lançado com esses filtros." />
+          <Vazio titulo="Nenhum titulo" descricao="Nada lançado com esses filtros." />
         </Cartao>
       ) : (
         <>
           <div className="space-y-2 lg:hidden">
-            {títulos.map((t) => (
+            {titulos.map((t) => (
               <Cartao key={t.id} className="p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -269,7 +269,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTítulo }) {
                 "Ações",
               ]}
             >
-              {títulos.map((t) => (
+              {titulos.map((t) => (
                 <tr key={t.id} className="hover:bg-carvao-50/60">
                   <td className="px-4 py-2.5 font-medium text-carvao-800">
                     {t.descricao}

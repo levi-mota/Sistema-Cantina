@@ -72,12 +72,12 @@ class FormaPagamento(StrEnum):
     FIADO = "FIADO"
 
 
-class TipoTítulo(StrEnum):
+class TipoTitulo(StrEnum):
     PAGAR = "PAGAR"
     RECEBER = "RECEBER"
 
 
-class StatusTítulo(StrEnum):
+class StatusTitulo(StrEnum):
     ABERTO = "ABERTO"
     PARCIAL = "PARCIAL"
     PAGO = "PAGO"
@@ -259,11 +259,11 @@ class VendaItem(Base):
 # --------------------------------------------------------------------------- #
 # Financeiro (contas a pagar / receber)
 # --------------------------------------------------------------------------- #
-class Título(Base):
-    __tablename__ = "títulos"
+class Titulo(Base):
+    __tablename__ = "titulos"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tipo: Mapped[TipoTítulo] = mapped_column(Enum(TipoTítulo), index=True)
+    tipo: Mapped[TipoTitulo] = mapped_column(Enum(TipoTitulo), index=True)
     descricao: Mapped[str] = mapped_column(String(200))
     categoria: Mapped[str | None] = mapped_column(String(80))
     parceiro_id: Mapped[int | None] = mapped_column(ForeignKey("parceiros.id"))
@@ -272,8 +272,8 @@ class Título(Base):
     valor_pago: Mapped[float] = mapped_column(Dinheiro, default=0)
     vencimento: Mapped[date] = mapped_column(Date, index=True)
     quitado_em: Mapped[date | None] = mapped_column(Date)
-    status: Mapped[StatusTítulo] = mapped_column(
-        Enum(StatusTítulo), default=StatusTítulo.ABERTO, index=True
+    status: Mapped[StatusTitulo] = mapped_column(
+        Enum(StatusTitulo), default=StatusTitulo.ABERTO, index=True
     )
     forma_pagamento: Mapped[FormaPagamento | None] = mapped_column(Enum(FormaPagamento))
     observacao: Mapped[str | None] = mapped_column(Text)

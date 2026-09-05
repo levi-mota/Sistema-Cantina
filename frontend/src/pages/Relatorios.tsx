@@ -13,7 +13,7 @@ import {
 
 import { api, mensagemErro } from "../lib/api";
 import { brl, dataBr, dataHora, hojeIso, porcentagem, primeiroDiaDoMes, qtd } from "../lib/format";
-import { Botao, Campo, Cartao, Carregando, Erro, Selo, Tabela, TítuloPagina, Vazio } from "../components/ui";
+import { Botao, Campo, Cartao, Carregando, Erro, Selo, Tabela, TituloPagina, Vazio } from "../components/ui";
 
 interface MaisVendido {
   produto_id: number;
@@ -171,7 +171,7 @@ export default function Relatorios() {
 
   return (
     <>
-      <TítuloPagina
+      <TituloPagina
         titulo="Relatórios"
         descricao="Resultado, formas de pagamento, produtos campeões, curva ABC e quebras de caixa"
       />

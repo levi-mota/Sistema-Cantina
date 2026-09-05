@@ -3,8 +3,8 @@ export type TipoParceiro = "CLIENTE" | "FORNECEDOR" | "AMBOS";
 export type TipoPessoa = "FISICA" | "JURIDICA";
 export type TipoMovimento = "ENTRADA" | "SAIDA" | "AJUSTE" | "PERDA";
 export type FormaPagamento = "DINHEIRO" | "DEBITO" | "CREDITO" | "PIX" | "FIADO";
-export type TipoTítulo = "PAGAR" | "RECEBER";
-export type StatusTítulo = "ABERTO" | "PARCIAL" | "PAGO" | "CANCELADO";
+export type TipoTitulo = "PAGAR" | "RECEBER";
+export type StatusTitulo = "ABERTO" | "PARCIAL" | "PAGO" | "CANCELADO";
 export type StatusVenda = "ABERTA" | "FINALIZADA" | "CANCELADA";
 
 export interface Usuario {
@@ -112,9 +112,9 @@ export interface Venda {
   itens: VendaItem[];
 }
 
-export interface Título {
+export interface Titulo {
   id: number;
-  tipo: TipoTítulo;
+  tipo: TipoTitulo;
   descricao: string;
   categoria?: string | null;
   parceiro_id?: number | null;
@@ -125,7 +125,7 @@ export interface Título {
   saldo: string;
   vencimento: string;
   quitado_em?: string | null;
-  status: StatusTítulo;
+  status: StatusTitulo;
   forma_pagamento?: FormaPagamento | null;
   observacao?: string | null;
   vencido: boolean;

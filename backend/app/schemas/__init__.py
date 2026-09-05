@@ -199,7 +199,7 @@ class VendaItemIn(BaseModel):
 
 
 # O PDV da cantina recebe apenas em dinheiro e PIX. As demais formas seguem
-# validas no financeiro (baixa de títulos), so nao entram pela venda.
+# validas no financeiro (baixa de titulos), so nao entram pela venda.
 FORMAS_PDV = {models.FormaPagamento.DINHEIRO, models.FormaPagamento.PIX}
 
 
@@ -257,8 +257,8 @@ class VendaOut(ORMModel):
 # --------------------------------------------------------------------------- #
 # Financeiro
 # --------------------------------------------------------------------------- #
-class TítuloBase(BaseModel):
-    tipo: models.TipoTítulo
+class TituloBase(BaseModel):
+    tipo: models.TipoTitulo
     descricao: str
     categoria: str | None = None
     parceiro_id: int | None = None
@@ -267,19 +267,19 @@ class TítuloBase(BaseModel):
     observacao: str | None = None
 
 
-class TítuloCreate(TítuloBase):
+class TituloCreate(TituloBase):
     parcelas: int = Field(default=1, ge=1, le=48)
     intervalo_dias: int = Field(default=30, ge=1, le=365)
 
 
-class TítuloUpdate(BaseModel):
+class TituloUpdate(BaseModel):
     descricao: str | None = None
     categoria: str | None = None
     parceiro_id: int | None = None
     valor: Decimal | None = None
     vencimento: date | None = None
     observacao: str | None = None
-    status: models.StatusTítulo | None = None
+    status: models.StatusTitulo | None = None
 
 
 class BaixaIn(BaseModel):
@@ -289,14 +289,14 @@ class BaixaIn(BaseModel):
     observacao: str | None = None
 
 
-class TítuloOut(ORMModel, TítuloBase):
+class TituloOut(ORMModel, TituloBase):
     id: int
     parceiro_nome: str | None = None
     venda_id: int | None = None
     valor_pago: Decimal
     saldo: Decimal
     quitado_em: date | None = None
-    status: models.StatusTítulo
+    status: models.StatusTitulo
     forma_pagamento: models.FormaPagamento | None = None
     vencido: bool = False
     criado_em: datetime

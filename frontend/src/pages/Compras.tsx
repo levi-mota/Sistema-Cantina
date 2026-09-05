@@ -22,7 +22,7 @@ import {
   Modal,
   Selo,
   Seletor,
-  TítuloPagina,
+  TituloPagina,
   Vazio,
   cx,
 } from "../components/ui";
@@ -70,7 +70,7 @@ export default function Compras() {
   const [salvando, setSalvando] = useState(false);
 
   const [editor, setEditor] = useState<ListaCompra | "nova" | null>(null);
-  const [titulo, setTítulo] = useState("");
+  const [titulo, setTitulo] = useState("");
   const [comprador, setComprador] = useState("");
   const [observacao, setObservacao] = useState("");
   const [itens, setItens] = useState<ItemRascunho[]>([]);
@@ -109,12 +109,12 @@ export default function Compras() {
     setProdutoParaAdicionar("");
     if (lista === "nova") {
       const hoje = new Date().toLocaleDateString("pt-BR");
-      setTítulo(`Compras ${hoje}`);
+      setTitulo(`Compras ${hoje}`);
       setComprador("");
       setObservacao("");
       setItens([]);
     } else {
-      setTítulo(lista.titulo);
+      setTitulo(lista.titulo);
       setComprador(lista.comprador ?? "");
       setObservacao(lista.observacao ?? "");
       setItens(
@@ -255,7 +255,7 @@ export default function Compras() {
 
   return (
     <>
-      <TítuloPagina
+      <TituloPagina
         titulo="Compras"
         descricao="Monte o que precisa ser comprado e mande a lista para o comprador"
         acoes={
@@ -362,10 +362,10 @@ export default function Compras() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Campo
-              rotulo="Título"
+              rotulo="Titulo"
               required
               value={titulo}
-              onChange={(e) => setTítulo(e.target.value)}
+              onChange={(e) => setTitulo(e.target.value)}
             />
             <Campo
               rotulo="Comprador"

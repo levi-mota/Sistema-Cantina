@@ -108,7 +108,7 @@ export function Cartao({ className, children }: { className?: string; children: 
   return <div className={cx("cartao", className)}>{children}</div>;
 }
 
-export function TítuloPagina({
+export function TituloPagina({
   titulo,
   descricao,
   acoes,

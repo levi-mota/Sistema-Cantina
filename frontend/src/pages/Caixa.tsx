@@ -22,7 +22,7 @@ import {
   Modal,
   Selo,
   Tabela,
-  TítuloPagina,
+  TituloPagina,
   Vazio,
 } from "../components/ui";
 
@@ -126,7 +126,7 @@ export default function Caixa() {
 
   return (
     <>
-      <TítuloPagina
+      <TituloPagina
         titulo="Caixa"
         descricao="Cada caixa tem a sua gaveta, o seu turno e o seu fechamento"
         acoes={

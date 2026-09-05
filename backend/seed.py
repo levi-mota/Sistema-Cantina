@@ -275,8 +275,8 @@ def executar() -> None:
         ("Encomenda de salgados", "320.00", 12, clientes[0]),
     ]:
         db.add(
-            models.Título(
-                tipo=models.TipoTítulo.RECEBER,
+            models.Titulo(
+                tipo=models.TipoTitulo.RECEBER,
                 descricao=descricao,
                 categoria="Eventos",
                 parceiro_id=cliente.id,
@@ -296,8 +296,8 @@ def executar() -> None:
     ]
     for descricao, categoria, valor, offset in despesas:
         db.add(
-            models.Título(
-                tipo=models.TipoTítulo.PAGAR,
+            models.Titulo(
+                tipo=models.TipoTitulo.PAGAR,
                 descricao=descricao,
                 categoria=categoria,
                 parceiro_id=random.choice(fornecedores).id

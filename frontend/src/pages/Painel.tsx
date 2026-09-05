@@ -25,8 +25,8 @@ import {
 
 import { api, mensagemErro } from "../lib/api";
 import { brl, dataBr } from "../lib/format";
-import type { Dashboard, Produto, Título } from "../lib/tipos";
-import { Cartao, Carregando, Erro, Selo, TítuloPagina, Vazio } from "../components/ui";
+import type { Dashboard, Produto, Titulo } from "../lib/tipos";
+import { Cartao, Carregando, Erro, Selo, TituloPagina, Vazio } from "../components/ui";
 
 interface PontoGrafico {
   dia: string;
@@ -86,7 +86,7 @@ export default function Painel() {
   const [serie, setSerie] = useState<PontoGrafico[]>([]);
   const [pagamentos, setPagamentos] = useState<FatiaPagamento[]>([]);
   const [criticos, setCriticos] = useState<Produto[]>([]);
-  const [vencendo, setVencendo] = useState<Título[]>([]);
+  const [vencendo, setVencendo] = useState<Titulo[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -96,7 +96,7 @@ export default function Painel() {
       api.get<PontoGrafico[]>("/relatorios/vendas-por-dia"),
       api.get<FatiaPagamento[]>("/relatorios/vendas-por-pagamento"),
       api.get<Produto[]>("/estoque/produtos", { params: { somente_criticos: true, limite: 6 } }),
-      api.get<Título[]>("/financeiro/títulos", { params: { status_titulo: "ABERTO", limite: 6 } }),
+      api.get<Titulo[]>("/financeiro/titulos", { params: { status_titulo: "ABERTO", limite: 6 } }),
     ])
       .then(([d, s, p, c, t]) => {
         setDados(d.data);
@@ -115,7 +115,7 @@ export default function Painel() {
 
   return (
     <>
-      <TítuloPagina
+      <TituloPagina
         titulo="Painel"
         descricao="Visão geral da cantina: vendas, estoque e financeiro"
       />
@@ -301,7 +301,7 @@ export default function Painel() {
 
         <Cartao className="p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-bold text-carvao-900">Títulos em aberto</h2>
+            <h2 className="font-bold text-carvao-900">Titulos em aberto</h2>
             <Link
               to="/contas-a-pagar"
               className="text-sm font-semibold text-marca-600 hover:underline"

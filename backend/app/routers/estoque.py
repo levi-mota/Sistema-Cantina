@@ -225,8 +225,8 @@ def registrar_movimento(dados: schemas.MovimentoIn, db: DB, usuario: SomenteAdmi
             )
         total = Decimal(str(dados.custo_unitario)) * Decimal(str(dados.quantidade))
         db.add(
-            models.Título(
-                tipo=models.TipoTítulo.PAGAR,
+            models.Titulo(
+                tipo=models.TipoTitulo.PAGAR,
                 descricao=f"Compra de {dados.quantidade} x {produto.nome}",
                 categoria="Mercadorias",
                 parceiro_id=dados.fornecedor_id or produto.fornecedor_id,

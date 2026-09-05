@@ -14,7 +14,7 @@ import {
   Selo,
   Seletor,
   Tabela,
-  TítuloPagina,
+  TituloPagina,
   Vazio,
 } from "../components/ui";
 
@@ -117,7 +117,7 @@ export default function Funcionarios() {
 
   return (
     <>
-      <TítuloPagina
+      <TituloPagina
         titulo="Funcionários"
         descricao="Equipe e perfis de acesso"
         acoes={

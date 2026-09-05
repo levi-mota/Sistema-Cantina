@@ -184,7 +184,7 @@ def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
 
 @router.post("/{venda_id}/cancelar", response_model=schemas.VendaOut)
 def cancelar(venda_id: int, db: DB, gestor: SomenteAdmin):
-    """Cancela a venda, devolve os itens ao estoque e cancela o título gerado."""
+    """Cancela a venda, devolve os itens ao estoque e cancela o titulo gerado."""
     venda = db.get(models.Venda, venda_id)
     if not venda:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Venda não encontrada")
@@ -204,12 +204,12 @@ def cancelar(venda_id: int, db: DB, gestor: SomenteAdmin):
                 usuario_id=gestor.id,
             )
 
-    títulos = db.scalars(
-        select(models.Título).where(models.Título.venda_id == venda.id)
+    titulos = db.scalars(
+        select(models.Titulo).where(models.Titulo.venda_id == venda.id)
     ).all()
-    for titulo in títulos:
-        if titulo.status != models.StatusTítulo.PAGO:
-            titulo.status = models.StatusTítulo.CANCELADO
+    for titulo in titulos:
+        if titulo.status != models.StatusTitulo.PAGO:
+            titulo.status = models.StatusTitulo.CANCELADO
 
     venda.status = models.StatusVenda.CANCELADA
     db.commit()

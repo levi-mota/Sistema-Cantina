@@ -63,14 +63,14 @@ def dashboard(db: DB, _: CurrentUser):
         ).where(models.Produto.ativo.is_(True))
     )
 
-    abertos = [models.StatusTítulo.ABERTO, models.StatusTítulo.PARCIAL]
+    abertos = [models.StatusTitulo.ABERTO, models.StatusTitulo.PARCIAL]
 
-    def saldo_títulos(tipo: models.TipoTítulo, vencidos: bool = False) -> Decimal:
+    def saldo_titulos(tipo: models.TipoTitulo, vencidos: bool = False) -> Decimal:
         stmt = select(
-            func.coalesce(func.sum(models.Título.valor - models.Título.valor_pago), 0)
-        ).where(models.Título.tipo == tipo, models.Título.status.in_(abertos))
+            func.coalesce(func.sum(models.Titulo.valor - models.Titulo.valor_pago), 0)
+        ).where(models.Titulo.tipo == tipo, models.Titulo.status.in_(abertos))
         if vencidos:
-            stmt = stmt.where(models.Título.vencimento < date.today())
+            stmt = stmt.where(models.Titulo.vencimento < date.today())
         return Decimal(str(db.scalar(stmt) or 0))
 
     return {
@@ -80,10 +80,10 @@ def dashboard(db: DB, _: CurrentUser):
         "ticket_medio_hoje": (vendas_hoje / qtd_hoje) if qtd_hoje else Decimal("0"),
         "produtos_criticos": criticos or 0,
         "valor_estoque": Decimal(str(valor_estoque or 0)),
-        "a_receber": saldo_títulos(models.TipoTítulo.RECEBER),
-        "a_receber_vencido": saldo_títulos(models.TipoTítulo.RECEBER, vencidos=True),
-        "a_pagar": saldo_títulos(models.TipoTítulo.PAGAR),
-        "a_pagar_vencido": saldo_títulos(models.TipoTítulo.PAGAR, vencidos=True),
+        "a_receber": saldo_titulos(models.TipoTitulo.RECEBER),
+        "a_receber_vencido": saldo_titulos(models.TipoTitulo.RECEBER, vencidos=True),
+        "a_pagar": saldo_titulos(models.TipoTitulo.PAGAR),
+        "a_pagar_vencido": saldo_titulos(models.TipoTitulo.PAGAR, vencidos=True),
         "funcionarios_ativos": db.scalar(
             select(func.count(models.Usuario.id)).where(models.Usuario.ativo.is_(True))
         )
@@ -194,9 +194,9 @@ def dre_simplificado(db: DB, _: CurrentUser, inicio: date | None = None, fim: da
     despesas = Decimal(
         str(
             db.scalar(
-                select(func.coalesce(func.sum(models.Título.valor_pago), 0)).where(
-                    models.Título.tipo == models.TipoTítulo.PAGAR,
-                    models.Título.quitado_em.between(ini.date(), f.date()),
+                select(func.coalesce(func.sum(models.Titulo.valor_pago), 0)).where(
+                    models.Titulo.tipo == models.TipoTitulo.PAGAR,
+                    models.Titulo.quitado_em.between(ini.date(), f.date()),
                 )
             )
             or 0

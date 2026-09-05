@@ -14,7 +14,7 @@ import {
   Selo,
   Seletor,
   Tabela,
-  TítuloPagina,
+  TituloPagina,
   Vazio,
 } from "../components/ui";
 
@@ -194,7 +194,7 @@ export default function Estoque() {
 
   return (
     <>
-      <TítuloPagina
+      <TituloPagina
         titulo="Estoque"
         descricao="Produtos, saldos e movimentações"
         acoes={

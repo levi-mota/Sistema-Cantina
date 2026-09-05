@@ -14,7 +14,7 @@ import {
   Selo,
   Seletor,
   Tabela,
-  TítuloPagina,
+  TituloPagina,
   Vazio,
 } from "../components/ui";
 
@@ -176,7 +176,7 @@ export default function Parceiros() {
 
   return (
     <>
-      <TítuloPagina
+      <TituloPagina
         titulo="Clientes e fornecedores"
         descricao="Cadastro único, com preenchimento automático por CNPJ e CEP"
         acoes={
