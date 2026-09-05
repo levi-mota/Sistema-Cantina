@@ -51,9 +51,15 @@ Para experimentar as telas com movimento de verdade — gráficos com curva,
 relatórios com números, estoque com itens no limite:
 
 ```powershell
-.\dados-teste.ps1            # últimos 90 dias
-.\dados-teste.ps1 -Dias 30   # só o último mês
+.\dados-teste.ps1                        # 90 dias, 3 operadores
+.\dados-teste.ps1 -Dias 30               # só o último mês
+.\dados-teste.ps1 -Operadores 4          # equipe maior no relatório de quebras
 ```
+
+Os operadores nascem como perfil `USUARIO` (PDV e caixa), com a senha `123456`,
+e entram na escala junto com o administrador — assim os dois caixas do mesmo dia
+nunca caem na mesma pessoa. Se o histórico ainda pertence a uma pessoa só, ele é
+redistribuído entre a equipe, para o relatório de quebras ter o que comparar.
 
 Ele **soma** ao banco atual: mantém usuários, caixas e produtos que já existem e
 acrescenta cadastros, estoque, vendas, turnos fechados com quebra, contas a

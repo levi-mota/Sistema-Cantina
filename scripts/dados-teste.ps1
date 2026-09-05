@@ -12,13 +12,19 @@
 .PARAMETER Dias
     Quantos dias para tras gerar (padrao 90).
 
+.PARAMETER Operadores
+    Quantos operadores criar, alem do administrador (padrao 3). Eles entram na
+    escala dos caixas e aparecem no relatorio de quebras.
+
 .EXAMPLE
     .\dados-teste.ps1
     .\dados-teste.ps1 -Dias 30
+    .\dados-teste.ps1 -Operadores 4
 #>
 [CmdletBinding()]
 param(
-    [int]$Dias = 90
+    [int]$Dias = 90,
+    [int]$Operadores = 3
 )
 
 . (Join-Path $PSScriptRoot "_comum.ps1")
@@ -43,7 +49,7 @@ if (Parar-Servicos) {
 
 Push-Location $Backend
 $env:PYTHONIOENCODING = "utf-8"
-& $PythonVenv dados_teste.py $Dias
+& $PythonVenv dados_teste.py $Dias $Operadores
 $codigo = $LASTEXITCODE
 Pop-Location
 

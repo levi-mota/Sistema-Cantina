@@ -9,7 +9,7 @@ Serve para testar as telas com movimento de verdade -- gráficos com curva,
 relatórios com números, estoque com itens no limite. Rodar de novo acrescenta
 mais um período; nada é apagado.
 
-Uso:  .venv/Scripts/python dados_teste.py [dias]
+Uso:  .venv/Scripts/python dados_teste.py [dias] [operadores]
 """
 
 import random
@@ -24,7 +24,17 @@ from app.core import migracoes
 from app.core.database import SessionLocal
 from app.services.caixa import conferir
 from app.services.documento import _digito
+from app.core.security import hash_password
 from app.services.estoque import movimentar
+
+# nome, login. Todos entram como USUARIO, com a senha abaixo.
+OPERADORES = [
+    ("Ana Souza", "ana"),
+    ("Bruno Alves", "bruno"),
+    ("Carla Dias", "carla"),
+    ("Diego Ramos", "diego"),
+]
+SENHA_OPERADORES = "123456"
 
 CATEGORIAS = ["Salgados", "Bebidas", "Doces", "Lanches", "Mercearia", "Porções"]
 
@@ -198,6 +208,82 @@ def garantir_produtos(db, categorias, fornecedores, usuario_id: int) -> list:
     return produtos
 
 
+def garantir_operadores(db, quantidade: int) -> list:
+    """Cria os operadores que faltam e devolve a equipe que opera os caixas.
+
+    O administrador entra na escala junto: numa cantina pequena quem administra
+    também fica no balcão, e assim os dois caixas do mesmo dia nunca caem na
+    mesma pessoa.
+    """
+    equipe = [db.scalar(select(models.Usuario).order_by(models.Usuario.id))]
+
+    for nome, login in OPERADORES[:quantidade]:
+        usuario = db.scalar(select(models.Usuario).where(models.Usuario.usuario == login))
+        if not usuario:
+            usuario = models.Usuario(
+                nome=nome,
+                usuario=login,
+                senha_hash=hash_password(SENHA_OPERADORES),
+                perfil=models.Perfil.USUARIO,
+                cargo="Atendente",
+                salario=Decimal(str(round(random.uniform(1800, 2400), 2))),
+                data_admissao=date.today() - timedelta(days=random.randint(120, 900)),
+            )
+            db.add(usuario)
+            print(f"  operador criado: {login} / {SENHA_OPERADORES}")
+        equipe.append(usuario)
+
+    db.flush()
+    return equipe
+
+
+def redistribuir_turnos(db, equipe) -> None:
+    """Espalha entre a equipe os turnos que hoje pertencem a uma pessoa só.
+
+    Sem isso, o histórico gerado antes de existirem operadores deixaria o
+    relatório de quebras com uma linha só. As vendas e os movimentos de caixa
+    acompanham o dono do turno, senão a venda ficaria no nome de quem não
+    estava na gaveta.
+    """
+    if len(equipe) < 2:
+        return
+
+    donos = {
+        d for (d,) in db.execute(select(models.CaixaSessao.usuario_abertura_id).distinct()).all()
+    }
+    if len(donos) > 1:
+        return  # o histórico já tem mais de um operador
+
+    sessoes = db.scalars(
+        select(models.CaixaSessao).order_by(models.CaixaSessao.aberto_em, models.CaixaSessao.id)
+    ).all()
+
+    # O turno aberto fica com quem já o abriu: mexer nele confundiria o PDV.
+    ajustadas = 0
+    for indice, sessao in enumerate(s for s in sessoes if s.status == models.StatusCaixa.FECHADA):
+        novo = equipe[indice % len(equipe)]
+        if sessao.usuario_abertura_id == novo.id:
+            continue
+        sessao.usuario_abertura_id = novo.id
+        if sessao.usuario_fechamento_id is not None:
+            sessao.usuario_fechamento_id = novo.id
+        db.execute(
+            models.Venda.__table__.update()
+            .where(models.Venda.caixa_sessao_id == sessao.id)
+            .values(usuario_id=novo.id)
+        )
+        db.execute(
+            models.MovimentoCaixa.__table__.update()
+            .where(models.MovimentoCaixa.sessao_id == sessao.id)
+            .values(usuario_id=novo.id)
+        )
+        ajustadas += 1
+
+    if ajustadas:
+        db.flush()
+        print(f"  {ajustadas} turno(s) do histórico redistribuídos entre a equipe")
+
+
 def fechar_turnos_pendentes(db, operador) -> None:
     """Fecha turnos que já estavam abertos antes desta geração.
 
@@ -234,7 +320,7 @@ def garantir_caixas(db) -> list:
     return caixas
 
 
-def gerar_movimento(db, dias: int, produtos, caixas, operador, clientes) -> None:
+def gerar_movimento(db, dias: int, produtos, caixas, equipe, clientes) -> None:
     """Turnos e vendas espalhados pelos últimos `dias` dias."""
     documentos = [cpf_valido() for _ in range(6)]
     formas = [models.FormaPagamento.DINHEIRO, models.FormaPagamento.PIX]
@@ -250,7 +336,9 @@ def gerar_movimento(db, dias: int, produtos, caixas, operador, clientes) -> None
         if peso > 1.1 and len(caixas) > 1:
             turnos.append((caixas[1], 13, 19))
 
-        for caixa, inicio, fim in turnos:
+        for indice, (caixa, inicio, fim) in enumerate(turnos):
+            # Reveza a equipe: no mesmo dia, cada caixa fica com uma pessoa.
+            operador = equipe[(dias_atras + indice) % len(equipe)]
             aberto = dias_atras == 0 and caixa is caixas[0]
             sessao = models.CaixaSessao(
                 caixa_id=caixa.id,
@@ -447,7 +535,7 @@ def gerar_compras(db, produtos, usuario_id: int) -> None:
             )
 
 
-def executar(dias: int = 90) -> None:
+def executar(dias: int = 90, operadores: int = 3) -> None:
     migracoes.aplicar()
     db = SessionLocal()
 
@@ -457,13 +545,15 @@ def executar(dias: int = 90) -> None:
         return
 
     print(f"Gerando dados de teste dos últimos {dias} dias...")
+    equipe = garantir_operadores(db, operadores)
+    redistribuir_turnos(db, equipe)
     fechar_turnos_pendentes(db, operador)
     categorias = garantir_categorias(db)
     fornecedores, clientes = garantir_parceiros(db)
     produtos = garantir_produtos(db, categorias, fornecedores, operador.id)
     caixas = garantir_caixas(db)
 
-    gerar_movimento(db, dias, produtos, caixas, operador, clientes)
+    gerar_movimento(db, dias, produtos, caixas, equipe, clientes)
     gerar_financeiro(db, fornecedores, clientes)
     db.flush()
     gerar_compras(db, produtos, operador.id)
@@ -503,4 +593,6 @@ def executar(dias: int = 90) -> None:
 
 
 if __name__ == "__main__":
-    executar(int(sys.argv[1]) if len(sys.argv) > 1 else 90)
+    dias = int(sys.argv[1]) if len(sys.argv) > 1 else 90
+    operadores = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+    executar(dias, operadores)
