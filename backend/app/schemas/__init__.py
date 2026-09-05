@@ -24,12 +24,6 @@ class UsuarioBase(BaseModel):
     nome: str
     usuario: str = Field(min_length=2, max_length=40)
     perfil: models.Perfil = models.Perfil.USUARIO
-    cargo: str | None = None
-    cpf: str | None = None
-    telefone: str | None = None
-    salario: Decimal | None = None
-    data_admissao: date | None = None
-    data_demissao: date | None = None
     ativo: bool = True
 
 
@@ -42,12 +36,6 @@ class UsuarioUpdate(BaseModel):
     usuario: str | None = Field(default=None, min_length=2, max_length=40)
     senha: str | None = Field(default=None, min_length=4)
     perfil: models.Perfil | None = None
-    cargo: str | None = None
-    cpf: str | None = None
-    telefone: str | None = None
-    salario: Decimal | None = None
-    data_admissao: date | None = None
-    data_demissao: date | None = None
     ativo: bool | None = None
 
 

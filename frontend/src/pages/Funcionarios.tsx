@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataBr, rotulo } from "../lib/format";
+import { rotulo } from "../lib/format";
 import type { Perfil, Usuario } from "../lib/tipos";
 import {
   Botao,
@@ -28,11 +28,6 @@ const FORM_VAZIO = {
   usuario: "",
   senha: "",
   perfil: "USUARIO" as Perfil,
-  cargo: "",
-  cpf: "",
-  telefone: "",
-  salario: "",
-  data_admissao: "",
   ativo: true,
 };
 
@@ -71,11 +66,6 @@ export default function Funcionarios() {
             usuario: u.usuario,
             senha: "",
             perfil: u.perfil,
-            cargo: u.cargo ?? "",
-            cpf: u.cpf ?? "",
-            telefone: u.telefone ?? "",
-            salario: u.salario ?? "",
-            data_admissao: u.data_admissao ?? "",
             ativo: u.ativo,
           },
     );
@@ -89,11 +79,6 @@ export default function Funcionarios() {
       nome: form.nome,
       usuario: form.usuario,
       perfil: form.perfil,
-      cargo: form.cargo || null,
-      cpf: form.cpf || null,
-      telefone: form.telefone || null,
-      salario: form.salario ? Number(form.salario) : null,
-      data_admissao: form.data_admissao || null,
       ativo: form.ativo,
     };
     if (form.senha) corpo.senha = form.senha;
@@ -153,25 +138,20 @@ export default function Funcionarios() {
             </div>
 
             <Cartao className="hidden overflow-hidden lg:block">
-              <Tabela
-                cabecalho={["Nome", "Perfil", "Cargo", "Contato", "Admissao", "Salário", "Ações"]}
-              >
+              <Tabela cabecalho={["Nome", "Usuário", "Perfil", "Situação", "Ações"]}>
                 {equipe.map((u) => (
                   <tr key={u.id} className={u.ativo ? "hover:bg-carvao-50/60" : "opacity-60"}>
-                    <td className="px-4 py-2.5">
-                      <p className="font-medium text-carvao-800">{u.nome}</p>
-                      <p className="text-xs text-carvao-500">{u.usuario}</p>
-                    </td>
+                    <td className="px-4 py-2.5 font-medium text-carvao-800">{u.nome}</td>
+                    <td className="px-4 py-2.5 text-carvao-600">{u.usuario}</td>
                     <td className="px-4 py-2.5">
                       <Selo tom={u.perfil === "ADMIN" ? "marca" : "neutro"}>
                         {rotulo(u.perfil)}
                       </Selo>
                     </td>
-                    <td className="px-4 py-2.5 text-carvao-600">{u.cargo ?? "-"}</td>
-                    <td className="px-4 py-2.5 text-carvao-600">{u.telefone ?? "-"}</td>
-                    <td className="px-4 py-2.5 text-carvao-600">{dataBr(u.data_admissao)}</td>
-                    <td className="px-4 py-2.5 text-carvao-600">
-                      {u.salario ? brl(u.salario) : "-"}
+                    <td className="px-4 py-2.5">
+                      <Selo tom={u.ativo ? "sucesso" : "neutro"}>
+                        {u.ativo ? "Ativo" : "Inativo"}
+                      </Selo>
                     </td>
                     <td className="px-4 py-2.5">
                       <Botao variante="secundario" onClick={() => abrir(u)}>
@@ -192,7 +172,7 @@ export default function Funcionarios() {
       >
         <form onSubmit={salvar} className="space-y-4">
           <Erro mensagem={erro} />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-4">
             <Campo
               rotulo="Nome"
               required
@@ -206,7 +186,6 @@ export default function Funcionarios() {
               spellCheck={false}
               value={form.usuario}
               onChange={(e) => setForm({ ...form, usuario: e.target.value })}
-              dica="Sem e-mail: levi, davi, alisson"
             />
             <Campo
               rotulo={modal === "novo" ? "Senha" : "Nova senha (opcional)"}
@@ -222,36 +201,7 @@ export default function Funcionarios() {
               onChange={(e) => setForm({ ...form, perfil: e.target.value as Perfil })}
               opcoes={PERFIS.map((p) => ({ valor: p.valor, texto: p.texto }))}
             />
-            <Campo
-              rotulo="Cargo"
-              value={form.cargo}
-              onChange={(e) => setForm({ ...form, cargo: e.target.value })}
-            />
-            <Campo
-              rotulo="CPF"
-              value={form.cpf}
-              onChange={(e) => setForm({ ...form, cpf: e.target.value })}
-            />
-            <Campo
-              rotulo="Telefone"
-              value={form.telefone}
-              onChange={(e) => setForm({ ...form, telefone: e.target.value })}
-            />
-            <Campo
-              rotulo="Salário (R$)"
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.salario}
-              onChange={(e) => setForm({ ...form, salario: e.target.value })}
-            />
-            <Campo
-              rotulo="Data de admissao"
-              type="date"
-              value={form.data_admissao}
-              onChange={(e) => setForm({ ...form, data_admissao: e.target.value })}
-            />
-            <label className="flex items-center gap-2 self-end pb-2 text-sm text-carvao-700">
+            <label className="flex items-center gap-2 pt-1 text-sm text-carvao-700">
               <input
                 type="checkbox"
                 checked={form.ativo}

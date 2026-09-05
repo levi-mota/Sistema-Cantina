@@ -49,23 +49,16 @@ def executar() -> None:
                 usuario="admin",
                 senha_hash=hash_password("admin123"),
                 perfil=models.Perfil.ADMIN,
-                cargo="Administrador",
-                data_admissao=date(2023, 1, 10),
             )
         )
-    equipe = [
-        ("Levi", "levi", models.Perfil.USUARIO, "Atendente", "2100.00"),
-    ]
-    for nome, login, perfil, cargo, salario in equipe:
+    equipe = [("Levi", "levi", models.Perfil.USUARIO)]
+    for nome, login, perfil in equipe:
         db.add(
             models.Usuario(
                 nome=nome,
                 usuario=login,
                 senha_hash=hash_password("123456"),
                 perfil=perfil,
-                cargo=cargo,
-                salario=Decimal(salario),
-                data_admissao=date(2024, 3, 1),
             )
         )
     db.flush()

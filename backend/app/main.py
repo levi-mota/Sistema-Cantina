@@ -35,7 +35,6 @@ def criar_admin_inicial() -> None:
                 usuario=settings.admin_usuario.lower(),
                 senha_hash=hash_password(settings.admin_password),
                 perfil=models.Perfil.ADMIN,
-                cargo="Administrador",
             )
         )
         db.commit()

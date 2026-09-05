@@ -225,9 +225,6 @@ def garantir_operadores(db, quantidade: int) -> list:
                 usuario=login,
                 senha_hash=hash_password(SENHA_OPERADORES),
                 perfil=models.Perfil.USUARIO,
-                cargo="Atendente",
-                salario=Decimal(str(round(random.uniform(1800, 2400), 2))),
-                data_admissao=date.today() - timedelta(days=random.randint(120, 900)),
             )
             db.add(usuario)
             print(f"  operador criado: {login} / {SENHA_OPERADORES}")

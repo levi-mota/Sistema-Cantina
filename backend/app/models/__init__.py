@@ -113,12 +113,6 @@ class Usuario(Base):
     usuario: Mapped[str] = mapped_column(String(40), unique=True, index=True)
     senha_hash: Mapped[str] = mapped_column(String(255))
     perfil: Mapped[Perfil] = mapped_column(Enum(Perfil), default=Perfil.USUARIO)
-    cargo: Mapped[str | None] = mapped_column(String(80))
-    cpf: Mapped[str | None] = mapped_column(String(14))
-    telefone: Mapped[str | None] = mapped_column(String(20))
-    salario: Mapped[float | None] = mapped_column(Dinheiro)
-    data_admissao: Mapped[date | None] = mapped_column(Date)
-    data_demissao: Mapped[date | None] = mapped_column(Date)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 

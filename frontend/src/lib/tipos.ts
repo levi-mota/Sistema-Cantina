@@ -13,12 +13,6 @@ export interface Usuario {
   /** Login interno, sem e-mail: "levi", "davi.silva". */
   usuario: string;
   perfil: Perfil;
-  cargo?: string | null;
-  cpf?: string | null;
-  telefone?: string | null;
-  salario?: string | null;
-  data_admissao?: string | null;
-  data_demissao?: string | null;
   ativo: boolean;
   criado_em: string;
 }
