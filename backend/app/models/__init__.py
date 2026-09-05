@@ -80,6 +80,16 @@ class StatusTitulo(StrEnum):
     CANCELADO = "CANCELADO"
 
 
+class StatusCaixa(StrEnum):
+    ABERTA = "ABERTA"
+    FECHADA = "FECHADA"
+
+
+class TipoMovimentoCaixa(StrEnum):
+    SANGRIA = "SANGRIA"
+    SUPRIMENTO = "SUPRIMENTO"
+
+
 # --------------------------------------------------------------------------- #
 # Funcionarios / usuarios
 # --------------------------------------------------------------------------- #
@@ -211,6 +221,9 @@ class Venda(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     cliente_id: Mapped[int | None] = mapped_column(ForeignKey("parceiros.id"))
     usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    caixa_sessao_id: Mapped[int | None] = mapped_column(
+        ForeignKey("caixa_sessoes.id"), index=True
+    )
     status: Mapped[StatusVenda] = mapped_column(
         Enum(StatusVenda), default=StatusVenda.FINALIZADA, index=True
     )
@@ -273,3 +286,57 @@ class Titulo(Base):
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
     parceiro: Mapped[Parceiro | None] = relationship(lazy="joined")
+
+
+# --------------------------------------------------------------------------- #
+# Caixa (controle do dinheiro fisico da gaveta, por turno)
+# --------------------------------------------------------------------------- #
+class CaixaSessao(Base):
+    __tablename__ = "caixa_sessoes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    status: Mapped[StatusCaixa] = mapped_column(
+        Enum(StatusCaixa), default=StatusCaixa.ABERTA, index=True
+    )
+    usuario_abertura_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    usuario_fechamento_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    aberto_em: Mapped[datetime] = mapped_column(DateTime, default=agora, index=True)
+    fechado_em: Mapped[datetime | None] = mapped_column(DateTime)
+
+    valor_abertura: Mapped[float] = mapped_column(Dinheiro, default=0)
+    # Preenchidos apenas no fechamento, congelando a conferencia do turno.
+    valor_informado: Mapped[float | None] = mapped_column(Dinheiro)
+    valor_esperado: Mapped[float | None] = mapped_column(Dinheiro)
+    diferenca: Mapped[float | None] = mapped_column(Dinheiro)
+
+    observacao_abertura: Mapped[str | None] = mapped_column(Text)
+    observacao_fechamento: Mapped[str | None] = mapped_column(Text)
+
+    usuario_abertura: Mapped[Usuario] = relationship(
+        foreign_keys=[usuario_abertura_id], lazy="joined"
+    )
+    usuario_fechamento: Mapped[Usuario | None] = relationship(
+        foreign_keys=[usuario_fechamento_id], lazy="joined"
+    )
+    movimentos: Mapped[list["MovimentoCaixa"]] = relationship(
+        back_populates="sessao", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class MovimentoCaixa(Base):
+    """Sangria (retirada) ou suprimento (reforco) lancado durante o turno."""
+
+    __tablename__ = "movimentos_caixa"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sessao_id: Mapped[int] = mapped_column(
+        ForeignKey("caixa_sessoes.id", ondelete="CASCADE"), index=True
+    )
+    tipo: Mapped[TipoMovimentoCaixa] = mapped_column(Enum(TipoMovimentoCaixa))
+    valor: Mapped[float] = mapped_column(Dinheiro)
+    motivo: Mapped[str | None] = mapped_column(String(200))
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+    sessao: Mapped[CaixaSessao] = relationship(back_populates="movimentos")
+    usuario: Mapped[Usuario | None] = relationship(lazy="joined")

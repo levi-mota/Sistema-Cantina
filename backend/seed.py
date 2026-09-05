@@ -151,6 +151,39 @@ def executar() -> None:
         )
         produtos.append(produto)
 
+    # --- Sessoes de caixa -------------------------------------------------
+    # Um turno de ontem ja fechado (com uma pequena quebra) e o turno de hoje
+    # aberto, para o PDV funcionar assim que a demo subir.
+    ontem = datetime.now(timezone.utc) - timedelta(days=1)
+    turno_ontem = models.CaixaSessao(
+        status=models.StatusCaixa.FECHADA,
+        usuario_abertura_id=operadores[0].id,
+        usuario_fechamento_id=operadores[0].id,
+        aberto_em=ontem.replace(hour=8, minute=0),
+        fechado_em=ontem.replace(hour=18, minute=30),
+        valor_abertura=Decimal("100.00"),
+        observacao_abertura="Troco inicial em moedas e notas de 2 e 5",
+    )
+    turno_hoje = models.CaixaSessao(
+        status=models.StatusCaixa.ABERTA,
+        usuario_abertura_id=operadores[0].id,
+        valor_abertura=Decimal("100.00"),
+        observacao_abertura="Abertura do turno da manha",
+    )
+    db.add_all([turno_ontem, turno_hoje])
+    db.flush()
+
+    db.add(
+        models.MovimentoCaixa(
+            sessao_id=turno_ontem.id,
+            tipo=models.TipoMovimentoCaixa.SANGRIA,
+            valor=Decimal("150.00"),
+            motivo="Retirada para o cofre",
+            usuario_id=operadores[0].id,
+            criado_em=ontem.replace(hour=15, minute=0),
+        )
+    )
+
     # --- Vendas dos ultimos 30 dias --------------------------------------
     formas = [
         models.FormaPagamento.DINHEIRO,
@@ -169,6 +202,13 @@ def executar() -> None:
             venda = models.Venda(
                 cliente_id=cliente.id if cliente else None,
                 usuario_id=random.choice(operadores).id,
+                caixa_sessao_id=(
+                    turno_hoje.id
+                    if dias_atras == 0
+                    else turno_ontem.id
+                    if dias_atras == 1
+                    else None
+                ),
                 forma_pagamento=forma,
                 criado_em=momento_base.replace(
                     hour=random.randint(8, 18), minute=random.randint(0, 59)
@@ -251,6 +291,18 @@ def executar() -> None:
                 vencimento=date.today() + timedelta(days=offset),
             )
         )
+
+    db.flush()
+
+    # Fecha o turno de ontem usando a conferencia real, com uma quebra de -3,50
+    # para a tela de historico ja nascer com um caso interessante.
+    from app.services.caixa import conferir
+
+    conferencia = conferir(db, turno_ontem)
+    turno_ontem.valor_esperado = conferencia.valor_esperado
+    turno_ontem.valor_informado = conferencia.valor_esperado - Decimal("3.50")
+    turno_ontem.diferenca = Decimal("-3.50")
+    turno_ontem.observacao_fechamento = "Faltou troco; conferido com o gerente"
 
     db.commit()
     print("Demo criada com sucesso.")

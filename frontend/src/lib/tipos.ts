@@ -107,6 +107,7 @@ export interface Venda {
   cliente_id?: number | null;
   cliente_nome?: string | null;
   usuario_nome?: string | null;
+  caixa_sessao_id?: number | null;
   status: StatusVenda;
   forma_pagamento: FormaPagamento;
   subtotal: string;
@@ -182,4 +183,47 @@ export interface Empresa extends Endereco {
   telefone?: string | null;
   numero?: string | null;
   complemento?: string | null;
+}
+
+export type StatusCaixa = "ABERTA" | "FECHADA";
+export type TipoMovimentoCaixa = "SANGRIA" | "SUPRIMENTO";
+
+export interface MovimentoCaixa {
+  id: number;
+  tipo: TipoMovimentoCaixa;
+  valor: string;
+  motivo?: string | null;
+  usuario_id?: number | null;
+  usuario_nome?: string | null;
+  criado_em: string;
+}
+
+export interface Conferencia {
+  valor_abertura: string;
+  vendas_dinheiro: string;
+  qtd_vendas_dinheiro: number;
+  suprimentos: string;
+  sangrias: string;
+  valor_esperado: string;
+  vendas_outras_formas: string;
+  total_vendas: string;
+}
+
+export interface CaixaSessao {
+  id: number;
+  status: StatusCaixa;
+  usuario_abertura_id: number;
+  usuario_abertura_nome?: string | null;
+  usuario_fechamento_id?: number | null;
+  usuario_fechamento_nome?: string | null;
+  aberto_em: string;
+  fechado_em?: string | null;
+  valor_abertura: string;
+  valor_informado?: string | null;
+  valor_esperado?: string | null;
+  diferenca?: string | null;
+  observacao_abertura?: string | null;
+  observacao_fechamento?: string | null;
+  movimentos: MovimentoCaixa[];
+  conferencia?: Conferencia | null;
 }

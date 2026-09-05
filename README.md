@@ -1,7 +1,7 @@
 # Sistema Cantina
 
-Sistema de gestão para cantina: PDV, estoque, contas a pagar/receber, relatórios,
-controle de funcionários e cadastro de clientes/fornecedores.
+Sistema de gestão para cantina: PDV, caixa, estoque, contas a pagar/receber,
+relatórios, controle de funcionários e cadastro de clientes/fornecedores.
 
 Roda no navegador do PC (sistema completo) e no navegador do celular, onde todos os
 módulos continuam **editáveis** — inclusive fazer estoque pelo celular.
@@ -30,6 +30,7 @@ Sistema cantina/
 │   │   │   ├── parceiros.py     clientes e fornecedores
 │   │   │   ├── estoque.py       categorias, produtos, movimentações
 │   │   │   ├── vendas.py        PDV
+│   │   │   ├── caixa.py         sessão de caixa (abertura, sangria, fechamento)
 │   │   │   ├── financeiro.py    contas a pagar e a receber
 │   │   │   ├── relatorios.py    dashboard, DRE, curva ABC
 │   │   │   └── integracoes.py   consulta de CNPJ e CEP
@@ -93,6 +94,12 @@ Backend e frontend já sobem escutando na rede local. Descubra o IP do PC
   troco, comprovante. Ao finalizar: **dá baixa no estoque** (um movimento por item) e,
   se a venda for no fiado, **gera a conta a receber** do cliente respeitando o limite
   de crédito. O cancelamento devolve os itens e cancela o título.
+* **Caixa** — controle do dinheiro físico da gaveta, por turno. Abertura com troco
+  inicial, **sangria** (retirada) e **suprimento** (reforço), e fechamento onde o valor
+  contado é comparado ao esperado, registrando a **quebra de caixa** com data e
+  responsável. A conta é sempre `abertura + vendas em dinheiro + suprimentos − sangrias`;
+  PIX, cartão e fiado ficam de fora porque não passam pela gaveta. Com o caixa fechado
+  o PDV bloqueia vendas em dinheiro — as demais formas continuam liberadas.
 * **Estoque** — produtos, categorias, saldo, estoque mínimo, custo médio ponderado e
   kardex completo. Entradas, saídas, perdas e ajuste de inventário. Uma entrada de
   compra pode **gerar a conta a pagar** do fornecedor automaticamente.
@@ -110,7 +117,16 @@ Backend e frontend já sobem escutando na rede local. Descubra o IP do PC
 | --- | --- |
 | `ADMIN` | tudo |
 | `GERENTE` | tudo, exceto restrições futuras de administração |
-| `OPERADOR` | PDV, estoque, cadastros e relatórios; não gerencia a equipe nem cancela vendas |
+| `OPERADOR` | PDV, caixa, estoque, cadastros e relatórios; não gerencia a equipe, não cancela vendas nem reabre turnos |
+
+### Desligando o controle de caixa
+
+Se a cantina tem um turno só e não quer conferência de gaveta, basta desligar no
+`backend/.env` — o PDV volta a aceitar dinheiro sem turno aberto:
+
+```
+EXIGIR_CAIXA_ABERTO=false
+```
 
 ---
 

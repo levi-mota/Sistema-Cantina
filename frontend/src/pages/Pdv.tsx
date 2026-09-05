@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { LockKeyhole, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
 import { brl, hojeIso } from "../lib/format";
-import type { FormaPagamento, Parceiro, Produto, Venda } from "../lib/tipos";
+import type { CaixaSessao, FormaPagamento, Parceiro, Produto, Venda } from "../lib/tipos";
 import { Botao, Campo, Cartao, Carregando, Erro, Modal, Selo, Seletor, Vazio } from "../components/ui";
 
 interface ItemCarrinho {
@@ -22,6 +23,7 @@ const FORMAS: { valor: FormaPagamento; texto: string }[] = [
 export default function Pdv() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [clientes, setClientes] = useState<Parceiro[]>([]);
+  const [caixa, setCaixa] = useState<CaixaSessao | null>(null);
   const [busca, setBusca] = useState("");
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -41,12 +43,14 @@ export default function Pdv() {
   async function carregar() {
     setCarregando(true);
     try {
-      const [p, c] = await Promise.all([
+      const [p, c, k] = await Promise.all([
         api.get<Produto[]>("/estoque/produtos", { params: { ativo: true } }),
         api.get<Parceiro[]>("/parceiros", { params: { tipo: "CLIENTE", ativo: true } }),
+        api.get<CaixaSessao | null>("/caixa/atual"),
       ]);
       setProdutos(p.data);
       setClientes(c.data);
+      setCaixa(k.data);
     } catch (e) {
       setErro(mensagemErro(e));
     } finally {
@@ -155,6 +159,22 @@ export default function Pdv() {
             />
           </div>
         </div>
+
+        {!caixa && (
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            <LockKeyhole className="h-4 w-4 shrink-0" />
+            <span className="flex-1">
+              Caixa fechado: vendas em dinheiro estao bloqueadas. PIX, cartao e fiado seguem
+              liberados.
+            </span>
+            <Link
+              to="/caixa"
+              className="font-semibold text-amber-900 underline underline-offset-2"
+            >
+              Abrir caixa
+            </Link>
+          </div>
+        )}
 
         <Erro mensagem={erro} />
 
@@ -340,6 +360,12 @@ export default function Pdv() {
             />
           )}
 
+          {forma === "DINHEIRO" && !caixa && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Abra o caixa para receber em dinheiro, ou escolha outra forma de pagamento.
+            </div>
+          )}
+
           <div className="rounded-lg bg-carvao-50 p-3 text-sm">
             <div className="flex justify-between text-carvao-600">
               <span>Subtotal</span>
@@ -373,7 +399,7 @@ export default function Pdv() {
               variante="sucesso"
               className="flex-1"
               carregando={finalizando}
-              disabled={forma === "FIADO" && !clienteId}
+              disabled={(forma === "FIADO" && !clienteId) || (forma === "DINHEIRO" && !caixa)}
               onClick={finalizar}
             >
               Confirmar

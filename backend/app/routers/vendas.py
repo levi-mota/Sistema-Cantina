@@ -1,8 +1,9 @@
 """Ponto de venda (PDV).
 
-Uma venda finalizada dispara duas integracoes:
+Uma venda finalizada dispara tres integracoes:
   * baixa de estoque (um movimento de SAIDA por item);
-  * financeiro -> venda no fiado gera uma conta a receber do cliente.
+  * financeiro -> venda no fiado gera uma conta a receber do cliente;
+  * caixa -> a venda se vincula ao turno aberto, para conferir a gaveta.
 """
 
 from datetime import date, datetime, time, timedelta, timezone
@@ -12,7 +13,9 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app import models, schemas
+from app.core.config import settings
 from app.core.deps import DB, CurrentUser, Gestao
+from app.services import caixa as servico_caixa
 from app.services import estoque as servico_estoque
 
 router = APIRouter(prefix="/api/vendas", tags=["pdv"])
@@ -25,6 +28,7 @@ def _venda_out(v: models.Venda) -> schemas.VendaOut:
         cliente_nome=v.cliente.nome if v.cliente else None,
         usuario_id=v.usuario_id,
         usuario_nome=v.usuario.nome if v.usuario else None,
+        caixa_sessao_id=v.caixa_sessao_id,
         status=v.status,
         forma_pagamento=v.forma_pagamento,
         subtotal=Decimal(str(v.subtotal)),
@@ -81,9 +85,17 @@ def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
     if dados.cliente_id and not cliente:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Cliente nao encontrado")
 
+    # Dinheiro passa pela gaveta, entao precisa de um turno aberto para ser
+    # conferido no fechamento. As demais formas apenas se vinculam se houver.
+    if dados.forma_pagamento == models.FormaPagamento.DINHEIRO and settings.exigir_caixa_aberto:
+        sessao = servico_caixa.exigir_sessao_aberta(db)
+    else:
+        sessao = servico_caixa.sessao_aberta(db)
+
     venda = models.Venda(
         cliente_id=dados.cliente_id,
         usuario_id=usuario.id,
+        caixa_sessao_id=sessao.id if sessao else None,
         forma_pagamento=dados.forma_pagamento,
         observacao=dados.observacao,
         status=models.StatusVenda.FINALIZADA,

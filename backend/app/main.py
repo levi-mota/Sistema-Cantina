@@ -10,6 +10,7 @@ from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
 from app.routers import (
     auth,
+    caixa,
     estoque,
     financeiro,
     funcionarios,
@@ -18,6 +19,21 @@ from app.routers import (
     relatorios,
     vendas,
 )
+
+
+def migrar_colunas_novas() -> None:
+    """Adiciona colunas novas a bancos criados por versoes anteriores.
+
+    `create_all` cria tabelas que faltam, mas nao altera as existentes; para um
+    projeto com SQLite este empurrao simples evita ter que apagar o banco.
+    """
+    with engine.begin() as conexao:
+        colunas = {
+            linha[1] for linha in conexao.exec_driver_sql("PRAGMA table_info(vendas)").fetchall()
+        }
+        if colunas and "caixa_sessao_id" not in colunas:
+            conexao.exec_driver_sql("ALTER TABLE vendas ADD COLUMN caixa_sessao_id INTEGER")
+            print("[setup] Coluna vendas.caixa_sessao_id adicionada")
 
 
 def criar_admin_inicial() -> None:
@@ -41,6 +57,7 @@ def criar_admin_inicial() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    migrar_colunas_novas()
     criar_admin_inicial()
     yield
 
@@ -67,6 +84,7 @@ for modulo in (
     parceiros,
     estoque,
     vendas,
+    caixa,
     financeiro,
     relatorios,
     integracoes,

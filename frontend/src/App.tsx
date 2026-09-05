@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import { Carregando } from "./components/ui";
 import { ProvedorAuth, useAuth } from "./lib/auth";
+import Caixa from "./pages/Caixa";
 import Estoque from "./pages/Estoque";
 import Financeiro from "./pages/Financeiro";
 import Funcionarios from "./pages/Funcionarios";
@@ -32,6 +33,7 @@ function Rotas() {
       <Route element={<Layout />}>
         <Route index element={<Painel />} />
         <Route path="pdv" element={<Pdv />} />
+        <Route path="caixa" element={<Caixa />} />
         <Route path="estoque" element={<Estoque />} />
         <Route path="contas-a-pagar" element={<Financeiro tipo="PAGAR" />} />
         <Route path="contas-a-receber" element={<Financeiro tipo="RECEBER" />} />

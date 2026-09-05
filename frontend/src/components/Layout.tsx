@@ -6,6 +6,7 @@ import {
   BarChart3,
   Boxes,
   LayoutDashboard,
+  Landmark,
   LogOut,
   Menu,
   ShoppingCart,
@@ -32,6 +33,7 @@ interface ItemMenu {
 const MENU: ItemMenu[] = [
   { para: "/", texto: "Painel", curto: "Painel", icone: LayoutDashboard, noCelular: true },
   { para: "/pdv", texto: "Ponto de venda", curto: "PDV", icone: ShoppingCart, noCelular: true },
+  { para: "/caixa", texto: "Caixa", curto: "Caixa", icone: Landmark },
   { para: "/estoque", texto: "Estoque", curto: "Estoque", icone: Boxes, noCelular: true },
   { para: "/contas-a-pagar", texto: "Contas a pagar", curto: "Pagar", icone: ArrowUpCircle },
   { para: "/contas-a-receber", texto: "Contas a receber", curto: "Receber", icone: ArrowDownCircle },

@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./cantina.db"
     cors_origins: str = "http://localhost:5173"
 
+    # Quando ligado, vendas em dinheiro exigem um caixa aberto.
+    exigir_caixa_aberto: bool = True
+
     apibrasil_token: str = ""
     apibrasil_device_token: str = ""
 

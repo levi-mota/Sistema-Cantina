@@ -239,6 +239,7 @@ class VendaOut(ORMModel):
     cliente_nome: str | None = None
     usuario_id: int | None = None
     usuario_nome: str | None = None
+    caixa_sessao_id: int | None = None
     status: models.StatusVenda
     forma_pagamento: models.FormaPagamento
     subtotal: Decimal
@@ -327,3 +328,65 @@ class EmpresaOut(BaseModel):
     cidade: str | None = None
     uf: str | None = None
     fonte: str
+
+
+# --------------------------------------------------------------------------- #
+# Caixa
+# --------------------------------------------------------------------------- #
+class AberturaIn(BaseModel):
+    valor_abertura: Decimal = Field(default=Decimal("0"), ge=0)
+    observacao: str | None = None
+
+
+class MovimentoCaixaIn(BaseModel):
+    tipo: models.TipoMovimentoCaixa
+    valor: Decimal = Field(gt=0)
+    motivo: str | None = None
+
+
+class FechamentoIn(BaseModel):
+    valor_informado: Decimal = Field(ge=0)
+    observacao: str | None = None
+
+
+class MovimentoCaixaOut(ORMModel):
+    id: int
+    tipo: models.TipoMovimentoCaixa
+    valor: Decimal
+    motivo: str | None = None
+    usuario_id: int | None = None
+    usuario_nome: str | None = None
+    criado_em: datetime
+
+
+class ConferenciaOut(BaseModel):
+    """Composicao do valor que deveria estar na gaveta agora."""
+
+    valor_abertura: Decimal
+    vendas_dinheiro: Decimal
+    qtd_vendas_dinheiro: int
+    suprimentos: Decimal
+    sangrias: Decimal
+    valor_esperado: Decimal
+    # Informativo: nao passa pela gaveta, mas ajuda a conferir o turno.
+    vendas_outras_formas: Decimal
+    total_vendas: Decimal
+
+
+class CaixaOut(ORMModel):
+    id: int
+    status: models.StatusCaixa
+    usuario_abertura_id: int
+    usuario_abertura_nome: str | None = None
+    usuario_fechamento_id: int | None = None
+    usuario_fechamento_nome: str | None = None
+    aberto_em: datetime
+    fechado_em: datetime | None = None
+    valor_abertura: Decimal
+    valor_informado: Decimal | None = None
+    valor_esperado: Decimal | None = None
+    diferenca: Decimal | None = None
+    observacao_abertura: str | None = None
+    observacao_fechamento: str | None = None
+    movimentos: list[MovimentoCaixaOut] = []
+    conferencia: ConferenciaOut | None = None
