@@ -26,8 +26,15 @@ import {
   valorNumero,
   valorTexto,
 } from "../lib/format";
-import type { CaixaSessao, Identificacao, PixCobranca, Produto, Venda } from "../lib/tipos";
-import { Recibo } from "../components/Recibo";
+import type {
+  CaixaSessao,
+  Identificacao,
+  PixCobranca,
+  Produto,
+  ReciboConfig,
+  Venda,
+} from "../lib/tipos";
+import { Recibo, RECIBO_PADRAO } from "../components/Recibo";
 import {
   Botao,
   Campo,
@@ -185,6 +192,8 @@ export default function Pdv() {
   const [buscaCatalogo, setBuscaCatalogo] = useState("");
 
   const [pixConfigurado, setPixConfigurado] = useState(false);
+  /** Personalização do papel; vem pronta para a hora de imprimir. */
+  const [recibo, setRecibo] = useState<ReciboConfig>(RECIBO_PADRAO);
   const [pixCobranca, setPixCobranca] = useState<PixCobranca | null>(null);
   const [pixImagem, setPixImagem] = useState<string | null>(null);
   const [pixCopiado, setPixCopiado] = useState(false);
@@ -225,15 +234,17 @@ export default function Pdv() {
 
   const carregar = useCallback(async () => {
     try {
-      const [p, k, x] = await Promise.all([
+      const [p, k, x, r] = await Promise.all([
         // Só produto final: insumo não tem preço de balcão.
         api.get<Produto[]>("/estoque/produtos", { params: { ativo: true, tipo: "FINAL" } }),
         api.get<CaixaSessao | null>("/caixa/atual"),
         api.get<{ configurado: boolean }>("/pix/config"),
+        api.get<ReciboConfig>("/configuracoes/recibo"),
       ]);
       setProdutos(p.data);
       setCaixa(k.data);
       setPixConfigurado(x.data.configurado);
+      setRecibo(r.data);
     } catch (e) {
       setErro(mensagemErro(e));
     } finally {
@@ -1356,7 +1367,7 @@ export default function Pdv() {
       </Modal>
 
       {/* Só existe no papel: a regra de impressão está em index.css. */}
-      {paraImprimir && <Recibo venda={paraImprimir} />}
+      {paraImprimir && <Recibo venda={paraImprimir} config={recibo} />}
 
       {/* Comprovante */}
       <Modal

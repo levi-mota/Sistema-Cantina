@@ -306,3 +306,11 @@ export interface RelatorioCompra {
   total_estimado: string;
   quantidade_itens: number;
 }
+
+/** O que a gerência personaliza no papel que sai na bobina. */
+export interface ReciboConfig {
+  mostrar_logo: boolean;
+  cabecalho: string;
+  rodape: string;
+  mostrar_atendente: boolean;
+}

@@ -159,6 +159,122 @@
   display: none;
 }
 
+.recibo-logo {
+  display: block;
+  margin: 0 auto 4px;
+  max-width: 100%;
+  /* Teto de altura: uma logo alta empurraria o recibo inteiro para baixo e
+     gastaria papel a cada venda. */
+  max-height: 22mm;
+  /* A bobina imprime em preto e branco: ver em cinza na tela evita a surpresa
+     de mandar uma logo colorida que sai como um borrão escuro. */
+  filter: grayscale(1) contrast(1.2);
+}
+
+/* --- Ficha de retirada -----------------------------------------------------
+   Quem separa a mercadoria lê a lista de longe, com fila esperando: a
+   quantidade e o nome vêm grandes, o dinheiro vem pequeno. */
+.recibo-numero {
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.recibo-faixa {
+  margin: 6px 0 0;
+  border-top: 3px double #000;
+  border-bottom: 1px solid #000;
+  padding: 1px 0;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.recibo-itens {
+  border-bottom: 3px double #000;
+  padding: 4px 0;
+}
+
+.recibo-item {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 3px 0;
+}
+
+.recibo-item + .recibo-item {
+  border-top: 1px dotted #000;
+}
+
+.recibo-item-qtd {
+  min-width: 22px;
+  font-size: 17px;
+  font-weight: bold;
+  line-height: 1.1;
+  text-align: right;
+}
+
+/* Sem isto o bloco encolhe até o tamanho do nome, e num item de nome curto o
+   preço unitário fica colado no total. */
+.recibo-item-corpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.recibo-item-nome {
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.15;
+  text-transform: uppercase;
+  /* Nome comprido quebra em duas linhas em vez de sair do papel. */
+  overflow-wrap: anywhere;
+}
+
+.recibo-item-valor {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+}
+
+.recibo-fecho {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px solid #000;
+  margin-bottom: 3px;
+}
+
+.recibo-total {
+  font-size: 17px;
+  font-weight: bold;
+}
+
+/* Prévia na tela, na largura real do papel (58mm menos 2mm de margem de cada
+   lado). É a mesma marcação da impressão, então o que se vê aqui é o que sai. */
+.recibo-previa {
+  display: block;
+  /* 54mm de conteúdo mais os 2mm de margem de cada lado dão os 58mm da bobina:
+     a prévia quebra as linhas exatamente onde a impressora vai quebrar. */
+  box-sizing: content-box;
+  width: 54mm;
+  padding: 3mm 2mm;
+  background: #fff;
+  color: #000;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.recibo-previa hr {
+  border: none;
+  border-top: 1px dashed #000;
+  margin: 4px 0;
+}
+
 @media print {
   /* No papel nao existe tema escuro: a bobina e branca e a tinta e preta. */
   body {

@@ -8,6 +8,7 @@ origem e os scripts que os produzem, para a marca poder ser refeita.
 | `logo-original-alagoas.png` | Arte recebida (Maanaim Alagoas, branca sobre transparente) |
 | `gerar-logo.py` | Troca "ALAGOAS" por "CANTINA" e gera o logo horizontal |
 | `gerar-icone.py` | Desenha o ícone quadrado (favicon e atalho do celular) |
+| `gerar-logo-recibo.py` | Inverte o logo para preto sobre branco, na largura da bobina |
 
 ## Como o logo foi feito
 
@@ -18,6 +19,14 @@ espaçamento distribuído para ocupar exatamente a mesma largura. A fonte é
 Windows — o original parece ser Optima ou similar, que não veio junto.
 
 As duas palavras têm sete letras, então o ritmo do lockup ficou igual.
+
+## Por que o logo do recibo é outro arquivo
+
+A arte da marca é branca sobre transparente: perfeita na tela escura do menu e
+invisível na impressora térmica, que só imprime preto sobre o papel branco. O
+`gerar-logo-recibo.py` inverte a imagem e a reduz para 384 pontos, a largura útil
+da bobina de 58mm, sem meio-tom -- a térmica só tem ponto aceso ou apagado, e o
+cinza sairia como sujeira.
 
 ## Por que o ícone não é um recorte do logo
 

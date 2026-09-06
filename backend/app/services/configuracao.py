@@ -13,6 +13,11 @@ PIX_CHAVE = "pix_chave"
 PIX_BENEFICIARIO = "pix_beneficiario"
 PIX_CIDADE = "pix_cidade"
 
+RECIBO_LOGO = "recibo_logo"
+RECIBO_CABECALHO = "recibo_cabecalho"
+RECIBO_RODAPE = "recibo_rodape"
+RECIBO_ATENDENTE = "recibo_atendente"
+
 
 def ler(db: Session, chave: str, padrao: str = "") -> str:
     registro = db.get(models.Configuracao, chave)
