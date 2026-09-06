@@ -36,7 +36,6 @@ import {
   Carregando,
   Erro,
   Modal,
-  Selo,
   Vazio,
   cx,
 } from "../components/ui";
@@ -52,9 +51,6 @@ interface ItemCarrinho {
 }
 
 type Forma = "DINHEIRO" | "PIX";
-
-/** "3*coxinha" ou "2x agua" -> quantidade 3 e o resto da busca. */
-const PREFIXO_QUANTIDADE = /^(\d{1,3})\s*[*xX]\s*(.*)$/;
 
 /** Sugestoes de cedula: valor exato e os proximos valores redondos acima. */
 function sugestoesDeCedula(total: number): number[] {
@@ -165,11 +161,7 @@ export default function Pdv() {
   }, [carregar]);
 
   // --- Busca e filtro -----------------------------------------------------
-  const { quantidadeDigitada, termo } = useMemo(() => {
-    const casou = busca.match(PREFIXO_QUANTIDADE);
-    if (casou) return { quantidadeDigitada: Number(casou[1]), termo: casou[2].trim() };
-    return { quantidadeDigitada: 1, termo: busca.trim() };
-  }, [busca]);
+  const termo = busca.trim();
 
   const filtrados = useMemo(() => {
     const alvo = termo.toLowerCase();
@@ -292,13 +284,13 @@ export default function Pdv() {
       abertoEm.current = performance.now();
       setErro(null);
       const noCarrinho = carrinho.find((i) => i.produto.id === produto.id);
-      const inicial = quantidadeDigitada > 1 ? quantidadeDigitada : (noCarrinho?.quantidade ?? 1);
+      const inicial = noCarrinho?.quantidade ?? 1;
       setQuantidadeTexto(String(Math.min(inicial, disponivel(produto))));
       setEscolhido(produto);
       // O texto ja entra selecionado: a primeira tecla substitui o valor.
       requestAnimationFrame(() => campoQuantidade.current?.select());
     },
-    [carrinho, quantidadeDigitada, disponivel],
+    [carrinho, disponivel],
   );
 
   // --- Atalhos de teclado da tela ----------------------------------------
@@ -1284,12 +1276,11 @@ export default function Pdv() {
             ref={campoBusca}
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar, ler código de barras ou 3* para quantidade..."
+            placeholder="Buscar pelo nome ou ler o código de barras..."
             className="campo py-3 pl-9 text-base"
             autoFocus
           />
           <span className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
-            {quantidadeDigitada > 1 && <Selo tom="marca">{quantidadeDigitada} un</Selo>}
             <span className="text-xs tabular-nums text-carvao-400">
               {termo ? `${filtrados.length} de ${produtos.length}` : `${produtos.length} produtos`}
             </span>
@@ -1305,7 +1296,6 @@ export default function Pdv() {
             <span className="hidden items-center gap-2 sm:flex">
               <kbd className={tecla}>↑↓←→</kbd> navegar
               <kbd className={tecla}>Enter</kbd> adicionar
-              <kbd className={tecla}>3*</kbd> quantidade
               <span className="text-carvao-400">|</span>
               <span>
                 com a busca vazia: <kbd className={tecla}>+</kbd> <kbd className={tecla}>−</kbd> uma
@@ -1331,7 +1321,7 @@ export default function Pdv() {
             ) : (
               <Vazio
                 titulo="Comece a digitar"
-                descricao="Uma letra do nome, o código de barras ou 3* para a quantidade."
+                descricao="Uma letra do nome do produto ou o código de barras."
               />
             )}
           </Cartao>
