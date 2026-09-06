@@ -276,49 +276,89 @@ export default function Compras() {
 
   /** O comparativo do que foi pedido com o que chegou. */
   function relatorioDeRecebimento(lista: ListaCompra) {
-    const recebido = (i: ItemCompra) => Number(i.quantidade_recebida ?? 0);
+    const pedido = (i: ItemCompra) => Number(i.quantidade);
+    const recebido = (i: ItemCompra) =>
+      i.quantidade_recebida == null ? null : Number(i.quantidade_recebida);
+
+    /** O que aconteceu com o item, em palavras. Um "-2" sozinho não diz nada. */
+    const situacao = (i: ItemCompra) => {
+      const chegou = recebido(i);
+      if (chegou === null) return "Não conferido";
+      const diferenca = chegou - pedido(i);
+      if (chegou === 0) return "Não veio";
+      if (diferenca === 0) return "Completo";
+      if (diferenca < 0) return `Faltou ${qtd(-diferenca)} ${i.unidade}`;
+      return `Sobrou ${qtd(diferenca)} ${i.unidade}`;
+    };
+
+    const conferidos = lista.itens.filter((i) => i.quantidade_recebida != null);
+    // Conta pelo que aconteceu de fato: uma sobra não é "completo", e um item
+    // que não veio não é só "uma falta a mais" -- é o que se cobra primeiro.
+    const contar = (teste: (i: ItemCompra) => boolean) => conferidos.filter(teste).length;
+    const resumo = [
+      [contar((i) => recebido(i) === pedido(i)), "completo", "completos"],
+      [
+        contar((i) => (recebido(i) ?? 0) > 0 && (recebido(i) ?? 0) < pedido(i)),
+        "com falta",
+        "com falta",
+      ],
+      [contar((i) => recebido(i) === 0), "não veio", "não vieram"],
+      [contar((i) => (recebido(i) ?? 0) > pedido(i)), "com sobra", "com sobra"],
+    ]
+      .filter(([quantos]) => Number(quantos) > 0)
+      .map(([quantos, um, varios]) => `${quantos} ${quantos === 1 ? um : varios}`)
+      .join(" · ");
+    const totalPedido = Number(lista.total_estimado);
+    const totalRecebido = Number(lista.total_recebido ?? 0);
+    const diferenca = totalRecebido - totalPedido;
+
     baixarPdf({
       arquivo: `recebimento_${lista.id}`,
       titulo: `Recebimento: ${lista.titulo}`,
-      subtitulo: contextoDaLista(lista),
+      subtitulo: [
+        ...contextoDaLista(lista),
+        lista.concluida_em ? `Recebida em ${dataHora(lista.concluida_em)}` : null,
+        `Conferidos ${conferidos.length} de ${lista.quantidade_itens} itens` +
+          (resumo ? `: ${resumo}` : ""),
+        `Pedido ${brl(totalPedido)} · recebido ${brl(totalRecebido)}` +
+          (diferenca ? ` · ${diferenca < 0 ? "faltou" : "veio a mais"} ${brl(Math.abs(diferenca))}` : " · sem diferença"),
+      ],
       abrirEmAba: true,
-      linhas: lista.itens,
+      // As faltas primeiro: é o que se cobra do fornecedor.
+      linhas: [...lista.itens].sort((a, b) => {
+        const peso = (i: ItemCompra) => {
+          const chegou = recebido(i);
+          if (chegou === null) return 2;
+          return chegou < pedido(i) ? 0 : 1;
+        };
+        return peso(a) - peso(b) || a.produto.localeCompare(b.produto);
+      }),
       colunas: [
-        { titulo: "Fornecedor", valor: (i) => i.fornecedor ?? "Sem fornecedor" },
         { titulo: "Produto", valor: (i) => i.produto },
+        { titulo: "Fornecedor", valor: (i) => i.fornecedor ?? "Sem fornecedor" },
         { titulo: "Pedido", valor: (i) => `${qtd(i.quantidade)} ${i.unidade}`, direita: true },
         {
           titulo: "Recebido",
-          valor: (i) =>
-            i.quantidade_recebida == null
-              ? "não conferido"
-              : `${qtd(i.quantidade_recebida)} ${i.unidade}`,
+          valor: (i) => {
+            const chegou = recebido(i);
+            return chegou === null ? "-" : `${qtd(chegou)} ${i.unidade}`;
+          },
+          direita: true,
+        },
+        { titulo: "Situação", valor: situacao },
+        {
+          titulo: "Valor pedido",
+          valor: (i) => brl(i.total_estimado),
           direita: true,
         },
         {
-          titulo: "Diferença",
-          valor: (i) =>
-            i.quantidade_recebida == null ? "" : qtd(recebido(i) - Number(i.quantidade)),
-          direita: true,
-        },
-        { titulo: "Custo estimado", valor: (i) => brl(i.custo_estimado), direita: true },
-        {
-          titulo: "Total recebido",
-          valor: (i) => (i.quantidade_recebida == null ? "" : brl(i.total_recebido ?? 0)),
+          titulo: "Valor recebido",
+          valor: (i) => (recebido(i) === null ? "-" : brl(i.total_recebido ?? 0)),
           direita: true,
         },
         { titulo: "Observação", valor: (i) => i.observacao ?? "" },
       ],
-      total: [
-        "Total",
-        "",
-        "",
-        "",
-        "",
-        brl(lista.total_estimado),
-        brl(lista.total_recebido ?? 0),
-        "",
-      ],
+      total: ["Total", "", "", "", "", brl(totalPedido), brl(totalRecebido), ""],
     });
   }
 
@@ -404,7 +444,13 @@ export default function Compras() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Botao variante="secundario" onClick={() => abrirRelatorio(l)}>
+                  <Botao
+                    variante="secundario"
+                    icone={<FileText className="h-4 w-4" />}
+                    onClick={() =>
+                      l.status === "CONCLUIDA" ? relatorioDeRecebimento(l) : abrirRelatorio(l)
+                    }
+                  >
                     Relatório
                   </Botao>
                   {l.status === "RASCUNHO" && (
@@ -430,18 +476,9 @@ export default function Compras() {
                     </Botao>
                   )}
                   {l.status === "CONCLUIDA" && (
-                    <>
-                      <Botao
-                        variante="secundario"
-                        icone={<FileText className="h-4 w-4" />}
-                        onClick={() => relatorioDeRecebimento(l)}
-                      >
-                        Recebimento
-                      </Botao>
-                      <Botao variante="secundario" onClick={() => abrirConferencia(l)}>
-                        Corrigir conferência
-                      </Botao>
-                    </>
+                    <Botao variante="secundario" onClick={() => abrirConferencia(l)}>
+                      Corrigir conferência
+                    </Botao>
                   )}
                   {l.status === "RASCUNHO" && (
                     <Botao
