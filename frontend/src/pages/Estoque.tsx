@@ -365,7 +365,7 @@ export default function Estoque() {
           {movimentos.length === 0 ? (
             <Vazio titulo="Sem movimentações" />
           ) : (
-            <Tabela cabecalho={["Data", "Produto", "Tipo", "Qtd", "Saldo", "Motivo"]}>
+            <Tabela cabecalho={["Data", "Produto", "Tipo", "Quantidade", "Saldo", "Motivo"]}>
               {movimentos.map((m) => (
                 <tr key={m.id} className="hover:bg-carvao-50/60">
                   <td className="px-4 py-2.5 whitespace-nowrap text-carvao-600">

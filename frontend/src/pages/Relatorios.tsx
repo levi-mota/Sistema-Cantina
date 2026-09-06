@@ -284,7 +284,7 @@ export default function Relatorios() {
                       linhas: maisVendidos,
                       colunas: [
                         { titulo: "Produto", valor: (p) => p.produto },
-                        { titulo: "Qtd", valor: (p) => qtd(p.quantidade), direita: true },
+                        { titulo: "Quantidade", valor: (p) => qtd(p.quantidade), direita: true },
                         { titulo: "Faturamento", valor: (p) => brl(p.faturamento), direita: true },
                         { titulo: "Lucro bruto", valor: (p) => brl(p.lucro_bruto), direita: true },
                       ],
@@ -297,7 +297,7 @@ export default function Relatorios() {
               {maisVendidos.length === 0 ? (
                 <Vazio titulo="Sem dados no período" />
               ) : (
-                <Tabela cabecalho={["Produto", "Qtd", "Faturamento", "Lucro bruto"]}>
+                <Tabela cabecalho={["Produto", "Quantidade", "Faturamento", "Lucro bruto"]}>
                   {maisVendidos.map((p) => (
                     <tr key={p.produto_id} className="hover:bg-carvao-50/60">
                       <td className="px-4 py-2.5 font-medium text-carvao-800">{p.produto}</td>
@@ -327,8 +327,8 @@ export default function Relatorios() {
                       colunas: [
                         { titulo: "Produto", valor: (l) => l.produto },
                         { titulo: "Faturamento", valor: (l) => brl(l.faturamento), direita: true },
-                        { titulo: "Part.", valor: (l) => porcentagem(l.participacao), direita: true },
-                        { titulo: "Acum.", valor: (l) => porcentagem(l.acumulado), direita: true },
+                        { titulo: "Participação", valor: (l) => porcentagem(l.participacao), direita: true },
+                        { titulo: "Acumulado", valor: (l) => porcentagem(l.acumulado), direita: true },
                         { titulo: "Classe", valor: (l) => l.classe },
                       ],
                     })
@@ -341,7 +341,7 @@ export default function Relatorios() {
                 <Vazio titulo="Sem dados no período" />
               ) : (
                 <div className="max-h-96 overflow-y-auto">
-                  <Tabela cabecalho={["Produto", "Faturamento", "Part.", "Classe"]}>
+                  <Tabela cabecalho={["Produto", "Faturamento", "Participação", "Classe"]}>
                     {abc.map((l) => (
                       <tr key={l.produto} className="hover:bg-carvao-50/60">
                         <td className="px-4 py-2.5 font-medium text-carvao-800">{l.produto}</td>
@@ -384,7 +384,7 @@ export default function Relatorios() {
                         { titulo: "Recebido", valor: (f) => brl(f.total), direita: true },
                         { titulo: "Ticket médio", valor: (f) => brl(f.ticket_medio), direita: true },
                         { titulo: "Desconto", valor: (f) => brl(f.desconto), direita: true },
-                        { titulo: "Part.", valor: (f) => porcentagem(f.participacao), direita: true },
+                        { titulo: "Participação", valor: (f) => porcentagem(f.participacao), direita: true },
                       ],
                       total: [
                         "Total",

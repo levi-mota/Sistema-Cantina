@@ -347,7 +347,7 @@ export default function Compras() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Campo
-              rotulo="Titulo"
+              rotulo="Título"
               required
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
@@ -520,9 +520,9 @@ export default function Compras() {
                       { titulo: "Fornecedor", valor: (i) => i.fornecedor ?? "Sem fornecedor" },
                       { titulo: "Produto", valor: (i) => i.produto },
                       { titulo: "Código", valor: (i) => i.codigo ?? "" },
-                      { titulo: "Qtd", valor: (i) => `${qtd(i.quantidade)} ${i.unidade}`, direita: true },
-                      { titulo: "Custo est.", valor: (i) => brl(i.custo_estimado), direita: true },
-                      { titulo: "Total est.", valor: (i) => brl(i.total_estimado), direita: true },
+                      { titulo: "Quantidade", valor: (i) => `${qtd(i.quantidade)} ${i.unidade}`, direita: true },
+                      { titulo: "Custo estimado", valor: (i) => brl(i.custo_estimado), direita: true },
+                      { titulo: "Total estimado", valor: (i) => brl(i.total_estimado), direita: true },
                       { titulo: "Observação", valor: (i) => i.observacao ?? "" },
                     ],
                     total: [
