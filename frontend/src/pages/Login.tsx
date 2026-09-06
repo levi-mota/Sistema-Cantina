@@ -65,6 +65,10 @@ export default function Login() {
             Entrar
           </Botao>
         </form>
+
+        <p className="mt-8 text-center text-xs text-menu-suave">
+          © 2026 Maanaim Cantina. Todos os direitos reservados. Feito por Levi M.
+        </p>
       </div>
     </div>
   );
