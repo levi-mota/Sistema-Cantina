@@ -409,3 +409,21 @@ class ItemListaCompra(Base):
 
     lista: Mapped[ListaCompra] = relationship(back_populates="itens")
     produto: Mapped[Produto] = relationship(lazy="joined")
+
+
+class Configuracao(Base):
+    """Ajustes que o próprio gerente muda, sem mexer em arquivo do servidor.
+
+    Chave e valor em texto: são poucos ajustes e cada um tem dono conhecido (a
+    chave PIX, hoje). Uma coluna por ajuste exigiria migração a cada novo, e o
+    ganho de tipo não paga, já que tudo aqui é digitado num formulário.
+    """
+
+    __tablename__ = "configuracoes"
+
+    chave: Mapped[str] = mapped_column(String(60), primary_key=True)
+    valor: Mapped[str] = mapped_column(Text, default="")
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime, default=agora, onupdate=agora)
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+
+    usuario: Mapped[Usuario | None] = relationship(lazy="joined")

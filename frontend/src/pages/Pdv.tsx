@@ -1050,9 +1050,12 @@ export default function Pdv() {
             <div className="rounded-xl border border-carvao-200 p-4 text-center">
               {!pixConfigurado ? (
                 <p className="text-sm text-carvao-600">
-                  Chave PIX não configurada. Preencha <code>PIX_CHAVE</code> no{" "}
-                  <code>backend/.env</code> para gerar o QR Code. A venda pode ser registrada
-                  normalmente como PIX.
+                  Nenhuma chave PIX cadastrada, então não há QR Code para mostrar. A venda pode
+                  ser registrada como PIX assim mesmo. A gerência cadastra a chave em{" "}
+                  <Link to="/configuracoes" className="font-semibold underline underline-offset-2">
+                    Configurações
+                  </Link>
+                  .
                 </p>
               ) : pixImagem ? (
                 <>

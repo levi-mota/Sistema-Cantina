@@ -6,6 +6,7 @@ import { Carregando } from "./components/ui";
 import { ProvedorAuth, useAuth } from "./lib/auth";
 import Caixa from "./pages/Caixa";
 import Compras from "./pages/Compras";
+import Configuracoes from "./pages/Configuracoes";
 import Estoque from "./pages/Estoque";
 import Financeiro from "./pages/Financeiro";
 import Funcionarios from "./pages/Funcionarios";
@@ -100,6 +101,14 @@ function Rotas() {
           element={
             <SomenteAdmin>
               <Funcionarios />
+            </SomenteAdmin>
+          }
+        />
+        <Route
+          path="configuracoes"
+          element={
+            <SomenteAdmin>
+              <Configuracoes />
             </SomenteAdmin>
           }
         />

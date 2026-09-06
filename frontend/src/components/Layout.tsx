@@ -9,10 +9,13 @@ import {
   ChevronRight,
   ClipboardList,
   Landmark,
+  Maximize,
   LayoutDashboard,
   LogOut,
+  Minimize,
   MoreHorizontal,
   Moon,
+  Settings,
   ShoppingCart,
   Sun,
   UserCog,
@@ -23,6 +26,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "../lib/auth";
 import type { Perfil } from "../lib/tipos";
+import { useTelaCheia } from "../lib/tela";
 import { useTema } from "../lib/tema";
 import { cx } from "./ui";
 
@@ -91,6 +95,13 @@ const MENU: ItemMenu[] = [
     icone: UserCog,
     perfis: ["ADMIN"],
   },
+  {
+    para: "/configuracoes",
+    texto: "Configurações",
+    curto: "Ajustes",
+    icone: Settings,
+    perfis: ["ADMIN"],
+  },
 ];
 
 const CHAVE_MENU = "cantina.menu-recolhido";
@@ -117,6 +128,10 @@ export default function Layout() {
   const { tema, alternar } = useTema();
   const IconeTema = tema === "escuro" ? Sun : Moon;
   const rotuloTema = tema === "escuro" ? "Tema claro" : "Tema escuro";
+
+  const { cheia, alternarTela } = useTelaCheia();
+  const IconeTela = cheia ? Minimize : Maximize;
+  const rotuloTela = cheia ? "Sair da tela cheia" : "Tela cheia";
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
@@ -185,6 +200,20 @@ export default function Layout() {
             </button>
 
             <button
+              onClick={alternarTela}
+              title={`${rotuloTela} (F11)`}
+              aria-label={rotuloTela}
+              className={cx(
+                "flex w-full items-center gap-2 rounded-lg py-2 text-sm font-medium",
+                "text-menu-suave transition hover:bg-menu-2 hover:text-white",
+                recolhido ? "justify-center px-2" : "px-3",
+              )}
+            >
+              <IconeTela className="h-4 w-4" />
+              {!recolhido && rotuloTela}
+            </button>
+
+            <button
               onClick={alternar}
               title={rotuloTema}
               aria-label={rotuloTema}
@@ -226,6 +255,14 @@ export default function Layout() {
             <p className="truncate font-bold text-carvao-900">{atual?.texto ?? "Cantina"}</p>
             <p className="truncate text-xs text-carvao-500">{usuario?.nome}</p>
           </div>
+          <button
+            onClick={alternarTela}
+            title={rotuloTela}
+            aria-label={rotuloTela}
+            className="shrink-0 rounded-lg border border-carvao-200 p-2 text-carvao-500 active:bg-carvao-100"
+          >
+            <IconeTela className="h-4 w-4" />
+          </button>
           <button
             onClick={alternar}
             title={rotuloTema}

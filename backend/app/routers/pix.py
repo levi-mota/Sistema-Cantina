@@ -1,12 +1,16 @@
-"""Cobranca PIX do PDV: gera o BR Code (copia e cola / QR) do valor da venda."""
+"""Cobrança PIX do PDV e a conta que recebe.
+
+O QR é estático com valor: serve para o cliente pagar o valor exato da venda.
+Quem confirma o recebimento é o operador, olhando o app do banco.
+"""
 
 from decimal import Decimal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
-from app.core.config import settings
-from app.core.deps import CurrentUser
+from app.core.deps import DB, CurrentUser, SomenteAdmin
+from app.services import configuracao
 from app.services import pix as servico
 
 router = APIRouter(prefix="/api/pix", tags=["pix"])
@@ -24,21 +28,58 @@ class CobrancaOut(BaseModel):
     chave: str
 
 
-@router.get("/config")
-def config(_: CurrentUser):
-    """Diz ao PDV se ele pode oferecer o QR Code."""
-    return {
-        "configurado": servico.configurado(),
-        "beneficiario": settings.pix_beneficiario,
-        "chave": settings.pix_chave,
-    }
+class ContaIn(BaseModel):
+    chave: str
+    beneficiario: str = ""
+    cidade: str = ""
+
+
+class ContaOut(BaseModel):
+    configurado: bool
+    chave: str
+    beneficiario: str
+    cidade: str
+    tipo_chave: str | None = None
+
+
+def _conta(db: DB) -> ContaOut:
+    dados = servico.dados(db)
+    tipo = None
+    if dados["chave"]:
+        try:
+            _, tipo = servico.validar_chave(dados["chave"])
+        except ValueError:
+            tipo = "Chave inválida"
+    return ContaOut(configurado=bool(dados["chave"]), tipo_chave=tipo, **dados)
+
+
+@router.get("/config", response_model=ContaOut)
+def config(db: DB, _: CurrentUser):
+    """A conta que recebe os PIX. O PDV usa para saber se pode oferecer o QR."""
+    return _conta(db)
+
+
+@router.put("/config", response_model=ContaOut)
+def salvar_config(dados: ContaIn, db: DB, gestor: SomenteAdmin):
+    """Troca a conta que recebe. Restrito à gerência: é para onde vai o dinheiro."""
+    try:
+        chave, _ = servico.validar_chave(dados.chave)
+    except ValueError as erro:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(erro)) from erro
+
+    configuracao.gravar(db, configuracao.PIX_CHAVE, chave, gestor.id)
+    configuracao.gravar(db, configuracao.PIX_BENEFICIARIO, dados.beneficiario.strip(), gestor.id)
+    configuracao.gravar(db, configuracao.PIX_CIDADE, dados.cidade.strip(), gestor.id)
+    db.commit()
+    return _conta(db)
 
 
 @router.post("/cobranca", response_model=CobrancaOut)
-def cobranca(dados: CobrancaIn, _: CurrentUser):
+def cobranca(dados: CobrancaIn, db: DB, _: CurrentUser):
+    conta = servico.dados(db)
     return CobrancaOut(
-        brcode=servico.gerar_brcode(float(dados.valor), dados.identificador),
+        brcode=servico.gerar_brcode(db, float(dados.valor), dados.identificador),
         valor=dados.valor,
-        beneficiario=settings.pix_beneficiario,
-        chave=settings.pix_chave,
+        beneficiario=conta["beneficiario"],
+        chave=conta["chave"],
     )
