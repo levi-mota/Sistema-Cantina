@@ -1,0 +1,6 @@
+# Scripts de servidor precisam de fim de linha Unix: com CRLF o Linux
+# responde "bad interpreter" e nao roda nada.
+*.sh text eol=lf
+Caddyfile text eol=lf
+*.service text eol=lf
+*.timer text eol=lf

@@ -48,7 +48,8 @@ Sistema cantina/
 │       ├── components/     Layout (sidebar + barra inferior) e biblioteca de UI
 │       ├── lib/            cliente HTTP, autenticação, formatação, tipos
 │       └── pages/          uma página por módulo
-└── scripts/                preparar, iniciar, parar, migrar, recriar-banco
+├── scripts/                preparar, iniciar, parar, migrar, recriar-banco (Windows)
+└── deploy/                 subir num servidor Linux: Caddy, systemd e backup
 ```
 
 ---
@@ -271,9 +272,14 @@ uma coluna e criou outra" — e isso é perda de dados.
 
 ---
 
-## Notas de produção
+## Publicar num servidor
 
-Antes de publicar, troque `SECRET_KEY` no `.env`, defina uma senha de administrador
-própria e ajuste `CORS_ORIGINS` para o domínio real. O SQLite atende bem uma cantina;
-se um dia o volume crescer, basta apontar `DATABASE_URL` para PostgreSQL — o
-SQLAlchemy cobre a troca.
+O passo a passo está em [deploy/README.md](deploy/README.md): uma VM Ubuntu com
+Caddy na frente (HTTPS automático), a API como serviço do systemd e backup diário
+do banco. São dois endereços no mesmo servidor — `app.<dominio>` para o sistema e
+`<dominio>` para o cardápio virtual, que ainda será construído.
+
+Antes de publicar, troque `SECRET_KEY`, defina uma senha de administrador própria
+e ajuste `CORS_ORIGINS` para o domínio real — tudo isso vive em `/etc/cantina.env`
+no servidor. O SQLite atende bem uma cantina; se um dia o volume crescer, basta
+apontar `DATABASE_URL` para PostgreSQL — o SQLAlchemy cobre a troca.

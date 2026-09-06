@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cantina Maanaim</title>
+    <meta name="description" content="Cardápio da Cantina Maanaim." />
+    <meta name="robots" content="noindex" />
+    <style>
+      :root {
+        --fundo: #f7f7f6;
+        --tinta: #1d1c1a;
+        --suave: #56534d;
+        --marca: #ea6208;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fundo: #16150f;
+          --tinta: #f2efe9;
+          --suave: #b6b1a7;
+          --marca: #fb9b38;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: var(--fundo);
+        color: var(--tinta);
+        font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+        text-align: center;
+      }
+      h1 { font-size: clamp(28px, 7vw, 44px); margin: 0 0 12px; letter-spacing: -0.02em; }
+      p { color: var(--suave); margin: 0 auto; max-width: 34ch; }
+      .marca { color: var(--marca); font-weight: 700; }
+      .rodape { margin-top: 32px; font-size: 14px; color: var(--suave); }
+      a { color: inherit; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Cantina <span class="marca">Maanaim</span></h1>
+      <p>O cardápio digital está sendo preparado. Em breve dá para ver daqui o que tem hoje.</p>
+      <p class="rodape">Enquanto isso, é no balcão mesmo.</p>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,30 @@
+[Unit]
+Description=API do sistema da cantina (FastAPI/uvicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=cantina
+Group=cantina
+WorkingDirectory=/opt/cantina/backend
+EnvironmentFile=/etc/cantina.env
+
+# Um worker só, de propósito. O banco é um arquivo SQLite e as migrações são
+# aplicadas no boot da aplicação: dois processos subindo juntos disputariam a
+# escrita e poderiam migrar o banco ao mesmo tempo. Para três operadores, um
+# processo sobra.
+ExecStart=/opt/cantina/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+Restart=always
+RestartSec=3
+
+# O serviço só enxerga o que precisa.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/cantina/backend /var/backups/cantina
+
+[Install]
+WantedBy=multi-user.target

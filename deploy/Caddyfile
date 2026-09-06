@@ -1,0 +1,67 @@
+# Caddy: dois sites no mesmo servidor.
+#
+#   app.<dominio>  -> o sistema da cantina (PDV, caixa, estoque...)
+#   <dominio>      -> o cardápio virtual, que ainda será construído
+#
+# O Caddy tira e renova o certificado HTTPS sozinho, desde que as duas portas
+# (80 e 443) estejam abertas e o DNS já aponte para este servidor.
+#
+# Os nomes vêm do arquivo /etc/cantina.env, para trocar o DuckDNS pelo domínio
+# próprio depois sem mexer aqui: basta editar aquele arquivo e recarregar.
+
+{
+	email {$EMAIL_CERTIFICADO}
+}
+
+# --------------------------------------------------------------------------- #
+# Sistema da cantina
+# --------------------------------------------------------------------------- #
+{$DOMINIO_APP} {
+	encode zstd gzip
+
+	# A API primeiro: tudo em /api vai para o backend, o resto é a tela.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	handle {
+		root * /opt/cantina/frontend/dist
+		# SPA: recarregar /caixa ou /pdv tem de devolver o index, não 404.
+		try_files {path} /index.html
+		file_server
+	}
+
+	# O index não pode ficar em cache: é ele que aponta para o JS novo a cada
+	# atualização. Os arquivos com hash no nome, esses sim, cacheiam para sempre.
+	@estaticos path /assets/*
+	header @estaticos Cache-Control "public, max-age=31536000, immutable"
+	header /index.html Cache-Control "no-store"
+
+	log {
+		output file /var/log/caddy/app.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}
+
+# --------------------------------------------------------------------------- #
+# Cardápio virtual (por enquanto, um aviso)
+# --------------------------------------------------------------------------- #
+{$DOMINIO_SITE} {
+	encode zstd gzip
+	root * /opt/cantina/deploy/cardapio
+	file_server
+
+	log {
+		output file /var/log/caddy/cardapio.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}
+
+# Quem digitar www vai para o endereço principal.
+www.{$DOMINIO_SITE} {
+	redir https://{$DOMINIO_SITE}{uri} permanent
+}

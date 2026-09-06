@@ -1,0 +1,7 @@
+[Unit]
+Description=Atualiza o IP no DuckDNS
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/cantina/deploy/duckdns.sh
