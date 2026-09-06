@@ -66,11 +66,17 @@ passo "Firewall"
 # Security List -> Ingress, liberar 80 e 443) e no iptables da própria imagem
 # Ubuntu, que é o que esta parte resolve. Sem os dois, o Let's Encrypt não
 # consegue validar o domínio e o site não abre.
-for porta in 80 443; do
-  if ! iptables -C INPUT -p tcp --dport "$porta" -j ACCEPT 2>/dev/null; then
-    iptables -I INPUT 6 -m state --state NEW -p tcp --dport "$porta" -j ACCEPT
-    echo "  porta $porta liberada no iptables"
-  fi
+# A regra tem de entrar ANTES do REJECT que fecha a cadeia -- depois dele,
+# nada e avaliado. A posicao nao e fixa entre imagens: procuramos a do REJECT.
+POSICAO=$(iptables -L INPUT --line-numbers -n | awk '/REJECT/ {print $1; exit}')
+POSICAO=${POSICAO:-1}
+for porta in 443 80; do
+  regra=(-p tcp -m state --state NEW -m tcp --dport "$porta" -j ACCEPT)
+  while iptables -C INPUT "${regra[@]}" 2>/dev/null; do
+    iptables -D INPUT "${regra[@]}"
+  done
+  iptables -I INPUT "$POSICAO" "${regra[@]}"
+  echo "  porta $porta liberada no iptables"
 done
 netfilter-persistent save >/dev/null
 verde "  lembre-se de liberar 80 e 443 também na Security List da Oracle"
@@ -80,8 +86,12 @@ cd "$RAIZ/backend"
 [ -d .venv ] || python3 -m venv .venv
 .venv/bin/pip install -q --upgrade pip
 .venv/bin/pip install -q -r requirements.txt
-# O backend lê o .env da própria pasta; apontamos para o de produção.
+# O backend lê o .env da própria pasta; apontamos para o de produção. O arquivo
+# guarda a chave que assina os logins, então fica fora do alcance de qualquer
+# usuário -- mas o serviço roda como "cantina" e precisa lê-lo.
 ln -sfn "$ENV_ARQUIVO" "$RAIZ/backend/.env"
+chown root:"$USUARIO" "$ENV_ARQUIVO"
+chmod 640 "$ENV_ARQUIVO"
 
 passo "Frontend"
 cd "$RAIZ/frontend"

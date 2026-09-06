@@ -61,7 +61,6 @@ sudo apt update && sudo apt install -y git
 sudo git clone https://github.com/levi-mota/Sistema-Cantina.git /opt/cantina
 
 sudo cp /opt/cantina/deploy/cantina.env.exemplo /etc/cantina.env
-sudo chmod 600 /etc/cantina.env
 sudo nano /etc/cantina.env        # domínios, token do DuckDNS, SECRET_KEY
 
 sudo bash /opt/cantina/deploy/instalar.sh
