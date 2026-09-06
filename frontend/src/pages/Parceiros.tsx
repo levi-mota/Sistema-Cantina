@@ -267,7 +267,7 @@ export default function Parceiros() {
         </Cartao>
       ) : (
         <>
-          <div className="space-y-2 lg:hidden">
+          <div className="space-y-2 computador:hidden">
             {lista.map((p) => (
               <Cartao key={p.id} className="p-3" >
                 <button className="w-full text-left" onClick={() => abrir(p)}>
@@ -290,7 +290,7 @@ export default function Parceiros() {
             ))}
           </div>
 
-          <Cartao className="hidden overflow-hidden lg:block">
+          <Cartao className="hidden overflow-hidden computador:block">
             <Tabela cabecalho={["Nome", "Tipo", "Documento", "Contato", "Cidade", ""]}>
               {lista.map((p) => (
                 <tr key={p.id} className="hover:bg-carvao-50/60">

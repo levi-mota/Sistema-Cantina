@@ -23,6 +23,17 @@
               ? "escuro"
               : "claro";
         document.documentElement.dataset.tema = tema;
+
+        // Aparelho, e nao largura de janela: um celular pedindo "site para
+        // computador" recebe a interface de computador, e uma janela estreita
+        // no desktop continua sendo desktop. Vai aqui para a primeira pintura
+        // ja sair certa, sem trocar de layout com a tela na cara do operador.
+        var ua = navigator.userAgentData;
+        var movel =
+          ua && typeof ua.mobile === "boolean"
+            ? ua.mobile
+            : /Mobi|Android|iPhone|iPod|Windows Phone/i.test(navigator.userAgent);
+        document.documentElement.dataset.dispositivo = movel ? "movel" : "computador";
       } catch (e) {}
     </script>
   </head>

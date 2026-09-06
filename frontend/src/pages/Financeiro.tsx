@@ -217,7 +217,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
         </Cartao>
       ) : (
         <>
-          <div className="space-y-2 lg:hidden">
+          <div className="space-y-2 computador:hidden">
             {titulos.map((t) => (
               <Cartao key={t.id} className="p-3">
                 <div className="flex items-start justify-between gap-3">
@@ -257,7 +257,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
             ))}
           </div>
 
-          <Cartao className="hidden overflow-hidden lg:block">
+          <Cartao className="hidden overflow-hidden computador:block">
             <Tabela
               cabecalho={[
                 "Descrição",

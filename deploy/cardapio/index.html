@@ -68,8 +68,14 @@
       }
 
       .itens { display: grid; gap: 10px; }
-      @media (min-width: 620px) {
-        .itens { grid-template-columns: repeat(2, 1fr); }
+      /* Duas colunas em computador -- inclusive no celular que pediu "site
+         para computador", que e o pedido de quem quer a versao cheia. No
+         celular, uma coluna: cartao largo se le com o polegar. */
+      html[data-dispositivo="computador"] .itens {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      @media (max-width: 560px) {
+        html[data-dispositivo="computador"] .itens { grid-template-columns: 1fr; }
       }
 
       .item {
@@ -160,6 +166,17 @@
     </footer>
 
     <script>
+      // Aparelho, e nao largura: o navegador diz se e celular, e a resposta
+      // muda quando o usuario pede "site para computador".
+      (function () {
+        const ua = navigator.userAgentData;
+        const movel =
+          ua && typeof ua.mobile === "boolean"
+            ? ua.mobile
+            : /Mobi|Android|iPhone|iPod|Windows Phone/i.test(navigator.userAgent);
+        document.documentElement.dataset.dispositivo = movel ? "movel" : "computador";
+      })();
+
       const real = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
       const alvo = document.getElementById("cardapio");
       const atualizado = document.getElementById("atualizado");

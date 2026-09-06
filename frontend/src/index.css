@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/*
+ * Interface por aparelho, nao por largura.
+ *
+ * `movel:` e `computador:` valem para o que muda de *forma* entre um e outro --
+ * menu lateral contra barra inferior, tabela contra lista de cartoes. Para
+ * reflow de conteudo (uma coluna que vira duas, espacamento que aperta) os
+ * `sm:` e `lg:` de sempre continuam certos: ali o que importa e o espaco.
+ */
+@custom-variant movel (&:is([data-dispositivo="movel"] *));
+@custom-variant computador (&:is([data-dispositivo="computador"] *));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 

@@ -137,7 +137,7 @@ export default function Funcionarios() {
           </Cartao>
         ) : (
           <>
-            <div className="space-y-2 lg:hidden">
+            <div className="space-y-2 computador:hidden">
               {equipe.map((u) => (
                 <Cartao key={u.id} className="p-3">
                   <div className="flex items-start justify-between gap-3">
@@ -164,7 +164,7 @@ export default function Funcionarios() {
               ))}
             </div>
 
-            <Cartao className="hidden overflow-hidden lg:block">
+            <Cartao className="hidden overflow-hidden computador:block">
               <Tabela cabecalho={["Nome", "Usuário", "Perfil", "Situação", "Ações"]}>
                 {equipe.map((u) => (
                   <tr key={u.id} className={u.ativo ? "hover:bg-carvao-50/60" : "opacity-60"}>

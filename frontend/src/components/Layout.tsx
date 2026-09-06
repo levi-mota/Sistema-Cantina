@@ -134,9 +134,9 @@ export default function Layout() {
   const rotuloTela = cheia ? "Sair da tela cheia" : "Tela cheia";
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
+    <div className="flex min-h-screen flex-col computador:flex-row">
       {/* Menu lateral: apenas no desktop, recolhivel para so os icones */}
-      <aside className={cx("hidden shrink-0 lg:block", recolhido ? "w-16" : "w-64")}>
+      <aside className={cx("hidden shrink-0 computador:block", recolhido ? "w-16" : "w-64")}>
         <div
           className={cx(
             "fixed inset-y-0 flex flex-col bg-menu transition-all duration-200",
@@ -249,7 +249,7 @@ export default function Layout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topo do celular: sem menu lateral, so titulo e sair */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-carvao-100 bg-superficie px-4 py-3 lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-carvao-100 bg-superficie px-4 py-3 computador:hidden">
           <img src="/icone-cantina.png" alt="Cantina" className="h-9 w-9 shrink-0 rounded-lg" />
           <div className="min-w-0 flex-1">
             <p className="truncate font-bold text-carvao-900">{atual?.texto ?? "Cantina"}</p>
@@ -279,13 +279,13 @@ export default function Layout() {
           </button>
         </header>
 
-        <main className="flex min-h-0 flex-1 flex-col px-4 py-5 pb-24 sm:px-6 lg:px-8 lg:pb-8">
+        <main className="flex min-h-0 flex-1 flex-col px-4 py-5 pb-24 sm:px-6 lg:px-8 computador:pb-8">
           <Outlet />
         </main>
 
         {/* Folha "Mais": o resto do menu, ancorado na propria barra inferior */}
         {maisAberto && (
-          <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="fixed inset-0 z-40 computador:hidden">
             <button
               className="absolute inset-0 bg-menu/60"
               onClick={() => setMaisAberto(false)}
@@ -326,7 +326,7 @@ export default function Layout() {
         )}
 
         {/* Celular: a barra inferior e a unica navegacao */}
-        <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-carvao-100 bg-superficie lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-carvao-100 bg-superficie computador:hidden">
           {fixos.map(({ para, curto, icone: Icone }) => (
             <NavLink
               key={para}

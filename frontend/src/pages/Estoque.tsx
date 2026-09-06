@@ -392,7 +392,7 @@ export default function Estoque() {
           ) : (
             <>
               {/* Celular: cartoes tocaveis */}
-              <div className="space-y-2 lg:hidden">
+              <div className="space-y-2 computador:hidden">
                 {produtos.map((p) => (
                   <Cartao key={p.id} className="p-3">
                     <div className="flex items-start justify-between gap-3">
@@ -451,7 +451,7 @@ export default function Estoque() {
               </div>
 
               {/* Desktop: tabela */}
-              <Cartao className="hidden overflow-hidden lg:block">
+              <Cartao className="hidden overflow-hidden computador:block">
                 <Tabela
                   cabecalho={[
                     "Produto",

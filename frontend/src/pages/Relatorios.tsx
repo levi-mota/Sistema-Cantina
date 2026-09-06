@@ -571,7 +571,7 @@ export default function Relatorios() {
               />
             ) : (
               <>
-                <div className="hidden lg:block">
+                <div className="hidden computador:block">
                   <Tabela
                     cabecalho={[
                       "Operador",
@@ -646,7 +646,7 @@ export default function Relatorios() {
                 </div>
 
                 {/* Celular: um cartao por operador */}
-                <ul className="divide-y divide-carvao-100 lg:hidden">
+                <ul className="divide-y divide-carvao-100 computador:hidden">
                   {quebras.map((q) => (
                     <li key={q.usuario_id} className="p-4">
                       <div className="flex items-start justify-between gap-3">
