@@ -62,12 +62,20 @@ export function baixarPdf<T>({
   if (subtitulo) doc.text(subtitulo, margem, 84);
   doc.text(`Emitido em ${dataHora(new Date().toISOString())}`, margem, subtitulo ? 96 : 84);
 
+  // O cabeçalho e o rodapé ignoram o columnStyles -- headStyles e footStyles
+  // vêm depois na cascata --, então o alinhamento vai célula a célula neles,
+  // senão o total aparece à esquerda embaixo de uma coluna de números.
+  const alinhada = (texto: string, coluna: ColunaPdf<T> | undefined) => ({
+    content: texto,
+    styles: { halign: (coluna?.direita ? "right" : "left") as "right" | "left" },
+  });
+
   autoTable(doc, {
     startY: subtitulo ? 112 : 100,
     margin: { left: margem, right: margem, bottom: 40 },
-    head: [colunas.map((c) => c.titulo)],
+    head: [colunas.map((c) => alinhada(c.titulo, c))],
     body: linhas.map((l) => colunas.map((c) => c.valor(l))),
-    foot: total ? [total.map(String)] : undefined,
+    foot: total ? [total.map((v, i) => alinhada(String(v), colunas[i]))] : undefined,
     styles: { font: "helvetica", fontSize: 9, cellPadding: 5, textColor: CARVAO },
     headStyles: { fillColor: LARANJA, textColor: [255, 255, 255], fontStyle: "bold" },
     footStyles: { fillColor: [245, 245, 245], textColor: CARVAO, fontStyle: "bold" },
