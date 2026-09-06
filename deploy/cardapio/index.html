@@ -144,9 +144,12 @@
         text-align: center;
         color: var(--fraco);
         font-size: 13px;
-        padding: 0 20px 40px;
+        padding: 8px 20px 40px;
+        border-top: 1px solid var(--linha);
+        margin-top: 32px;
       }
-      footer strong { color: var(--suave); }
+      footer p { margin: 8px 0; }
+      .direitos { font-size: 12px; opacity: 0.85; }
     </style>
   </head>
 
@@ -161,8 +164,10 @@
     </main>
 
     <footer>
-      Os preços e as quantidades vêm direto do balcão.
-      <strong id="carimbo"></strong>
+      <p>Os preços e as quantidades vêm direto do balcão.</p>
+      <p class="direitos">
+        © 2026 Maanaim Cantina. Todos os direitos reservados. Feito por Levi M.
+      </p>
     </footer>
 
     <script>
@@ -269,7 +274,6 @@
           minute: "2-digit",
         });
         atualizado.textContent = `Atualizado às ${agora}`;
-        document.getElementById("carimbo").textContent = "";
       }
 
       async function buscar() {

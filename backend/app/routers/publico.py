@@ -10,9 +10,10 @@ de devolver o cadastro inteiro do produto -- custo, fornecedor e margem ficam
 do lado de dentro.
 """
 
+import hashlib
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import undefer
 from pydantic import BaseModel
@@ -22,9 +23,11 @@ from app.core.deps import DB
 
 router = APIRouter(prefix="/api/publico", tags=["cardapio"])
 
-# A foto muda pouco e pesa; deixar o navegador guardar por uma hora poupa a
-# banda da instância gratuita num intervalo cheio de gente olhando o cardápio.
-CACHE_FOTO = "public, max-age=3600"
+# A foto pesa e muda pouco -- mas quando muda, tem de aparecer. Guardar por uma
+# hora deixava o cliente vendo a imagem antiga um almoço inteiro depois da troca.
+# Um minuto de cache e, passado isso, o navegador pergunta: a resposta é uma
+# etiqueta de 32 caracteres (304) enquanto a foto for a mesma.
+CACHE_FOTO = "public, max-age=60, must-revalidate"
 CACHE_CARDAPIO = "public, max-age=60"
 
 
@@ -80,7 +83,7 @@ def cardapio(db: DB, resposta: Response):
 
 
 @router.get("/produtos/{produto_id}/foto")
-def foto(produto_id: int, db: DB):
+def foto(produto_id: int, db: DB, request: Request):
     """A imagem em si. Só de produto ativo e à venda -- como o cardápio."""
     produto = db.scalar(
         select(models.Produto)
@@ -94,8 +97,16 @@ def foto(produto_id: int, db: DB):
     if not produto or not produto.imagem:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sem foto")
 
+    # A etiqueta sai da própria imagem: trocou a foto, trocou a etiqueta, e o
+    # navegador busca a nova sem que ninguém precise limpar cache.
+    etiqueta = f'"{hashlib.md5(produto.imagem).hexdigest()}"'
+    cabecalhos = {"Cache-Control": CACHE_FOTO, "ETag": etiqueta}
+
+    if request.headers.get("if-none-match") == etiqueta:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=cabecalhos)
+
     return Response(
         content=produto.imagem,
         media_type=produto.imagem_tipo or "image/webp",
-        headers={"Cache-Control": CACHE_FOTO},
+        headers=cabecalhos,
     )
