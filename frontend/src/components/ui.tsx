@@ -8,6 +8,8 @@ import type {
 } from "react";
 import { Loader2, X } from "lucide-react";
 
+import { valorDigitado } from "../lib/format";
+
 export function cx(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(" ");
 }
@@ -76,6 +78,32 @@ export function Campo({ rotulo, dica, className, ref, ...props }: CampoProps) {
       <input {...props} ref={ref} className={cx("campo", className)} />
       {dica && <span className="mt-1 block text-xs text-carvao-400">{dica}</span>}
     </label>
+  );
+}
+
+interface CampoValorProps extends Omit<CampoProps, "onChange" | "value" | "type"> {
+  /** O texto como está na tela: "1.234,56". */
+  value: string;
+  /** Recebe o texto já formatado, pronto para voltar ao estado. */
+  aoMudar: (valor: string) => void;
+}
+
+/**
+ * Campo de dinheiro no padrão brasileiro. Quem digita põe a vírgula dos
+ * centavos; os pontos de milhar aparecem sozinhos.
+ *
+ * É `text`, e não `number`: campo numérico do navegador não aceita vírgula em
+ * boa parte dos teclados e ainda oferece setinhas de centavo que ninguém usa.
+ */
+export function CampoValor({ value, aoMudar, ...props }: CampoValorProps) {
+  return (
+    <Campo
+      {...props}
+      type="text"
+      inputMode="decimal"
+      value={value}
+      onChange={(e) => aoMudar(valorDigitado(e.target.value))}
+    />
   );
 }
 

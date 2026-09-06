@@ -11,11 +11,12 @@ import {
 
 import { api, mensagemErro } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { brl, dataHora, hora } from "../lib/format";
+import { brl, dataHora, hora, valorNumero } from "../lib/format";
 import type { CaixaSessao, CaixaTerminal, TipoMovimentoCaixa } from "../lib/tipos";
 import {
   Botao,
   Campo,
+  CampoValor,
   Cartao,
   Carregando,
   Erro,
@@ -78,7 +79,7 @@ export default function Caixa() {
   const [novoTerminal, setNovoTerminal] = useState(false);
   const [forcado, setForcado] = useState<CaixaSessao | null>(null);
 
-  const [formAbertura, setFormAbertura] = useState({ valor: "100", observacao: "" });
+  const [formAbertura, setFormAbertura] = useState({ valor: "100,00", observacao: "" });
   const [formMovimento, setFormMovimento] = useState({ valor: "", motivo: "" });
   const [formFechamento, setFormFechamento] = useState({ valor: "", observacao: "" });
   const [formTerminal, setFormTerminal] = useState({ nome: "", descricao: "" });
@@ -228,7 +229,7 @@ export default function Caixa() {
                   className="mt-1 w-full"
                   icone={<Unlock className="h-4 w-4" />}
                   onClick={() => {
-                    setFormAbertura({ valor: "100", observacao: "" });
+                    setFormAbertura({ valor: "100,00", observacao: "" });
                     setAbrindo(t);
                   }}
                 >
@@ -575,7 +576,7 @@ export default function Caixa() {
               () =>
                 api.post("/caixa/abrir", {
                   caixa_id: abrindo?.id,
-                  valor_abertura: Number(formAbertura.valor || 0),
+                  valor_abertura: valorNumero(formAbertura.valor),
                   observacao: formAbertura.observacao || null,
                 }),
               () => setAbrindo(null),
@@ -583,15 +584,12 @@ export default function Caixa() {
           }}
         >
           <Erro mensagem={erro} />
-          <Campo
+          <CampoValor
             rotulo="Troco inicial na gaveta (R$)"
-            type="number"
-            step="0.01"
-            min="0"
             required
             autoFocus
             value={formAbertura.valor}
-            onChange={(e) => setFormAbertura({ ...formAbertura, valor: e.target.value })}
+            aoMudar={(valor) => setFormAbertura({ ...formAbertura, valor })}
             dica="Quanto de dinheiro está nesta gaveta agora"
           />
           <Campo
@@ -626,7 +624,7 @@ export default function Caixa() {
               () =>
                 api.post("/caixa/movimentos", {
                   tipo: movimento,
-                  valor: Number(formMovimento.valor),
+                  valor: valorNumero(formMovimento.valor),
                   motivo: formMovimento.motivo || null,
                 }),
               () => setMovimento(null),
@@ -640,15 +638,12 @@ export default function Caixa() {
               : "Entrada de dinheiro na gaveta (reforço de troco, recebimento de fiado)."}{" "}
             Na gaveta agora: <strong className="text-carvao-900">{brl(c?.valor_esperado)}</strong>
           </p>
-          <Campo
+          <CampoValor
             rotulo="Valor (R$)"
-            type="number"
-            step="0.01"
-            min="0.01"
             required
             autoFocus
             value={formMovimento.valor}
-            onChange={(e) => setFormMovimento({ ...formMovimento, valor: e.target.value })}
+            aoMudar={(valor) => setFormMovimento({ ...formMovimento, valor })}
           />
           <Campo
             rotulo="Motivo"
@@ -688,7 +683,7 @@ export default function Caixa() {
           onSubmit={(e) => {
             e.preventDefault();
             const corpo = {
-              valor_informado: Number(formFechamento.valor || 0),
+              valor_informado: valorNumero(formFechamento.valor),
               observacao: formFechamento.observacao || null,
             };
             void executar(
@@ -710,15 +705,12 @@ export default function Caixa() {
               nome.
             </p>
           )}
-          <Campo
+          <CampoValor
             rotulo="Valor contado na gaveta (R$)"
-            type="number"
-            step="0.01"
-            min="0"
             required
             autoFocus
             value={formFechamento.valor}
-            onChange={(e) => setFormFechamento({ ...formFechamento, valor: e.target.value })}
+            aoMudar={(valor) => setFormFechamento({ ...formFechamento, valor })}
             dica="Conte o dinheiro antes de digitar"
           />
 
@@ -726,7 +718,7 @@ export default function Caixa() {
             const esperado = Number(
               (forcado ? forcado.conferencia?.valor_esperado : c?.valor_esperado) ?? 0,
             );
-            const quebra = Number(formFechamento.valor) - esperado;
+            const quebra = valorNumero(formFechamento.valor) - esperado;
             return (
               <div className="rounded-lg bg-carvao-50 p-3 text-sm">
                 <div className="flex justify-between text-carvao-600">

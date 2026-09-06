@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Plus } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataBr, hojeIso, rotulo } from "../lib/format";
+import { brl, dataBr, hojeIso, rotulo, valorNumero, valorTexto } from "../lib/format";
 import type { FormaPagamento, Parceiro, ResumoFinanceiro, StatusTitulo, Titulo, TipoTitulo } from "../lib/tipos";
 import {
   Botao,
   Campo,
+  CampoValor,
   Cartao,
   Carregando,
   Erro,
@@ -110,7 +111,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
         descricao: form.descricao,
         categoria: form.categoria || null,
         parceiro_id: form.parceiro_id ? Number(form.parceiro_id) : null,
-        valor: Number(form.valor),
+        valor: valorNumero(form.valor),
         vencimento: form.vencimento,
         observacao: form.observacao || null,
         parcelas: Number(form.parcelas || 1),
@@ -133,7 +134,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
     setErro(null);
     try {
       await api.post(`/financeiro/titulos/${baixando.id}/baixar`, {
-        valor: Number(baixa.valor),
+        valor: valorNumero(baixa.valor),
         data: baixa.data,
         forma_pagamento: baixa.forma_pagamento,
       });
@@ -241,7 +242,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
                       className="flex-1"
                       icone={<CheckCircle2 className="h-4 w-4" />}
                       onClick={() => {
-                        setBaixa({ valor: t.saldo, data: hojeIso(), forma_pagamento: "DINHEIRO" });
+                        setBaixa({ valor: valorTexto(t.saldo), data: hojeIso(), forma_pagamento: "DINHEIRO" });
                         setBaixando(t);
                       }}
                     >
@@ -296,7 +297,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
                           variante="sucesso"
                           onClick={() => {
                             setBaixa({
-                              valor: t.saldo,
+                              valor: valorTexto(t.saldo),
                               data: hojeIso(),
                               forma_pagamento: "DINHEIRO",
                             });
@@ -351,14 +352,11 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
               vazio="Não informar"
               opcoes={parceiros.map((p) => ({ valor: p.id, texto: p.nome }))}
             />
-            <Campo
+            <CampoValor
               rotulo="Valor total (R$)"
-              type="number"
-              step="0.01"
-              min="0.01"
               required
               value={form.valor}
-              onChange={(e) => setForm({ ...form, valor: e.target.value })}
+              aoMudar={(valor) => setForm({ ...form, valor })}
             />
             <Campo
               rotulo="Primeiro vencimento"
@@ -413,15 +411,11 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
             {baixando?.descricao} · saldo devedor{" "}
             <strong className="text-carvao-900">{brl(baixando?.saldo)}</strong>
           </p>
-          <Campo
+          <CampoValor
             rotulo="Valor (R$)"
-            type="number"
-            step="0.01"
-            min="0.01"
-            max={Number(baixando?.saldo ?? 0)}
             required
             value={baixa.valor}
-            onChange={(e) => setBaixa({ ...baixa, valor: e.target.value })}
+            aoMudar={(valor) => setBaixa({ ...baixa, valor })}
             dica="Valor menor que o saldo gera baixa parcial"
           />
           <Campo

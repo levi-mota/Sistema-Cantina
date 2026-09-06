@@ -17,9 +17,19 @@ import {
 } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, documentoFormatado, rotulo } from "../lib/format";
+import { brl, documentoFormatado, rotulo, valorNumero, valorTexto } from "../lib/format";
 import type { CaixaSessao, Identificacao, PixCobranca, Produto, Venda } from "../lib/tipos";
-import { Botao, Campo, Cartao, Carregando, Erro, Modal, Selo, Vazio, cx } from "../components/ui";
+import {
+  Botao,
+  CampoValor,
+  Cartao,
+  Carregando,
+  Erro,
+  Modal,
+  Selo,
+  Vazio,
+  cx,
+} from "../components/ui";
 
 interface ItemCarrinho {
   produto: Produto;
@@ -56,7 +66,7 @@ export default function Pdv() {
   const [identificacao, setIdentificacao] = useState<Identificacao | null>(null);
   const [erroDocumento, setErroDocumento] = useState<string | null>(null);
   const [identificando, setIdentificando] = useState(false);
-  const [desconto, setDesconto] = useState("0");
+  const [desconto, setDesconto] = useState("0,00");
   const [recebido, setRecebido] = useState("");
   const [finalizando, setFinalizando] = useState(false);
   const [comprovante, setComprovante] = useState<Venda | null>(null);
@@ -127,10 +137,10 @@ export default function Pdv() {
     (soma, i) => soma + Number(i.produto.preco_venda) * i.quantidade,
     0,
   );
-  const total = Math.max(subtotal - Number(desconto || 0), 0);
-  const troco = forma === "DINHEIRO" ? Math.max(Number(recebido || 0) - total, 0) : 0;
+  const total = Math.max(subtotal - valorNumero(desconto), 0);
+  const troco = forma === "DINHEIRO" ? Math.max(valorNumero(recebido) - total, 0) : 0;
   const faltaReceber =
-    forma === "DINHEIRO" && recebido !== "" ? Math.max(total - Number(recebido), 0) : 0;
+    forma === "DINHEIRO" && recebido !== "" ? Math.max(total - valorNumero(recebido), 0) : 0;
 
   // --- Carrinho -----------------------------------------------------------
   function alterarQtd(produtoId: number, delta: number) {
@@ -143,7 +153,7 @@ export default function Pdv() {
 
   const limpar = useCallback(() => {
     setCarrinho([]);
-    setDesconto("0");
+    setDesconto("0,00");
     setRecebido("");
     setDocumento("");
     setClienteId("");
@@ -341,7 +351,7 @@ export default function Pdv() {
 
   // --- Finalizacao --------------------------------------------------------
   const finalizar = useCallback(async () => {
-    if (forma === "DINHEIRO" && recebido !== "" && Number(recebido) < total) return;
+    if (forma === "DINHEIRO" && recebido !== "" && valorNumero(recebido) < total) return;
     setErro(null);
     setFinalizando(true);
     try {
@@ -349,8 +359,8 @@ export default function Pdv() {
         cliente_id: clienteId ? Number(clienteId) : null,
         documento_cliente: documento.replace(/\D/g, "") || null,
         forma_pagamento: forma,
-        desconto: Number(desconto || 0),
-        valor_recebido: forma === "DINHEIRO" ? Number(recebido || 0) : 0,
+        desconto: valorNumero(desconto),
+        valor_recebido: forma === "DINHEIRO" ? valorNumero(recebido) : 0,
         itens: carrinho.map((i) => ({ produto_id: i.produto.id, quantidade: i.quantidade })),
       });
       setComprovante(data);
@@ -770,15 +780,11 @@ export default function Pdv() {
 
           {forma === "DINHEIRO" ? (
             <>
-              <Campo
+              <CampoValor
                 ref={campoRecebido}
                 rotulo="Valor recebido (R$)"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
                 value={recebido}
-                onChange={(e) => setRecebido(e.target.value)}
+                aoMudar={setRecebido}
                 className="py-3 text-lg font-semibold"
                 dica="Vazio = valor exato. Enter confirma."
               />
@@ -787,10 +793,10 @@ export default function Pdv() {
                 {sugestoesDeCedula(total).map((valor) => (
                   <button
                     key={valor}
-                    onClick={() => setRecebido(String(valor))}
+                    onClick={() => setRecebido(valorTexto(valor))}
                     className={cx(
                       "rounded-lg border px-3 py-1.5 text-sm font-semibold transition",
-                      Number(recebido) === valor
+                      valorNumero(recebido) === valor
                         ? "border-marca-500 bg-marca-50 text-marca-700"
                         : "border-carvao-200 text-carvao-600 hover:bg-carvao-50",
                     )}
@@ -899,13 +905,10 @@ export default function Pdv() {
                 {identificacao.tipo} válido, sem cadastro.
               </p>
             )}
-            <Campo
+            <CampoValor
               rotulo="Desconto (R$)"
-              type="number"
-              step="0.01"
-              min="0"
               value={desconto}
-              onChange={(e) => setDesconto(e.target.value)}
+              aoMudar={setDesconto}
               className="mt-3"
             />
           </details>

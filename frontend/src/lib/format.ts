@@ -24,6 +24,40 @@ export function apenasDigitos(texto: string): string {
   return texto.replace(/\D/g, "");
 }
 
+/**
+ * Formata o que se digita num campo de dinheiro, no padrão brasileiro: o
+ * usuário digita a vírgula dos centavos, o sistema põe os pontos de milhar.
+ *
+ * Mantém o texto "em construção" -- "1.234," continua assim enquanto se
+ * digita, senão a vírgula sumiria a cada tecla e seria impossível chegar aos
+ * centavos. Só o que não é número nem vírgula é descartado.
+ */
+export function valorDigitado(texto: string): string {
+  const limpo = texto.replace(/[^\d,]/g, "");
+  const [inteiro, ...resto] = limpo.split(",");
+  const centavos = resto.join("").slice(0, 2);
+  // Sem zeros à esquerda, mas "0," precisa sobreviver para virar "0,50".
+  const inteiroLimpo = inteiro.replace(/^0+(?=\d)/, "");
+  const comPontos = inteiroLimpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (!limpo.includes(",")) return comPontos;
+  return `${comPontos || "0"},${centavos}`;
+}
+
+/** "1.234,56" -> 1234.56. O caminho de volta, para mandar à API. */
+export function valorNumero(texto: string | number | null | undefined): number {
+  if (typeof texto === "number") return texto;
+  if (!texto) return 0;
+  const numero = Number(String(texto).replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+/** 2.2 -> "2,20". Para abrir um formulário com o valor que veio da API. */
+export function valorTexto(valor: string | number | null | undefined): string {
+  const numero = Number(valor ?? 0);
+  if (!Number.isFinite(numero)) return "";
+  return numero.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d),)/g, ".");
+}
+
 export function porcentagem(valor: string | number | null | undefined, casas = 1): string {
   return `${Number(valor ?? 0).toFixed(casas)}%`;
 }

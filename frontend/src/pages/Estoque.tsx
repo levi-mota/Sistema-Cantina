@@ -2,7 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, ArrowDownUp, History, Package, Plus, Search } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { apenasDigitos, brl, dataHora, hojeIso, inteiro, qtd, rotulo } from "../lib/format";
+import {
+  apenasDigitos,
+  brl,
+  dataHora,
+  hojeIso,
+  inteiro,
+  qtd,
+  rotulo,
+  valorNumero,
+  valorTexto,
+} from "../lib/format";
 import type {
   Categoria,
   Movimento,
@@ -14,6 +24,7 @@ import type {
 import {
   Botao,
   Campo,
+  CampoValor,
   Cartao,
   Carregando,
   Erro,
@@ -39,8 +50,8 @@ const FORM_VAZIO = {
   tipo: "FINAL" as TipoProduto,
   categoria_id: "",
   fornecedor_id: "",
-  preco_custo: "0",
-  preco_venda: "0",
+  preco_custo: "0,00",
+  preco_venda: "0,00",
   estoque_minimo: "0",
   estoque_inicial: "0",
 };
@@ -125,8 +136,8 @@ export default function Estoque() {
             tipo: p.tipo,
             categoria_id: String(p.categoria_id ?? ""),
             fornecedor_id: String(p.fornecedor_id ?? ""),
-            preco_custo: p.preco_custo,
-            preco_venda: p.preco_venda,
+            preco_custo: valorTexto(p.preco_custo),
+            preco_venda: valorTexto(p.preco_venda),
             estoque_minimo: inteiro(p.estoque_minimo),
             estoque_inicial: "0",
           },
@@ -192,8 +203,8 @@ export default function Estoque() {
       tipo: form.tipo,
       categoria_id: form.categoria_id ? Number(form.categoria_id) : null,
       fornecedor_id: form.fornecedor_id ? Number(form.fornecedor_id) : null,
-      preco_custo: Number(form.preco_custo || 0),
-      preco_venda: Number(form.preco_venda || 0),
+      preco_custo: valorNumero(form.preco_custo),
+      preco_venda: valorNumero(form.preco_venda),
       estoque_minimo: Number(form.estoque_minimo || 0),
     };
     try {
@@ -224,7 +235,7 @@ export default function Estoque() {
         produto_id: movProduto.id,
         tipo: movForm.tipo,
         quantidade: Number(movForm.quantidade),
-        custo_unitario: movForm.custo_unitario ? Number(movForm.custo_unitario) : null,
+        custo_unitario: movForm.custo_unitario ? valorNumero(movForm.custo_unitario) : null,
         motivo: movForm.motivo || null,
         gerar_conta_pagar: movForm.gerar_conta_pagar,
         fornecedor_id: movProduto.fornecedor_id ?? null,
@@ -245,7 +256,7 @@ export default function Estoque() {
     setMovForm({
       tipo: "ENTRADA",
       quantidade: "1",
-      custo_unitario: p.preco_custo,
+      custo_unitario: valorTexto(p.preco_custo),
       motivo: "",
       gerar_conta_pagar: false,
       vencimento: hojeIso(30),
@@ -536,15 +547,10 @@ export default function Estoque() {
               rotulo="Tipo"
               value={form.tipo}
               onChange={(e) => {
-                const tipo = e.target.value as TipoProduto;
-                // Insumo não vai ao balcão: preço de venda deixa de fazer
-                // sentido e some, para ninguém preencher um valor que nunca
-                // será cobrado.
-                setForm((f) => ({
-                  ...f,
-                  tipo,
-                  preco_venda: tipo === "INSUMO" ? "0" : f.preco_venda,
-                }));
+                // O preço de venda só some da tela: apagá-lo faria a troca de
+                // tipo destruir um dado que ninguém pediu para apagar, e voltar
+                // atrás não traria o preço de volta.
+                setForm((f) => ({ ...f, tipo: e.target.value as TipoProduto }));
               }}
               opcoes={[
                 { valor: "FINAL", texto: "Produto final (vai para o PDV)" },
@@ -576,22 +582,16 @@ export default function Estoque() {
                 setForm({ ...form, estoque_minimo: apenasDigitos(e.target.value) })
               }
             />
-            <Campo
+            <CampoValor
               rotulo="Preço de custo (R$)"
-              type="number"
-              step="0.01"
-              min="0"
               value={form.preco_custo}
-              onChange={(e) => setForm({ ...form, preco_custo: e.target.value })}
+              aoMudar={(preco_custo) => setForm({ ...form, preco_custo })}
             />
             {form.tipo === "FINAL" && (
-              <Campo
+              <CampoValor
                 rotulo="Preço de venda (R$)"
-                type="number"
-                step="0.01"
-                min="0"
                 value={form.preco_venda}
-                onChange={(e) => setForm({ ...form, preco_venda: e.target.value })}
+                aoMudar={(preco_venda) => setForm({ ...form, preco_venda })}
               />
             )}
             {produtoModal === "novo" && (
@@ -655,13 +655,10 @@ export default function Estoque() {
           />
           {movForm.tipo === "ENTRADA" && (
             <>
-              <Campo
+              <CampoValor
                 rotulo="Custo unitário (R$)"
-                type="number"
-                step="0.01"
-                min="0"
                 value={movForm.custo_unitario}
-                onChange={(e) => setMovForm({ ...movForm, custo_unitario: e.target.value })}
+                aoMudar={(custo_unitario) => setMovForm({ ...movForm, custo_unitario })}
                 dica="Recalcula o custo médio do produto"
               />
               <label className="flex items-center gap-2 text-sm text-carvao-700">
