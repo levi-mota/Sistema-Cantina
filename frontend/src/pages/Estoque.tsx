@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ArrowDownUp, History, Package, Plus, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownUp,
+  History,
+  Package,
+  Plus,
+  Search,
+  Tags,
+  Trash2,
+} from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
 import {
@@ -75,6 +84,10 @@ export default function Estoque() {
   /** Produto já cadastrado com o mesmo código (trava) ou o mesmo nome (avisa). */
   const [repetido, setRepetido] = useState<{ codigo?: Produto; nome?: Produto }>({});
   const [salvando, setSalvando] = useState(false);
+
+  /** Gestão das categorias, aberta pelo filtro da lista. */
+  const [gerindoCategorias, setGerindoCategorias] = useState(false);
+  const [novaCategoria, setNovaCategoria] = useState("");
 
   const [movProduto, setMovProduto] = useState<Produto | null>(null);
   const [movForm, setMovForm] = useState({
@@ -250,6 +263,38 @@ export default function Estoque() {
     }
   }
 
+  async function recarregarCategorias() {
+    const { data } = await api.get<Categoria[]>("/estoque/categorias");
+    setCategorias(data);
+  }
+
+  async function criarCategoria(e: React.FormEvent) {
+    e.preventDefault();
+    const nome = novaCategoria.trim();
+    if (!nome) return;
+    setErro(null);
+    try {
+      await api.post("/estoque/categorias", { nome });
+      setNovaCategoria("");
+      await recarregarCategorias();
+    } catch (err) {
+      setErro(mensagemErro(err, "Não foi possível criar a categoria"));
+    }
+  }
+
+  async function apagarCategoria(c: Categoria) {
+    if (!confirm(`Apagar a categoria "${c.nome}"?`)) return;
+    setErro(null);
+    try {
+      await api.delete(`/estoque/categorias/${c.id}`);
+      await recarregarCategorias();
+      // A lista pode estar filtrada justamente pela categoria apagada.
+      if (categoriaFiltro === String(c.id)) setCategoriaFiltro("");
+    } catch (err) {
+      setErro(mensagemErro(err));
+    }
+  }
+
   function abrirMovimento(p: Produto) {
     setErro(null);
     setMovProduto(p);
@@ -321,6 +366,13 @@ export default function Estoque() {
                 { valor: "INSUMO", texto: "Uso e consumo" },
               ]}
             />
+            <Botao
+              variante="secundario"
+              icone={<Tags className="h-4 w-4" />}
+              onClick={() => setGerindoCategorias(true)}
+            >
+              Categorias
+            </Botao>
             <label className="flex items-center gap-2 rounded-lg border border-carvao-200 bg-white px-3 py-2 text-sm text-carvao-700">
               <input
                 type="checkbox"
@@ -539,9 +591,14 @@ export default function Estoque() {
               className="sm:col-span-1"
             />
             <Campo
-              rotulo="Código / código de barras"
+              rotulo="Código"
               value={form.codigo}
               onChange={(e) => setForm({ ...form, codigo: e.target.value })}
+              dica={
+                produtoModal === "novo"
+                  ? "Código de barras, se houver. Em branco, o sistema gera pela categoria."
+                  : "Apagar o código faz o sistema gerar outro pela categoria."
+              }
             />
             <Seletor
               rotulo="Tipo"
@@ -560,9 +617,10 @@ export default function Estoque() {
             />
             <Seletor
               rotulo="Categoria"
+              required
               value={form.categoria_id}
               onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
-              vazio="Sem categoria"
+              vazio="Escolha a categoria"
               opcoes={categorias.map((c) => ({ valor: c.id, texto: c.nome }))}
             />
             <Seletor
@@ -697,6 +755,72 @@ export default function Estoque() {
           </div>
         </form>
       </Modal>
+
+      {/* Categorias: criar e apagar */}
+      <Modal
+        aberto={gerindoCategorias}
+        titulo="Categorias"
+        aoFechar={() => setGerindoCategorias(false)}
+      >
+        <div className="space-y-4">
+          <Erro mensagem={erro} />
+          <p className="text-sm text-carvao-500">
+            A categoria define o código automático do produto: Salgados gera SAL001, SAL002...
+          </p>
+
+          <form onSubmit={criarCategoria} className="flex gap-2">
+            <input
+              value={novaCategoria}
+              onChange={(e) => setNovaCategoria(e.target.value)}
+              className="campo"
+              placeholder="Nova categoria"
+              maxLength={60}
+            />
+            <Botao type="submit" icone={<Plus className="h-4 w-4" />} className="shrink-0">
+              Criar
+            </Botao>
+          </form>
+
+          {categorias.length === 0 ? (
+            <Vazio titulo="Nenhuma categoria" descricao="Crie a primeira acima." />
+          ) : (
+            <ul className="divide-y divide-carvao-100 rounded-lg border border-carvao-100">
+              {categorias.map((c) => {
+                const usos = produtos.filter((p) => p.categoria_id === c.id).length;
+                return (
+                  <li key={c.id} className="flex items-center justify-between px-3 py-2">
+                    <div>
+                      <p className="font-medium text-carvao-800">{c.nome}</p>
+                      <p className="text-xs text-carvao-400">
+                        Prefixo {prefixoDaCategoria(c.nome)} · {usos} produto(s)
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => apagarCategoria(c)}
+                      className="rounded-md p-1.5 text-carvao-400 hover:bg-red-50 hover:text-red-600"
+                      aria-label={`Apagar ${c.nome}`}
+                      title={usos ? `${usos} produto(s) nesta categoria` : "Apagar categoria"}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <p className="text-xs text-carvao-400">
+            Categoria com produtos não pode ser apagada: mova os produtos antes.
+          </p>
+        </div>
+      </Modal>
     </>
   );
+}
+
+/** Mesma regra do servidor: "Salgados" vira "SAL". Aqui só para mostrar na tela. */
+function prefixoDaCategoria(nome: string): string {
+  const semAcento = nome.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  return (semAcento.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 3) || "PRO");
 }

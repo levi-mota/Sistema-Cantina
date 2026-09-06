@@ -1,10 +1,12 @@
 """Estoque: categorias, produtos e movimentações (kardex)."""
 
+import re
+import unicodedata
 from datetime import date, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from app import models, schemas
 from app.core.deps import DB, CurrentUser, SomenteAdmin
@@ -65,10 +67,14 @@ def excluir_categoria(categoria_id: int, db: DB, _: SomenteAdmin):
     if not categoria:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoria não encontrada")
     em_uso = db.scalar(
-        select(models.Produto).where(models.Produto.categoria_id == categoria_id).limit(1)
+        select(func.count(models.Produto.id)).where(models.Produto.categoria_id == categoria_id)
     )
     if em_uso:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Categoria em uso por produtos")
+        # Dizer quantos poupa a busca: quem apaga quer saber o tamanho do estrago.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Categoria em uso por {em_uso} produto(s). Mova-os antes de apagar.",
+        )
     db.delete(categoria)
     db.commit()
 
@@ -124,13 +130,67 @@ def exigir_codigo_livre(db, codigo: str | None, ignorar_id: int | None = None) -
         )
 
 
+def prefixo_da_categoria(nome: str) -> str:
+    """"Salgados" -> "SAL". Três letras, sem acento, em maiúsculas.
+
+    É o que os códigos já existentes usam (SAL001, BEB005), então a numeração
+    nova continua a antiga em vez de começar um padrão paralelo.
+    """
+    sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
+    letras = re.sub(r"[^A-Za-z]", "", sem_acento).upper()
+    return letras[:3] or "PRO"
+
+
+def gerar_codigo(db, categoria: models.Categoria) -> str:
+    """Próximo código livre da categoria: SAL001, SAL002...
+
+    Nem todo produto tem código de barras, mas todo produto precisa de um código
+    interno -- é por ele que se acha o item no PDV e na conferência. Quando o
+    campo fica vazio, o sistema numera sozinho.
+    """
+    prefixo = prefixo_da_categoria(categoria.nome)
+    usados = db.scalars(
+        select(models.Produto.codigo).where(models.Produto.codigo.like(f"{prefixo}%"))
+    ).all()
+
+    maior = 0
+    for codigo in usados:
+        achado = re.fullmatch(rf"{prefixo}(\d+)", codigo or "")
+        if achado:
+            maior = max(maior, int(achado.group(1)))
+
+    # O laço cobre o caso raro de alguém ter digitado à mão um código que
+    # colidiria com o próximo da sequência.
+    proximo = maior + 1
+    while True:
+        candidato = f"{prefixo}{proximo:03d}"
+        if not db.scalar(select(models.Produto).where(models.Produto.codigo == candidato)):
+            return candidato
+        proximo += 1
+
+
+def exigir_categoria(db, categoria_id: int | None) -> models.Categoria:
+    """A categoria é obrigatória: é dela que sai o código interno do produto."""
+    if not categoria_id:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Escolha a categoria do produto")
+    categoria = db.get(models.Categoria, categoria_id)
+    if not categoria:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Categoria não encontrada")
+    return categoria
+
+
 @router.post(
     "/produtos", response_model=schemas.ProdutoOut, status_code=status.HTTP_201_CREATED
 )
 def criar_produto(dados: schemas.ProdutoCreate, db: DB, usuario: SomenteAdmin):
     payload = dados.model_dump()
     estoque_inicial = Decimal(str(payload.pop("estoque_inicial", 0) or 0))
-    exigir_codigo_livre(db, payload.get("codigo"))
+
+    categoria = exigir_categoria(db, payload.get("categoria_id"))
+    payload["codigo"] = (payload.get("codigo") or "").strip() or None
+    exigir_codigo_livre(db, payload["codigo"])
+    if not payload["codigo"]:
+        payload["codigo"] = gerar_codigo(db, categoria)
 
     produto = models.Produto(**payload)
     db.add(produto)
@@ -165,10 +225,20 @@ def atualizar_produto(produto_id: int, dados: schemas.ProdutoUpdate, db: DB, _: 
     if not produto:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado")
     campos = dados.model_dump(exclude_unset=True)
+
+    # Vale o estado final: a categoria pode vir do corpo ou já estar no cadastro.
+    categoria = exigir_categoria(db, campos.get("categoria_id", produto.categoria_id))
+
     if "codigo" in campos:
+        campos["codigo"] = (campos["codigo"] or "").strip() or None
         exigir_codigo_livre(db, campos["codigo"], ignorar_id=produto.id)
+
     for campo, valor in campos.items():
         setattr(produto, campo, valor)
+
+    # Apagar o código não deixa o produto sem código: gera outro pela categoria.
+    if not produto.codigo:
+        produto.codigo = gerar_codigo(db, categoria)
     db.commit()
     db.refresh(produto)
     return _produto_out(produto)
