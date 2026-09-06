@@ -101,6 +101,9 @@ export default function Pdv() {
   const [pixImagem, setPixImagem] = useState<string | null>(null);
   const [pixCopiado, setPixCopiado] = useState(false);
 
+  /** Ultimo produto lancado: fica marcado no carrinho ate entrar outro. */
+  const [ultimoLancado, setUltimoLancado] = useState<number | null>(null);
+
   // Passo de quantidade: aberto ao escolher um produto (Enter ou clique).
   const [escolhido, setEscolhido] = useState<Produto | null>(null);
   const [quantidadeTexto, setQuantidadeTexto] = useState("1");
@@ -190,6 +193,7 @@ export default function Pdv() {
     setBusca("");
     setEscolhido(null);
     setEditando(null);
+    setUltimoLancado(null);
   }, []);
 
   const focarBusca = useCallback(() => {
@@ -219,6 +223,7 @@ export default function Pdv() {
       const produto = filtrados[destaque] ?? filtrados[0];
       if (!produto) return;
       if (delta > 0 && Number(produto.estoque_atual) <= 0) return;
+      setUltimoLancado(produto.id);
       setCarrinho((atual) => {
         const item = atual.find((i) => i.produto.id === produto.id);
         if (!item) return delta > 0 ? [...atual, { produto, quantidade: delta }] : atual;
@@ -357,6 +362,7 @@ export default function Pdv() {
       const sem = atual.filter((i) => i.produto.id !== escolhido.id);
       return total > 0 ? [...sem, { produto: escolhido, quantidade: total }] : sem;
     });
+    setUltimoLancado(total > 0 ? escolhido.id : null);
     setEscolhido(null);
     setBusca("");
     focarBusca();
@@ -1219,11 +1225,12 @@ export default function Pdv() {
             className="campo py-3 pl-9 text-base"
             autoFocus
           />
-          {quantidadeDigitada > 1 && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Selo tom="marca">{quantidadeDigitada} un</Selo>
+          <span className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
+            {quantidadeDigitada > 1 && <Selo tom="marca">{quantidadeDigitada} un</Selo>}
+            <span className="text-xs tabular-nums text-carvao-400">
+              {termo ? `${filtrados.length} de ${produtos.length}` : `${produtos.length} produtos`}
             </span>
-          )}
+          </span>
         </div>
 
         {caixa ? (
@@ -1261,11 +1268,12 @@ export default function Pdv() {
         ) : (
           <div
             ref={listaRef}
-            className="grid max-h-[62vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3 xl:grid-cols-4"
+            className="max-h-[62vh] divide-y divide-carvao-100 overflow-y-auto rounded-xl border border-carvao-100 bg-white shadow-sm"
           >
             {filtrados.map((p, indice) => {
               const semEstoque = Number(p.estoque_atual) <= 0;
               const ativo = indice === destaque;
+              const noCarrinho = carrinho.find((i) => i.produto.id === p.id)?.quantidade ?? 0;
               return (
                 <button
                   key={p.id}
@@ -1275,23 +1283,45 @@ export default function Pdv() {
                   disabled={semEstoque}
                   tabIndex={-1}
                   className={cx(
-                    "cartao flex flex-col justify-between p-3 text-left transition",
+                    "grid w-full grid-cols-[1fr_auto_auto] items-center gap-x-4 px-3 py-2.5 text-left transition",
+                    "sm:grid-cols-[1fr_7rem_5rem_4.5rem]",
                     "disabled:cursor-not-allowed disabled:opacity-50",
                     ativo
-                      ? "border-marca-500 ring-2 ring-marca-500/30"
-                      : "hover:border-marca-300 hover:shadow-md",
+                      ? "border-l-[3px] border-marca-500 bg-marca-50 pl-[9px]"
+                      : "border-l-[3px] border-transparent pl-[9px] hover:bg-carvao-50",
                   )}
                 >
-                  <div>
-                    <p className="line-clamp-2 text-sm font-semibold text-carvao-800">{p.nome}</p>
-                    <p className="mt-0.5 text-xs text-carvao-500">{p.codigo ?? "sem código"}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-carvao-800">
+                      {p.nome}
+                      {noCarrinho > 0 && (
+                        <span className="ml-2 text-xs font-bold text-emerald-700">
+                          {noCarrinho} no carrinho
+                        </span>
+                      )}
+                    </p>
+                    <p className="truncate font-mono text-[11px] text-carvao-400">
+                      {p.codigo ?? "sem código"}
+                    </p>
                   </div>
-                  <div className="mt-3 flex items-end justify-between gap-2">
-                    <span className="text-base font-bold text-marca-600">{brl(p.preco_venda)}</span>
-                    <Selo tom={semEstoque ? "perigo" : p.abaixo_minimo ? "alerta" : "neutro"}>
-                      {Number(p.estoque_atual)}
-                    </Selo>
-                  </div>
+                  <span className="text-right text-base font-bold tabular-nums text-marca-600">
+                    {brl(p.preco_venda)}
+                  </span>
+                  <span
+                    className={cx(
+                      "text-right text-xs tabular-nums",
+                      semEstoque
+                        ? "font-semibold text-red-600"
+                        : p.abaixo_minimo
+                          ? "font-semibold text-amber-700"
+                          : "text-carvao-400",
+                    )}
+                  >
+                    {semEstoque ? "esgotado" : `${Number(p.estoque_atual)} un`}
+                  </span>
+                  <span className="hidden text-right sm:block">
+                    {ativo && !semEstoque && <kbd className={tecla}>Enter</kbd>}
+                  </span>
                 </button>
               );
             })}
@@ -1335,7 +1365,13 @@ export default function Pdv() {
         ) : (
           <ul className="max-h-[45vh] divide-y divide-carvao-100 overflow-y-auto">
             {carrinho.map(({ produto, quantidade }) => (
-              <li key={produto.id} className="flex items-center gap-2 px-4 py-2.5">
+              <li
+                key={produto.id}
+                className={cx(
+                  "flex items-center gap-2 px-4 py-2.5 transition-colors",
+                  produto.id === ultimoLancado && "bg-emerald-50",
+                )}
+              >
                 <button
                   onClick={() => escolherProduto(produto)}
                   tabIndex={-1}
