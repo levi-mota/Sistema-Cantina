@@ -13,6 +13,18 @@ USUARIO=cantina
 passo() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 [ "$(id -u)" -eq 0 ] || { echo "Rode com sudo."; exit 1; }
 
+# O bash lê o script do disco conforme executa, e daqui a pouco este mesmo
+# arquivo será trocado por uma versão nova (o git reset abaixo). Trocar o chão
+# no meio do caminho embaralha o resto -- no melhor caso um passo não roda, no
+# pior o interpretador cai no meio de outra linha. Seguimos de uma cópia.
+if [ "${CANTINA_EM_COPIA:-}" != "1" ]; then
+  COPIA=$(mktemp /tmp/atualizar-cantina.XXXXXX)
+  cp "$0" "$COPIA"
+  trap 'rm -f "$COPIA"' EXIT
+  CANTINA_EM_COPIA=1 bash "$COPIA" "$@"
+  exit $?
+fi
+
 passo "Backup antes de mexer"
 bash "$RAIZ/deploy/backup.sh"
 
