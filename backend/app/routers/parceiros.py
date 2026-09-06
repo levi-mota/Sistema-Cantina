@@ -10,6 +10,19 @@ from app.services import documento as servico_documento
 router = APIRouter(prefix="/api/parceiros", tags=["parceiros"])
 
 
+def exigir_fantasia_coerente(tipo_pessoa: models.TipoPessoa, fantasia: str | None) -> None:
+    """Nome fantasia é de empresa: pessoa física tem nome, e só.
+
+    A tela esconde o campo, mas a regra mora aqui: quem chamar a API direto
+    também não passa.
+    """
+    if tipo_pessoa == models.TipoPessoa.FISICA and (fantasia or "").strip():
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Nome fantasia é só para pessoa jurídica",
+        )
+
+
 @router.get("", response_model=list[schemas.ParceiroOut])
 def listar(
     db: DB,
@@ -85,6 +98,8 @@ def criar(dados: schemas.ParceiroCreate, db: DB, _: SomenteAdmin):
                 f"Documento já cadastrado para '{existente.nome}'",
             )
 
+    exigir_fantasia_coerente(payload["tipo_pessoa"], payload.get("nome_fantasia"))
+
     parceiro = models.Parceiro(**payload)
     db.add(parceiro)
     db.commit()
@@ -112,6 +127,15 @@ def atualizar(parceiro_id: int, dados: schemas.ParceiroUpdate, db: DB, _: Soment
             campos["documento"] = servico_documento.validar(campos["documento"])
         except ValueError as erro:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(erro)) from erro
+    # Num PUT parcial o tipo e o fantasia podem vir de fontes diferentes: o que
+    # vale é como o cadastro fica depois da mudança.
+    tipo_pessoa = campos.get("tipo_pessoa", parceiro.tipo_pessoa)
+    exigir_fantasia_coerente(tipo_pessoa, campos.get("nome_fantasia"))
+    if tipo_pessoa == models.TipoPessoa.FISICA:
+        # Virou pessoa física: o fantasia que estava guardado sai junto, senão
+        # ficaria um valor invisível na tela e ativo na busca.
+        campos["nome_fantasia"] = None
+
     for campo, valor in campos.items():
         setattr(parceiro, campo, valor)
     db.commit()

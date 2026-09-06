@@ -308,7 +308,14 @@ export default function Parceiros() {
             <Seletor
               rotulo="Pessoa"
               value={form.tipo_pessoa}
-              onChange={(e) => setForm({ ...form, tipo_pessoa: e.target.value as TipoPessoa })}
+              onChange={(e) => {
+                const tipo_pessoa = e.target.value as TipoPessoa;
+                setForm((f) => ({
+                  ...f,
+                  tipo_pessoa,
+                  nome_fantasia: tipo_pessoa === "JURIDICA" ? f.nome_fantasia : "",
+                }));
+              }}
               opcoes={[
                 { valor: "FISICA", texto: "Física (CPF)" },
                 { valor: "JURIDICA", texto: "Jurídica (CNPJ)" },
@@ -346,11 +353,13 @@ export default function Parceiros() {
               value={form.nome}
               onChange={(e) => setForm({ ...form, nome: e.target.value })}
             />
-            <Campo
-              rotulo="Nome fantasia"
-              value={form.nome_fantasia}
-              onChange={(e) => setForm({ ...form, nome_fantasia: e.target.value })}
-            />
+            {form.tipo_pessoa === "JURIDICA" && (
+              <Campo
+                rotulo="Nome fantasia"
+                value={form.nome_fantasia}
+                onChange={(e) => setForm({ ...form, nome_fantasia: e.target.value })}
+              />
+            )}
             <Campo
               rotulo="Telefone"
               value={form.telefone}
