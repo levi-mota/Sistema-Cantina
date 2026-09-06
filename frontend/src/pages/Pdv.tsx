@@ -68,6 +68,9 @@ export default function Pdv() {
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  // O PDV comeca em repouso: so existe venda depois de o operador abrir uma.
+  // Sem isso, o caixa digita em um carrinho que ele nao sabe se e novo.
+  const [vendaAberta, setVendaAberta] = useState(false);
 
   const [pagamentoAberto, setPagamentoAberto] = useState(false);
   const [forma, setForma] = useState<Forma>("DINHEIRO");
@@ -193,6 +196,40 @@ export default function Pdv() {
     requestAnimationFrame(() => campoBusca.current?.focus());
   }, []);
 
+  const abrirLocalizar = useCallback(() => {
+    setErro(null);
+    setLocalizarAberto(true);
+  }, []);
+
+  const novaVenda = useCallback(() => {
+    limpar();
+    setVendaAberta(true);
+    focarBusca();
+  }, [limpar, focarBusca]);
+
+  /** Fecha a venda em andamento e volta para a tela inicial. */
+  const fecharVenda = useCallback(() => {
+    limpar();
+    setVendaAberta(false);
+  }, [limpar]);
+
+  /** Soma (ou tira) uma unidade do produto destacado, sem abrir o passo. */
+  const ajustarDestacado = useCallback(
+    (delta: number) => {
+      const produto = filtrados[destaque] ?? filtrados[0];
+      if (!produto) return;
+      if (delta > 0 && Number(produto.estoque_atual) <= 0) return;
+      setCarrinho((atual) => {
+        const item = atual.find((i) => i.produto.id === produto.id);
+        if (!item) return delta > 0 ? [...atual, { produto, quantidade: delta }] : atual;
+        return atual
+          .map((i) => (i.produto.id === produto.id ? { ...i, quantidade: i.quantidade + delta } : i))
+          .filter((i) => i.quantidade > 0);
+      });
+    },
+    [filtrados, destaque],
+  );
+
   const abrirPagamento = useCallback(() => {
     if (carrinho.length === 0 || !caixa) return;
     setRecebido("");
@@ -203,41 +240,52 @@ export default function Pdv() {
 
   // --- Atalhos de teclado da tela ----------------------------------------
   useEffect(() => {
-    if (pagamentoAberto || comprovante || escolhido) return;
+    if (pagamentoAberto || comprovante || escolhido || !vendaAberta) return;
 
     function aoTeclar(e: KeyboardEvent) {
-      if (e.key === "F2") {
-        e.preventDefault();
-        limpar();
-        focarBusca();
-        return;
-      }
-      if (e.key === "F4") {
-        e.preventDefault();
-        abrirPagamento();
-        return;
-      }
-      if (e.key === "F8") {
-        e.preventDefault();
-        abrirLocalizar();
-        return;
-      }
-      if (e.key === "Backspace" && e.altKey) {
+      // Com a busca vazia as teclas sobram para o carrinho: nada do que o
+      // operador digita ali corre o risco de virar comando por engano.
+      const buscaVazia = busca.trim() === "";
+
+      if (e.key === "Backspace" && buscaVazia) {
         e.preventDefault();
         setCarrinho((atual) => atual.slice(0, -1));
         return;
       }
-      if (e.key === "ArrowDown") {
+      if (e.key === " " && buscaVazia) {
+        e.preventDefault();
+        abrirPagamento();
+        return;
+      }
+      // Bloco numerico: + e - somam uma unidade do item destacado, / procura
+      // uma venda antiga. Tudo ao alcance da mao que ja digita a quantidade.
+      if ((e.key === "+" || e.key === "-") && buscaVazia) {
+        e.preventDefault();
+        ajustarDestacado(e.key === "+" ? 1 : -1);
+        return;
+      }
+      if (e.key === "/" && buscaVazia) {
+        e.preventDefault();
+        abrirLocalizar();
+        return;
+      }
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         e.preventDefault();
         setDestaque((d) => Math.min(d + 1, Math.max(filtrados.length - 1, 0)));
         return;
       }
-      if (e.key === "ArrowUp") {
+      if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
         e.preventDefault();
         setDestaque((d) => Math.max(d - 1, 0));
         return;
       }
       if (e.key === "Escape") {
+        // Busca vazia e carrinho vazio: nao ha o que limpar, entao sai da venda.
+        if (buscaVazia && carrinho.length === 0) {
+          e.preventDefault();
+          fecharVenda();
+          return;
+        }
         setBusca("");
         focarBusca();
         return;
@@ -254,11 +302,37 @@ export default function Pdv() {
     pagamentoAberto,
     comprovante,
     escolhido,
+    vendaAberta,
+    busca,
+    carrinho.length,
     filtrados.length,
     abrirPagamento,
-    limpar,
+    abrirLocalizar,
+    ajustarDestacado,
+    novaVenda,
+    fecharVenda,
     focarBusca,
   ]);
+
+  // --- Atalhos da tela inicial -------------------------------------------
+  useEffect(() => {
+    if (vendaAberta || localizarAberto || comprovante) return;
+
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key === "Enter" || e.key === " " || e.key === "+" || e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        novaVenda();
+        return;
+      }
+      if (e.key === "/" || e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        abrirLocalizar();
+      }
+    }
+
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [vendaAberta, localizarAberto, comprovante, novaVenda, abrirLocalizar]);
 
 
   /** Abre o passo de quantidade. Se o item ja esta no carrinho, edita o total. */
@@ -291,6 +365,11 @@ export default function Pdv() {
   function aoTeclarBusca(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter") return;
     e.preventDefault();
+    // Sem nada digitado nao ha produto para adicionar: Enter fecha a venda.
+    if (busca.trim() === "") {
+      abrirPagamento();
+      return;
+    }
     const produto = filtrados[destaque] ?? filtrados[0];
     if (produto) escolherProduto(produto);
   }
@@ -392,11 +471,6 @@ export default function Pdv() {
     }
   }, [buscaVenda]);
 
-  const abrirLocalizar = useCallback(() => {
-    setErro(null);
-    setLocalizarAberto(true);
-  }, []);
-
   useEffect(() => {
     if (!localizarAberto) return;
     const t = setTimeout(() => void carregarVendas(), 250);
@@ -425,6 +499,7 @@ export default function Pdv() {
     }
     setCarrinho(itens);
     setEditando(venda);
+    setVendaAberta(true);
     setDocumento(venda.documento_cliente ?? "");
     setClienteId(venda.cliente_id ? String(venda.cliente_id) : "");
     setDesconto(valorTexto(venda.desconto));
@@ -471,6 +546,7 @@ export default function Pdv() {
       setComprovante(data);
       setPagamentoAberto(false);
       limpar();
+      setVendaAberta(false);
       void carregar();
     } catch (e) {
       setErro(mensagemErro(e, "Não foi possível finalizar a venda"));
@@ -487,13 +563,25 @@ export default function Pdv() {
       const alvo = e.target as HTMLElement | null;
       const digitando = alvo?.tagName === "INPUT" || alvo?.tagName === "TEXTAREA";
 
-      if (e.key === "1" && !digitando) {
+      if (e.key === "/") {
+        // Alterna a forma sem tirar a mao do bloco numerico.
+        e.preventDefault();
+        setForma((atual) => (atual === "DINHEIRO" ? "PIX" : "DINHEIRO"));
+        return;
+      }
+      if (e.key === "*") {
+        // Valor exato: sem troco, sem digitar.
+        e.preventDefault();
+        setRecebido("");
+        return;
+      }
+      if (e.key.toLowerCase() === "d" && !digitando) {
         e.preventDefault();
         setForma("DINHEIRO");
         requestAnimationFrame(() => campoRecebido.current?.focus());
         return;
       }
-      if (e.key === "2" && !digitando) {
+      if (e.key.toLowerCase() === "p" && !digitando) {
         e.preventDefault();
         setForma("PIX");
         return;
@@ -517,220 +605,32 @@ export default function Pdv() {
   useEffect(() => {
     if (!comprovante) return;
     function aoTeclar(e: KeyboardEvent) {
-      if (e.key === "Enter" || e.key === "Escape") {
+      if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         setComprovante(null);
-        focarBusca();
+        novaVenda();
+        return;
+      }
+      if (e.key === "*" || e.key.toLowerCase() === "i") {
+        e.preventDefault();
+        imprimir(comprovante!);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setComprovante(null);
       }
     }
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [comprovante, focarBusca]);
+  }, [comprovante, novaVenda]);
 
   if (carregando) return <Carregando texto="Abrindo o PDV..." />;
 
   const tecla = "rounded border border-carvao-300 bg-white px-1.5 py-0.5 font-mono text-[11px]";
 
-  return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-      {/* Catalogo */}
-      <div className="min-w-0">
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-carvao-400" />
-          <input
-            ref={campoBusca}
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            onKeyDown={aoTeclarBusca}
-            placeholder="Buscar, ler código de barras ou 3* para quantidade..."
-            className="campo py-3 pl-9 text-base"
-            autoFocus
-          />
-          {quantidadeDigitada > 1 && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Selo tom="marca">{quantidadeDigitada} un</Selo>
-            </span>
-          )}
-        </div>
-
-        {caixa ? (
-          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-carvao-500">
-            <span className="flex items-center gap-1.5">
-              <BadgeCheck className="h-3.5 w-3.5 text-emerald-600" />
-              {caixa.caixa_nome} · turno #{caixa.id}
-            </span>
-            <span className="hidden items-center gap-2 sm:flex">
-              <kbd className={tecla}>↑↓</kbd> navegar
-              <kbd className={tecla}>Enter</kbd> adicionar
-              <kbd className={tecla}>F2</kbd> nova venda
-              <kbd className={tecla}>F4</kbd> finalizar
-              <kbd className={tecla}>F8</kbd> localizar
-              <kbd className={tecla}>Alt+←</kbd> tirar último
-            </span>
-          </div>
-        ) : (
-          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
-            <LockKeyhole className="h-4 w-4 shrink-0" />
-            <span className="flex-1">
-              Você não tem caixa aberto. Abra o seu caixa para registrar vendas.
-            </span>
-            <Link to="/caixa" className="font-semibold underline underline-offset-2">
-              Abrir caixa
-            </Link>
-          </div>
-        )}
-
-        <Erro mensagem={erro} />
-
-        {filtrados.length === 0 ? (
-          <Cartao>
-            <Vazio
-              titulo="Nenhum produto encontrado"
-              descricao="Ajuste a busca ou cadastre no estoque."
-            />
-          </Cartao>
-        ) : (
-          <div
-            ref={listaRef}
-            className="grid max-h-[62vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3 xl:grid-cols-4"
-          >
-            {filtrados.map((p, indice) => {
-              const semEstoque = Number(p.estoque_atual) <= 0;
-              const ativo = indice === destaque;
-              return (
-                <button
-                  key={p.id}
-                  data-indice={indice}
-                  onClick={() => escolherProduto(p)}
-                  onMouseEnter={() => setDestaque(indice)}
-                  disabled={semEstoque}
-                  tabIndex={-1}
-                  className={cx(
-                    "cartao flex flex-col justify-between p-3 text-left transition",
-                    "disabled:cursor-not-allowed disabled:opacity-50",
-                    ativo
-                      ? "border-marca-500 ring-2 ring-marca-500/30"
-                      : "hover:border-marca-300 hover:shadow-md",
-                  )}
-                >
-                  <div>
-                    <p className="line-clamp-2 text-sm font-semibold text-carvao-800">{p.nome}</p>
-                    <p className="mt-0.5 text-xs text-carvao-500">{p.codigo ?? "sem código"}</p>
-                  </div>
-                  <div className="mt-3 flex items-end justify-between gap-2">
-                    <span className="text-base font-bold text-marca-600">{brl(p.preco_venda)}</span>
-                    <Selo tom={semEstoque ? "perigo" : p.abaixo_minimo ? "alerta" : "neutro"}>
-                      {Number(p.estoque_atual)}
-                    </Selo>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Carrinho */}
-      <Cartao className="flex h-fit flex-col lg:sticky lg:top-4">
-        <div className="flex items-center gap-2 border-b border-carvao-100 px-4 py-3">
-          <ShoppingCart className="h-4.5 w-4.5 text-marca-600" />
-          <h2 className="font-bold text-carvao-900">Venda atual</h2>
-          {carrinho.length > 0 && (
-            <button
-              onClick={() => {
-                limpar();
-                focarBusca();
-              }}
-              tabIndex={-1}
-              className="ml-auto text-xs font-semibold text-red-600 hover:underline"
-            >
-              Nova venda (F2)
-            </button>
-          )}
-        </div>
-
-        {editando && (
-          <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            Alterando a <strong>venda #{editando.id}</strong>. Ao finalizar, ela é atualizada e o
-            estoque recebe só a diferença.
-          </div>
-        )}
-
-        {carrinho.length === 0 ? (
-          <Vazio titulo="Carrinho vazio" descricao="Busque o produto e tecle Enter." />
-        ) : (
-          <ul className="max-h-[45vh] divide-y divide-carvao-100 overflow-y-auto">
-            {carrinho.map(({ produto, quantidade }) => (
-              <li key={produto.id} className="flex items-center gap-2 px-4 py-2.5">
-                <button
-                  onClick={() => escolherProduto(produto)}
-                  tabIndex={-1}
-                  className="min-w-0 flex-1 text-left"
-                  title="Alterar quantidade"
-                >
-                  <p className="truncate text-sm font-medium text-carvao-800">{produto.nome}</p>
-                  <p className="text-xs text-carvao-500">
-                    {quantidade} x {brl(produto.preco_venda)}
-                  </p>
-                </button>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => alterarQtd(produto.id, -1)}
-                    tabIndex={-1}
-                    className="rounded-md border border-carvao-200 p-1.5 text-carvao-600 hover:bg-carvao-100"
-                    aria-label="Diminuir"
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="w-7 text-center text-sm font-semibold">{quantidade}</span>
-                  <button
-                    onClick={() => alterarQtd(produto.id, 1)}
-                    tabIndex={-1}
-                    className="rounded-md border border-carvao-200 p-1.5 text-carvao-600 hover:bg-carvao-100"
-                    aria-label="Aumentar"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <span className="w-20 text-right text-sm font-bold text-carvao-900">
-                  {brl(Number(produto.preco_venda) * quantidade)}
-                </span>
-                <button
-                  onClick={() => alterarQtd(produto.id, -quantidade)}
-                  tabIndex={-1}
-                  className="rounded-md p-1.5 text-carvao-400 hover:bg-red-50 hover:text-red-600"
-                  aria-label="Remover"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="border-t border-carvao-100 p-4">
-          <div className="flex items-center justify-between text-sm text-carvao-600">
-            <span>Itens</span>
-            <span>{carrinho.reduce((s, i) => s + i.quantidade, 0)}</span>
-          </div>
-          <div className="mt-1 flex items-center justify-between">
-            <span className="font-semibold text-carvao-700">Total</span>
-            <span className="text-3xl font-bold text-carvao-900">{brl(subtotal)}</span>
-          </div>
-          <Botao
-            className="mt-3 w-full py-3 text-base"
-            disabled={carrinho.length === 0 || !caixa}
-            tabIndex={-1}
-            onClick={abrirPagamento}
-          >
-            {!caixa
-              ? "Abra o caixa para vender"
-              : editando
-                ? `Salvar a venda #${editando.id} (F4)`
-                : "Finalizar venda (F4)"}
-          </Botao>
-        </div>
-      </Cartao>
+  const modais = (
+    <>
 
       {/* Passo de quantidade */}
       <Modal
@@ -813,7 +713,7 @@ export default function Pdv() {
             )}
 
             <p className="text-center text-xs text-carvao-400">
-              <kbd className={tecla}>up/down</kbd> ou <kbd className={tecla}>+ -</kbd> ajustam,{" "}
+              <kbd className={tecla}>↑↓</kbd> ou <kbd className={tecla}>+ −</kbd> ajustam,{" "}
               <kbd className={tecla}>Enter</kbd> confirma, <kbd className={tecla}>Esc</kbd> cancela
             </p>
 
@@ -857,8 +757,8 @@ export default function Pdv() {
           >
             {(
               [
-                { valor: "DINHEIRO", texto: "Dinheiro", atalho: "1", icone: Banknote },
-                { valor: "PIX", texto: "PIX", atalho: "2", icone: QrCode },
+                { valor: "DINHEIRO", texto: "Dinheiro", atalho: "/", icone: Banknote },
+                { valor: "PIX", texto: "PIX", atalho: "/", icone: QrCode },
               ] as const
             ).map((f) => (
               <button
@@ -903,7 +803,7 @@ export default function Pdv() {
                 value={recebido}
                 aoMudar={setRecebido}
                 className="py-3 text-lg font-semibold"
-                dica="Vazio = valor exato. Enter confirma."
+                dica="Vazio = valor exato (*). Enter confirma. / troca a forma."
               />
 
               <div className="flex flex-wrap gap-2">
@@ -1060,7 +960,7 @@ export default function Pdv() {
         titulo="Localizar venda"
         aoFechar={() => {
           setLocalizarAberto(false);
-          focarBusca();
+          if (vendaAberta) focarBusca();
         }}
         largura="max-w-2xl"
       >
@@ -1173,10 +1073,7 @@ export default function Pdv() {
       <Modal
         aberto={!!comprovante}
         titulo={`Venda #${comprovante?.id} concluida`}
-        aoFechar={() => {
-          setComprovante(null);
-          focarBusca();
-        }}
+        aoFechar={() => setComprovante(null)}
         largura="max-w-sm"
       >
         {comprovante && (
@@ -1223,13 +1120,13 @@ export default function Pdv() {
                 icone={<Printer className="h-4 w-4" />}
                 onClick={() => imprimir(comprovante)}
               >
-                Imprimir
+                Imprimir (*)
               </Botao>
               <Botao
                 className="flex-1 py-3"
                 onClick={() => {
                   setComprovante(null);
-                  focarBusca();
+                  novaVenda();
                 }}
               >
                 Nova venda (Enter)
@@ -1238,6 +1135,280 @@ export default function Pdv() {
           </div>
         )}
       </Modal>
+    </>
+  );
+
+  const avisoCaixa = !caixa && (
+    <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+      <LockKeyhole className="h-4 w-4 shrink-0" />
+      <span className="flex-1">
+        Você não tem caixa aberto. Abra o seu caixa para registrar vendas.
+      </span>
+      <Link to="/caixa" className="font-semibold underline underline-offset-2">
+        Abrir caixa
+      </Link>
     </div>
+  );
+
+  // --- Tela inicial: nada acontece antes de o operador abrir uma venda ----
+  if (!vendaAberta && !comprovante) {
+    return (
+      <>
+        <div className="mx-auto max-w-2xl">
+          {avisoCaixa}
+          <Erro mensagem={erro} />
+
+          {caixa && (
+            <p className="mb-4 flex items-center justify-center gap-1.5 text-xs text-carvao-500">
+              <BadgeCheck className="h-3.5 w-3.5 text-emerald-600" />
+              {caixa.caixa_nome} · turno #{caixa.id}
+            </p>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              onClick={novaVenda}
+              disabled={!caixa}
+              className="cartao flex flex-col items-center gap-2 px-6 py-10 text-center transition hover:border-marca-400 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ShoppingCart className="h-8 w-8 text-marca-600" />
+              <span className="text-lg font-bold text-carvao-900">Nova venda</span>
+              <span className="text-sm text-carvao-500">Carrinho zerado, pronto para vender</span>
+              <span className="mt-1 flex gap-1.5">
+                <kbd className={tecla}>Enter</kbd>
+                <kbd className={tecla}>+</kbd>
+                <kbd className={tecla}>N</kbd>
+              </span>
+            </button>
+
+            <button
+              onClick={abrirLocalizar}
+              className="cartao flex flex-col items-center gap-2 px-6 py-10 text-center transition hover:border-marca-400 hover:shadow-md"
+            >
+              <Search className="h-8 w-8 text-carvao-500" />
+              <span className="text-lg font-bold text-carvao-900">Localizar venda</span>
+              <span className="text-sm text-carvao-500">
+                Reimprimir, alterar itens ou cancelar uma venda já fechada
+              </span>
+              <span className="mt-1 flex gap-1.5">
+                <kbd className={tecla}>/</kbd>
+                <kbd className={tecla}>L</kbd>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {modais}
+      </>
+    );
+  }
+
+  return (
+    <>
+    <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      {/* Catalogo */}
+      <div className="min-w-0">
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-carvao-400" />
+          <input
+            ref={campoBusca}
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            onKeyDown={aoTeclarBusca}
+            placeholder="Buscar, ler código de barras ou 3* para quantidade..."
+            className="campo py-3 pl-9 text-base"
+            autoFocus
+          />
+          {quantidadeDigitada > 1 && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Selo tom="marca">{quantidadeDigitada} un</Selo>
+            </span>
+          )}
+        </div>
+
+        {caixa ? (
+          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-carvao-500">
+            <span className="flex items-center gap-1.5">
+              <BadgeCheck className="h-3.5 w-3.5 text-emerald-600" />
+              {caixa.caixa_nome} · turno #{caixa.id}
+            </span>
+            <span className="hidden items-center gap-2 sm:flex">
+              <kbd className={tecla}>↑↓←→</kbd> navegar
+              <kbd className={tecla}>Enter</kbd> adicionar
+              <kbd className={tecla}>3*</kbd> quantidade
+              <span className="text-carvao-400">|</span>
+              <span>
+                com a busca vazia: <kbd className={tecla}>+</kbd> <kbd className={tecla}>−</kbd> uma
+                unidade, <kbd className={tecla}>Enter</kbd> finaliza,{" "}
+                <kbd className={tecla}>Backspace</kbd> tira o último,{" "}
+                <kbd className={tecla}>/</kbd> localiza, <kbd className={tecla}>Esc</kbd> sai
+              </span>
+            </span>
+          </div>
+        ) : (
+          avisoCaixa
+        )}
+
+        <Erro mensagem={erro} />
+
+        {filtrados.length === 0 ? (
+          <Cartao>
+            <Vazio
+              titulo="Nenhum produto encontrado"
+              descricao="Ajuste a busca ou cadastre no estoque."
+            />
+          </Cartao>
+        ) : (
+          <div
+            ref={listaRef}
+            className="grid max-h-[62vh] grid-cols-2 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-3 xl:grid-cols-4"
+          >
+            {filtrados.map((p, indice) => {
+              const semEstoque = Number(p.estoque_atual) <= 0;
+              const ativo = indice === destaque;
+              return (
+                <button
+                  key={p.id}
+                  data-indice={indice}
+                  onClick={() => escolherProduto(p)}
+                  onMouseEnter={() => setDestaque(indice)}
+                  disabled={semEstoque}
+                  tabIndex={-1}
+                  className={cx(
+                    "cartao flex flex-col justify-between p-3 text-left transition",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                    ativo
+                      ? "border-marca-500 ring-2 ring-marca-500/30"
+                      : "hover:border-marca-300 hover:shadow-md",
+                  )}
+                >
+                  <div>
+                    <p className="line-clamp-2 text-sm font-semibold text-carvao-800">{p.nome}</p>
+                    <p className="mt-0.5 text-xs text-carvao-500">{p.codigo ?? "sem código"}</p>
+                  </div>
+                  <div className="mt-3 flex items-end justify-between gap-2">
+                    <span className="text-base font-bold text-marca-600">{brl(p.preco_venda)}</span>
+                    <Selo tom={semEstoque ? "perigo" : p.abaixo_minimo ? "alerta" : "neutro"}>
+                      {Number(p.estoque_atual)}
+                    </Selo>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Carrinho */}
+      <Cartao className="flex h-fit flex-col lg:sticky lg:top-4">
+        <div className="flex items-center gap-2 border-b border-carvao-100 px-4 py-3">
+          <ShoppingCart className="h-4.5 w-4.5 text-marca-600" />
+          <h2 className="font-bold text-carvao-900">Venda atual</h2>
+          <button
+            onClick={fecharVenda}
+            tabIndex={-1}
+            className="ml-auto text-xs font-semibold text-carvao-500 hover:underline"
+            title="Voltar para a tela inicial"
+          >
+            Sair (Esc)
+          </button>
+          {carrinho.length > 0 && (
+            <button
+              onClick={novaVenda}
+              tabIndex={-1}
+              className="text-xs font-semibold text-red-600 hover:underline"
+            >
+              Nova venda
+            </button>
+          )}
+        </div>
+
+        {editando && (
+          <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Alterando a <strong>venda #{editando.id}</strong>. Ao finalizar, ela é atualizada e o
+            estoque recebe só a diferença.
+          </div>
+        )}
+
+        {carrinho.length === 0 ? (
+          <Vazio titulo="Carrinho vazio" descricao="Busque o produto e tecle Enter." />
+        ) : (
+          <ul className="max-h-[45vh] divide-y divide-carvao-100 overflow-y-auto">
+            {carrinho.map(({ produto, quantidade }) => (
+              <li key={produto.id} className="flex items-center gap-2 px-4 py-2.5">
+                <button
+                  onClick={() => escolherProduto(produto)}
+                  tabIndex={-1}
+                  className="min-w-0 flex-1 text-left"
+                  title="Alterar quantidade"
+                >
+                  <p className="truncate text-sm font-medium text-carvao-800">{produto.nome}</p>
+                  <p className="text-xs text-carvao-500">
+                    {quantidade} x {brl(produto.preco_venda)}
+                  </p>
+                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => alterarQtd(produto.id, -1)}
+                    tabIndex={-1}
+                    className="rounded-md border border-carvao-200 p-1.5 text-carvao-600 hover:bg-carvao-100"
+                    aria-label="Diminuir"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="w-7 text-center text-sm font-semibold">{quantidade}</span>
+                  <button
+                    onClick={() => alterarQtd(produto.id, 1)}
+                    tabIndex={-1}
+                    className="rounded-md border border-carvao-200 p-1.5 text-carvao-600 hover:bg-carvao-100"
+                    aria-label="Aumentar"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <span className="w-20 text-right text-sm font-bold text-carvao-900">
+                  {brl(Number(produto.preco_venda) * quantidade)}
+                </span>
+                <button
+                  onClick={() => alterarQtd(produto.id, -quantidade)}
+                  tabIndex={-1}
+                  className="rounded-md p-1.5 text-carvao-400 hover:bg-red-50 hover:text-red-600"
+                  aria-label="Remover"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="border-t border-carvao-100 p-4">
+          <div className="flex items-center justify-between text-sm text-carvao-600">
+            <span>Itens</span>
+            <span>{carrinho.reduce((s, i) => s + i.quantidade, 0)}</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between">
+            <span className="font-semibold text-carvao-700">Total</span>
+            <span className="text-3xl font-bold text-carvao-900">{brl(subtotal)}</span>
+          </div>
+          <Botao
+            className="mt-3 w-full py-3 text-base"
+            disabled={carrinho.length === 0 || !caixa}
+            tabIndex={-1}
+            onClick={abrirPagamento}
+          >
+            {!caixa
+              ? "Abra o caixa para vender"
+              : editando
+                ? `Salvar a venda #${editando.id} (Enter)`
+                : "Finalizar venda (Enter)"}
+          </Botao>
+        </div>
+      </Cartao>
+
+    </div>
+
+      {modais}
+    </>
   );
 }
