@@ -146,7 +146,9 @@ export default function Pdv() {
 
   const filtrados = useMemo(() => {
     const alvo = termo.toLowerCase();
-    if (!alvo) return produtos;
+    // Lista vazia sem busca: o catalogo inteiro na tela so atrapalha quem
+    // digita, e a venda comum comeca por uma tecla, nao por um passeio.
+    if (!alvo) return [];
     return produtos.filter(
       (p) => p.nome.toLowerCase().includes(alvo) || (p.codigo ?? "").toLowerCase().includes(alvo),
     );
@@ -1211,9 +1213,9 @@ export default function Pdv() {
 
   return (
     <>
-    <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+    <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1fr_380px]">
       {/* Catalogo */}
-      <div className="min-w-0">
+      <div className="flex min-h-0 min-w-0 flex-col">
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-carvao-400" />
           <input
@@ -1259,16 +1261,23 @@ export default function Pdv() {
         <Erro mensagem={erro} />
 
         {filtrados.length === 0 ? (
-          <Cartao>
-            <Vazio
-              titulo="Nenhum produto encontrado"
-              descricao="Ajuste a busca ou cadastre no estoque."
-            />
+          <Cartao className="flex min-h-0 flex-1 items-center justify-center">
+            {termo ? (
+              <Vazio
+                titulo="Nenhum produto encontrado"
+                descricao="Ajuste a busca ou cadastre no estoque."
+              />
+            ) : (
+              <Vazio
+                titulo="Comece a digitar"
+                descricao="Uma letra do nome, o código de barras ou 3* para a quantidade."
+              />
+            )}
           </Cartao>
         ) : (
           <div
             ref={listaRef}
-            className="max-h-[62vh] divide-y divide-carvao-100 overflow-y-auto rounded-xl border border-carvao-100 bg-white shadow-sm"
+            className="min-h-0 flex-1 divide-y divide-carvao-100 overflow-y-auto rounded-xl border border-carvao-100 bg-white shadow-sm"
           >
             {filtrados.map((p, indice) => {
               const semEstoque = Number(p.estoque_atual) <= 0;
@@ -1330,7 +1339,7 @@ export default function Pdv() {
       </div>
 
       {/* Carrinho */}
-      <Cartao className="flex h-fit flex-col lg:sticky lg:top-4">
+      <Cartao className="flex min-h-0 flex-col">
         <div className="flex items-center gap-2 border-b border-carvao-100 px-4 py-3">
           <ShoppingCart className="h-4.5 w-4.5 text-marca-600" />
           <h2 className="font-bold text-carvao-900">Venda atual</h2>
@@ -1361,9 +1370,11 @@ export default function Pdv() {
         )}
 
         {carrinho.length === 0 ? (
-          <Vazio titulo="Carrinho vazio" descricao="Busque o produto e tecle Enter." />
+          <div className="flex min-h-0 flex-1 items-center justify-center">
+            <Vazio titulo="Carrinho vazio" descricao="Busque o produto e tecle Enter." />
+          </div>
         ) : (
-          <ul className="max-h-[45vh] divide-y divide-carvao-100 overflow-y-auto">
+          <ul className="min-h-0 flex-1 divide-y divide-carvao-100 overflow-y-auto">
             {carrinho.map(({ produto, quantidade }) => (
               <li
                 key={produto.id}
@@ -1418,7 +1429,7 @@ export default function Pdv() {
           </ul>
         )}
 
-        <div className="border-t border-carvao-100 p-4">
+        <div className="mt-auto border-t border-carvao-100 p-4">
           <div className="flex items-center justify-between text-sm text-carvao-600">
             <span>Itens</span>
             <span>{carrinho.reduce((s, i) => s + i.quantidade, 0)}</span>

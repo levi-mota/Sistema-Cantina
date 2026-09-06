@@ -113,7 +113,7 @@ export default function Layout() {
   const atual = visiveis.find((i) => i.para === local.pathname);
 
   return (
-    <div className="min-h-screen lg:flex">
+    <div className="flex min-h-screen flex-col lg:flex-row">
       {/* Menu lateral: apenas no desktop, recolhivel para so os icones */}
       <aside className={cx("hidden shrink-0 lg:block", recolhido ? "w-16" : "w-64")}>
         <div
@@ -214,7 +214,7 @@ export default function Layout() {
           </button>
         </header>
 
-        <main className="flex-1 px-4 py-5 pb-24 sm:px-6 lg:px-8 lg:pb-8">
+        <main className="flex min-h-0 flex-1 flex-col px-4 py-5 pb-24 sm:px-6 lg:px-8 lg:pb-8">
           <Outlet />
         </main>
 
