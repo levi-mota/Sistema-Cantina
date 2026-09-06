@@ -324,7 +324,7 @@ export default function Estoque() {
 
       <Erro mensagem={erro} />
 
-      <div className="mb-4 flex gap-1 rounded-lg border border-carvao-100 bg-white p-1">
+      <div className="mb-4 flex gap-1 rounded-lg border border-carvao-100 bg-superficie p-1">
         {(["produtos", "movimentos"] as const).map((valor) => (
           <button
             key={valor}
@@ -373,7 +373,7 @@ export default function Estoque() {
             >
               Categorias
             </Botao>
-            <label className="flex items-center gap-2 rounded-lg border border-carvao-200 bg-white px-3 py-2 text-sm text-carvao-700">
+            <label className="flex items-center gap-2 rounded-lg border border-carvao-200 bg-superficie px-3 py-2 text-sm text-carvao-700">
               <input
                 type="checkbox"
                 checked={somenteCriticos}

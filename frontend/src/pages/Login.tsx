@@ -24,7 +24,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-carvao-900 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-menu px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <img
@@ -32,7 +32,7 @@ export default function Login() {
             alt="Maanaim Cantina"
             className="mx-auto w-64 max-w-full"
           />
-          <p className="mt-4 text-sm text-carvao-400">Entre para acessar o sistema</p>
+          <p className="mt-4 text-sm text-menu-suave">Entre para acessar o sistema</p>
         </div>
 
         <form onSubmit={enviar} className="cartao space-y-4 p-6">

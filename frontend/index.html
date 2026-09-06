@@ -11,6 +11,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      // Antes da primeira pintura: sem isto a tela pisca clara e so depois
+      // escurece, a cada carregamento.
+      try {
+        var salvo = localStorage.getItem("cantina:tema");
+        var tema =
+          salvo === "claro" || salvo === "escuro"
+            ? salvo
+            : matchMedia("(prefers-color-scheme: dark)").matches
+              ? "escuro"
+              : "claro";
+        document.documentElement.dataset.tema = tema;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

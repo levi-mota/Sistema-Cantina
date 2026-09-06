@@ -84,11 +84,11 @@ function Acao({
       aria-label={titulo}
       tabIndex={-1}
       className={cx(
-        "flex items-center gap-1.5 rounded-md border border-carvao-200 bg-white px-1.5 py-1",
+        "flex items-center gap-1.5 rounded-md border border-carvao-200 bg-superficie px-1.5 py-1",
         "font-mono text-[11px] text-carvao-500 transition",
         "hover:border-marca-300 hover:bg-marca-50 hover:text-marca-700",
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-carvao-200",
-        "disabled:hover:bg-white disabled:hover:text-carvao-500",
+        "disabled:hover:bg-superficie disabled:hover:text-carvao-500",
       )}
     >
       <span className="rounded border border-carvao-200 bg-carvao-50 px-1">{tecla}</span>
@@ -772,7 +772,7 @@ export default function Pdv() {
 
   if (carregando) return <Carregando texto="Abrindo o PDV..." />;
 
-  const tecla = "rounded border border-carvao-300 bg-white px-1.5 py-0.5 font-mono text-[11px]";
+  const tecla = "rounded border border-carvao-300 bg-superficie px-1.5 py-0.5 font-mono text-[11px]";
 
   const modais = (
     <>
@@ -1579,7 +1579,7 @@ export default function Pdv() {
         ) : (
           <div
             ref={listaRef}
-            className="min-h-0 flex-1 divide-y divide-carvao-100 overflow-y-auto rounded-xl border border-carvao-100 bg-white shadow-sm"
+            className="min-h-0 flex-1 divide-y divide-carvao-100 overflow-y-auto rounded-xl border border-carvao-100 bg-superficie shadow-sm"
           >
             {filtrados.map((p, indice) => {
               const semEstoque = Number(p.estoque_atual) <= 0;

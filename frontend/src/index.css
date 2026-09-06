@@ -22,6 +22,75 @@
   --color-carvao-700: #45423e;
   --color-carvao-800: #2e2c29;
   --color-carvao-900: #1d1c1a;
+
+  /* Superficie dos cartoes, campos e barras. Era o branco fixo; virou token
+     para o tema escuro ter onde trocar. */
+  --color-superficie: #ffffff;
+
+  /* O menu lateral e a tela de login sao escuros nos dois temas: sao a
+     moldura do sistema, nao a folha onde se trabalha. */
+  --color-menu: #1d1c1a;
+  --color-menu-2: #2e2c29;
+  --color-menu-texto: #e5e4e1;
+  --color-menu-suave: #8d8a83;
+}
+
+/*
+ * Tema escuro. A escala "carvao" e usada sempre no mesmo sentido -- os tons
+ * baixos sao fundo e linha, os altos sao texto --, entao inverte-la aqui vira
+ * o sistema inteiro de uma vez, sem uma variante "dark:" por classe.
+ */
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+
+  --color-carvao-50: #16150f;
+  --color-carvao-100: #2a2822;
+  --color-carvao-200: #3c392f;
+  --color-carvao-400: #8b877e;
+  --color-carvao-600: #b3aea4;
+  --color-carvao-700: #ccc7bd;
+  --color-carvao-800: #ebe8e2;
+  --color-carvao-900: #f8f7f5;
+
+  --color-superficie: #211f1b;
+
+  /* A marca precisa clarear para continuar viva sobre o fundo escuro. */
+  --color-marca-50: #33210f;
+  --color-marca-100: #4a2f13;
+  --color-marca-200: #6b421a;
+  --color-marca-300: #8a5620;
+  --color-marca-500: #f97e12;
+  --color-marca-600: #fb9b38;
+  --color-marca-700: #fdc071;
+
+  /* Avisos: os tons claros viram fundo escuro, os escuros viram texto claro.
+     O 500/600 fica no meio, porque serve de fundo de botao e de texto. */
+  --color-amber-50: #2e2109;
+  --color-amber-100: #3d2c0c;
+  --color-amber-200: #5a4114;
+  --color-amber-300: #7a5a1d;
+  --color-amber-700: #f0b45c;
+  --color-amber-800: #f6c980;
+  --color-amber-900: #fbdcab;
+
+  --color-red-50: #2f1414;
+  --color-red-100: #40191a;
+  --color-red-200: #5c2426;
+  --color-red-600: #f16a6a;
+  --color-red-700: #e04f4f;
+  --color-red-800: #f79a9a;
+
+  --color-emerald-50: #0f2a20;
+  --color-emerald-100: #14382a;
+  --color-emerald-600: #34c48d;
+  --color-emerald-700: #4bd39c;
+  --color-emerald-800: #7ee0b8;
+
+  --color-sky-50: #0f2433;
+  --color-sky-100: #143247;
+  --color-sky-200: #1d4864;
+  --color-sky-700: #6cc0f0;
+  --color-sky-800: #92d2f5;
 }
 
 @layer base {
@@ -52,7 +121,7 @@
 
 @layer components {
   .campo {
-    @apply w-full rounded-lg border border-carvao-200 bg-white px-3 py-2 text-carvao-800
+    @apply w-full rounded-lg border border-carvao-200 bg-superficie px-3 py-2 text-carvao-800
            outline-none transition placeholder:text-carvao-400
            focus:border-marca-500 focus:ring-2 focus:ring-marca-500/20
            disabled:bg-carvao-100 disabled:text-carvao-400;
@@ -63,7 +132,7 @@
   }
 
   .cartao {
-    @apply rounded-xl border border-carvao-100 bg-white shadow-sm;
+    @apply rounded-xl border border-carvao-100 bg-superficie shadow-sm;
   }
 }
 
@@ -91,6 +160,12 @@
 }
 
 @media print {
+  /* No papel nao existe tema escuro: a bobina e branca e a tinta e preta. */
+  body {
+    background: #fff;
+    color: #000;
+  }
+
   body * {
     visibility: hidden;
   }

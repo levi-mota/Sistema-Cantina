@@ -12,7 +12,9 @@ import {
   LayoutDashboard,
   LogOut,
   MoreHorizontal,
+  Moon,
   ShoppingCart,
+  Sun,
   UserCog,
   Users,
   X,
@@ -21,6 +23,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "../lib/auth";
 import type { Perfil } from "../lib/tipos";
+import { useTema } from "../lib/tema";
 import { cx } from "./ui";
 
 interface ItemMenu {
@@ -111,6 +114,9 @@ export default function Layout() {
   const fixos = visiveis.filter((i) => i.fixoNoCelular).slice(0, 4);
   const restantes = visiveis.filter((i) => !fixos.includes(i));
   const atual = visiveis.find((i) => i.para === local.pathname);
+  const { tema, alternar } = useTema();
+  const IconeTema = tema === "escuro" ? Sun : Moon;
+  const rotuloTema = tema === "escuro" ? "Tema claro" : "Tema escuro";
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
@@ -118,7 +124,7 @@ export default function Layout() {
       <aside className={cx("hidden shrink-0 lg:block", recolhido ? "w-16" : "w-64")}>
         <div
           className={cx(
-            "fixed inset-y-0 flex flex-col bg-carvao-900 transition-all duration-200",
+            "fixed inset-y-0 flex flex-col bg-menu transition-all duration-200",
             recolhido ? "w-16" : "w-64",
           )}
         >
@@ -149,7 +155,7 @@ export default function Layout() {
                     recolhido ? "justify-center px-2" : "px-3",
                     isActive
                       ? "bg-marca-600 text-white shadow-sm"
-                      : "text-carvao-200 hover:bg-carvao-800 hover:text-white",
+                      : "text-menu-texto hover:bg-menu-2 hover:text-white",
                   )
                 }
               >
@@ -159,13 +165,13 @@ export default function Layout() {
             ))}
           </nav>
 
-          <div className="space-y-2 border-t border-carvao-800 p-3">
+          <div className="space-y-2 border-t border-menu-2 p-3">
             <button
               onClick={() => setRecolhido((v) => !v)}
               title={recolhido ? "Expandir menu" : "Recolher menu"}
               className={cx(
                 "flex w-full items-center gap-2 rounded-lg py-2 text-sm font-medium",
-                "text-carvao-400 transition hover:bg-carvao-800 hover:text-white",
+                "text-menu-suave transition hover:bg-menu-2 hover:text-white",
                 recolhido ? "justify-center px-2" : "px-3",
               )}
             >
@@ -176,6 +182,20 @@ export default function Layout() {
                   <ChevronLeft className="h-4 w-4" /> Recolher menu
                 </>
               )}
+            </button>
+
+            <button
+              onClick={alternar}
+              title={rotuloTema}
+              aria-label={rotuloTema}
+              className={cx(
+                "flex w-full items-center gap-2 rounded-lg py-2 text-sm font-medium",
+                "text-menu-suave transition hover:bg-menu-2 hover:text-white",
+                recolhido ? "justify-center px-2" : "px-3",
+              )}
+            >
+              <IconeTema className="h-4 w-4" />
+              {!recolhido && rotuloTema}
             </button>
 
             {!recolhido && (
@@ -200,12 +220,20 @@ export default function Layout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topo do celular: sem menu lateral, so titulo e sair */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-carvao-100 bg-white px-4 py-3 lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-carvao-100 bg-superficie px-4 py-3 lg:hidden">
           <img src="/icone-cantina.png" alt="Cantina" className="h-9 w-9 shrink-0 rounded-lg" />
           <div className="min-w-0 flex-1">
             <p className="truncate font-bold text-carvao-900">{atual?.texto ?? "Cantina"}</p>
             <p className="truncate text-xs text-carvao-500">{usuario?.nome}</p>
           </div>
+          <button
+            onClick={alternar}
+            title={rotuloTema}
+            aria-label={rotuloTema}
+            className="shrink-0 rounded-lg border border-carvao-200 p-2 text-carvao-500 active:bg-carvao-100"
+          >
+            <IconeTema className="h-4 w-4" />
+          </button>
           <button
             onClick={sair}
             className="flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 active:bg-red-100"
@@ -222,11 +250,11 @@ export default function Layout() {
         {maisAberto && (
           <div className="fixed inset-0 z-40 lg:hidden">
             <button
-              className="absolute inset-0 bg-carvao-900/50"
+              className="absolute inset-0 bg-menu/60"
               onClick={() => setMaisAberto(false)}
               aria-label="Fechar"
             />
-            <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white pb-20 shadow-xl">
+            <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-superficie pb-20 shadow-xl">
               <div className="flex items-center justify-between border-b border-carvao-100 px-5 py-3">
                 <span className="font-bold text-carvao-900">Mais opções</span>
                 <button
@@ -261,7 +289,7 @@ export default function Layout() {
         )}
 
         {/* Celular: a barra inferior e a unica navegacao */}
-        <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-carvao-100 bg-white lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-carvao-100 bg-superficie lg:hidden">
           {fixos.map(({ para, curto, icone: Icone }) => (
             <NavLink
               key={para}

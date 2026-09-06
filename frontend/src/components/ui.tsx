@@ -22,7 +22,7 @@ type Variante = "primario" | "secundario" | "perigo" | "fantasma" | "sucesso";
 const VARIANTES: Record<Variante, string> = {
   primario: "bg-marca-600 text-white hover:bg-marca-700 focus-visible:ring-marca-500",
   secundario:
-    "bg-white text-carvao-700 border border-carvao-200 hover:bg-carvao-50 focus-visible:ring-carvao-400",
+    "bg-superficie text-carvao-700 border border-carvao-200 hover:bg-carvao-50 focus-visible:ring-carvao-400",
   perigo: "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500",
   sucesso: "bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500",
   fantasma: "text-carvao-600 hover:bg-carvao-100 focus-visible:ring-carvao-400",
@@ -240,14 +240,14 @@ export function Modal({
   if (!aberto) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-carvao-900/50 p-0 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-menu/60 p-0 sm:items-center sm:p-4">
       <div
         className={cx(
-          "max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-xl sm:rounded-xl",
+          "max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-superficie shadow-xl sm:rounded-xl",
           largura,
         )}
       >
-        <div className="sticky top-0 flex items-center justify-between border-b border-carvao-100 bg-white px-5 py-3">
+        <div className="sticky top-0 flex items-center justify-between border-b border-carvao-100 bg-superficie px-5 py-3">
           <h2 className="font-bold text-carvao-900">{titulo}</h2>
           <button
             onClick={aoFechar}

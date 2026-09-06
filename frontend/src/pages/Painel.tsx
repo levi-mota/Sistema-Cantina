@@ -182,7 +182,7 @@ export default function Painel() {
             </span>
           )}
         </h2>
-        <div className="flex gap-1 rounded-lg border border-carvao-200 bg-white p-1">
+        <div className="flex gap-1 rounded-lg border border-carvao-200 bg-superficie p-1">
           {PERIODOS.map((p) => (
             <button
               key={p.dias}
