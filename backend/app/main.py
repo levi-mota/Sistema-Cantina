@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app import models
 from app.core.config import settings
+from app.core.limite import LimitadorDeRequisicoes
 from app.core import migracoes
 from app.core.database import SessionLocal
 from app.core.security import hash_password
@@ -76,7 +77,15 @@ app = FastAPI(
     description="API do sistema de gestão da cantina (PDV, estoque, financeiro, relatórios).",
     version="1.0.0",
     lifespan=lifespan,
+    # A documentação interativa lista cada rota e cada campo -- é mapa para
+    # quem estuda o alvo. Fica só onde se desenvolve.
+    docs_url="/docs" if settings.docs_abertas else None,
+    redoc_url="/redoc" if settings.docs_abertas else None,
+    openapi_url="/openapi.json" if settings.docs_abertas else None,
 )
+
+# Antes do CORS, para que a recusa por excesso não gaste nada além do contador.
+app.add_middleware(LimitadorDeRequisicoes)
 
 app.add_middleware(
     CORSMiddleware,

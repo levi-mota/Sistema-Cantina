@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     # Relogio do balcao: e nele que "hoje" e "este mes" sao ditos.
     fuso: str = "America/Sao_Paulo"
     cors_origins: str = "http://localhost:5173"
+    # Documentacao interativa da API (/docs). Ligada so em desenvolvimento.
+    docs_abertas: bool = False
 
     apibrasil_token: str = ""
     apibrasil_device_token: str = ""

@@ -11,13 +11,51 @@
 
 {
 	email {$EMAIL_CERTIFICADO}
+
+	servers {
+		# Conexao aberta e deixada pendurada e o ataque mais barato que existe:
+		# nao precisa de banda, so de paciencia. Estes prazos cortam isso.
+		timeouts {
+			read_body 30s
+			read_header 10s
+			write 120s
+			idle 300s
+		}
+	}
+}
+
+# Cabecalhos que valem para os dois sites.
+(seguranca) {
+	header {
+		# Um ano de HTTPS obrigatorio: o navegador nem tenta http depois da
+		# primeira visita, entao nao ha janela para interceptar a ida.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Impede o navegador de "adivinhar" que um arquivo e outra coisa.
+		X-Content-Type-Options "nosniff"
+		# O sistema nunca e legitimamente aberto dentro de um quadro alheio.
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+		# Script so da propria origem. O 'unsafe-inline' existe porque a tela
+		# aplica o tema antes da primeira pintura com um script embutido; o que
+		# importa aqui e barrar script de fora.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		# Versao do servidor e informacao de graca para quem procura alvo.
+		-Server
+	}
 }
 
 # --------------------------------------------------------------------------- #
 # Sistema da cantina
 # --------------------------------------------------------------------------- #
 {$DOMINIO_APP} {
+	import seguranca
 	encode zstd gzip
+
+	# A cantina nao envia arquivo; corpo grande aqui e engano ou ataque.
+	request_body {
+		max_size 1MB
+	}
 
 	# A API primeiro: tudo em /api vai para o backend, o resto é a tela.
 	handle /api/* {
@@ -49,6 +87,7 @@
 # Cardápio virtual (por enquanto, um aviso)
 # --------------------------------------------------------------------------- #
 {$DOMINIO_SITE} {
+	import seguranca
 	encode zstd gzip
 	root * /opt/cantina/deploy/cardapio
 	file_server
