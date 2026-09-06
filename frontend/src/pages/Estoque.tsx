@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  AlertTriangle,
-  ArrowDownUp,
-  ChefHat,
-  History,
-  Package,
-  Plus,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { AlertTriangle, ArrowDownUp, History, Package, Plus, Search } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
 import {
@@ -18,15 +9,12 @@ import {
   hojeIso,
   inteiro,
   qtd,
-  quantidadeDigitada,
-  quantidadeTexto,
   rotulo,
   valorNumero,
   valorTexto,
 } from "../lib/format";
 import type {
   Categoria,
-  Ficha,
   Movimento,
   Parceiro,
   Produto,
@@ -46,7 +34,6 @@ import {
   Tabela,
   TituloPagina,
   Vazio,
-  cx,
 } from "../components/ui";
 
 const TIPOS_MOVIMENTO: { valor: TipoMovimento; texto: string }[] = [
@@ -73,8 +60,6 @@ export default function Estoque() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [fornecedores, setFornecedores] = useState<Parceiro[]>([]);
-  /** Só os itens de uso e consumo: são os únicos que entram numa receita. */
-  const [insumos, setInsumos] = useState<Produto[]>([]);
   const [movimentos, setMovimentos] = useState<Movimento[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -90,13 +75,6 @@ export default function Estoque() {
   /** Produto já cadastrado com o mesmo código (trava) ou o mesmo nome (avisa). */
   const [repetido, setRepetido] = useState<{ codigo?: Produto; nome?: Produto }>({});
   const [salvando, setSalvando] = useState(false);
-
-  /** A receita em edição: o produto final e as linhas de insumo. */
-  const [ficha, setFicha] = useState<{
-    produto: Produto;
-    itens: { insumo_id: string; quantidade: string; observacao: string }[];
-    calculada: Ficha | null;
-  } | null>(null);
 
   const [movProduto, setMovProduto] = useState<Produto | null>(null);
   const [movForm, setMovForm] = useState({
@@ -134,11 +112,9 @@ export default function Estoque() {
     Promise.all([
       api.get<Categoria[]>("/estoque/categorias"),
       api.get<Parceiro[]>("/parceiros", { params: { tipo: "FORNECEDOR", ativo: true } }),
-      api.get<Produto[]>("/estoque/produtos", { params: { ativo: true, tipo: "INSUMO" } }),
-    ]).then(([c, f, i]) => {
+    ]).then(([c, f]) => {
       setCategorias(c.data);
       setFornecedores(f.data);
-      setInsumos(i.data);
     });
   }, []);
 
@@ -269,47 +245,6 @@ export default function Estoque() {
       await carregar();
     } catch (err) {
       setErro(mensagemErro(err, "Não foi possível registrar o movimento"));
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  async function abrirFicha(produto: Produto) {
-    setErro(null);
-    try {
-      const { data } = await api.get<Ficha>(`/estoque/produtos/${produto.id}/ficha`);
-      setFicha({
-        produto,
-        calculada: data,
-        itens: data.itens.map((i) => ({
-          insumo_id: String(i.insumo_id),
-          quantidade: quantidadeTexto(i.quantidade),
-          observacao: i.observacao ?? "",
-        })),
-      });
-    } catch (e) {
-      setErro(mensagemErro(e, "Não foi possível abrir a ficha técnica"));
-    }
-  }
-
-  async function salvarFicha() {
-    if (!ficha) return;
-    setSalvando(true);
-    setErro(null);
-    try {
-      await api.put(`/estoque/produtos/${ficha.produto.id}/ficha`, {
-        itens: ficha.itens
-          .filter((i) => i.insumo_id && valorNumero(i.quantidade) > 0)
-          .map((i) => ({
-            insumo_id: Number(i.insumo_id),
-            quantidade: valorNumero(i.quantidade),
-            observacao: i.observacao || null,
-          })),
-      });
-      setFicha(null);
-      await carregar();
-    } catch (e) {
-      setErro(mensagemErro(e, "Não foi possível salvar a ficha técnica"));
     } finally {
       setSalvando(false);
     }
@@ -458,16 +393,6 @@ export default function Estoque() {
                         Movimentar
                       </Botao>
                     </div>
-                    {p.tipo === "FINAL" && (
-                      <Botao
-                        variante="secundario"
-                        className="mt-2 w-full"
-                        icone={<ChefHat className="h-4 w-4" />}
-                        onClick={() => abrirFicha(p)}
-                      >
-                        Ficha técnica{p.itens_ficha > 0 && ` (${p.itens_ficha})`}
-                      </Botao>
-                    )}
                   </Cartao>
                 ))}
               </div>
@@ -523,16 +448,6 @@ export default function Estoque() {
                             Editar
                           </Botao>
                           <Botao onClick={() => abrirMovimento(p)}>Movimentar</Botao>
-                          {p.tipo === "FINAL" && (
-                            <Botao
-                              variante="secundario"
-                              onClick={() => abrirFicha(p)}
-                              title="Receita: insumos que este produto consome"
-                            >
-                              <ChefHat className="h-4 w-4" />
-                              {p.itens_ficha > 0 && <span className="ml-1">{p.itens_ficha}</span>}
-                            </Botao>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -782,187 +697,6 @@ export default function Estoque() {
           </div>
         </form>
       </Modal>
-
-      {/* Ficha técnica: o que o produto final consome */}
-      <Modal
-        aberto={!!ficha}
-        titulo={`Ficha técnica: ${ficha?.produto.nome ?? ""}`}
-        aoFechar={() => setFicha(null)}
-        largura="max-w-3xl"
-      >
-        {ficha && (
-          <div className="space-y-4">
-            <Erro mensagem={erro} />
-            <p className="text-sm text-carvao-500">
-              O que uma unidade consome. A quantidade aceita fração: 0,05 do vidro de ketchup que
-              se compra inteiro.
-            </p>
-
-            {insumos.length === 0 ? (
-              <Vazio
-                titulo="Nenhum item de uso e consumo cadastrado"
-                descricao="Cadastre farinha, ketchup e embalagem como uso e consumo para montar a receita."
-              />
-            ) : (
-              <>
-                <div className="overflow-x-auto rounded-lg border border-carvao-100">
-                  <table className="w-full text-sm">
-                    <thead className="bg-carvao-50">
-                      <tr className="text-left text-xs uppercase tracking-wide text-carvao-600">
-                        <th className="px-3 py-2">Insumo</th>
-                        <th className="w-28 px-3 py-2">Quantidade</th>
-                        <th className="px-3 py-2">Custo</th>
-                        <th className="px-3 py-2">Observação</th>
-                        <th className="w-10 px-3 py-2"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-carvao-100">
-                      {ficha.itens.map((linha, indice) => {
-                        const alterar = (mudanca: Partial<(typeof ficha.itens)[number]>) =>
-                          setFicha((atual) =>
-                            atual
-                              ? {
-                                  ...atual,
-                                  itens: atual.itens.map((l, n) =>
-                                    n === indice ? { ...l, ...mudanca } : l,
-                                  ),
-                                }
-                              : atual,
-                          );
-                        const insumo = insumos.find((i) => String(i.id) === linha.insumo_id);
-                        const custo =
-                          valorNumero(linha.quantidade) * Number(insumo?.preco_custo ?? 0);
-                        return (
-                          <tr key={indice}>
-                            <td className="px-3 py-2">
-                              <Seletor
-                                value={linha.insumo_id}
-                                onChange={(e) => alterar({ insumo_id: e.target.value })}
-                                vazio="Escolha o insumo"
-                                opcoes={insumos.map((i) => ({ valor: i.id, texto: i.nome }))}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                value={linha.quantidade}
-                                inputMode="decimal"
-                                onChange={(e) =>
-                                  alterar({ quantidade: quantidadeDigitada(e.target.value) })
-                                }
-                                className="campo py-1.5 text-center"
-                                placeholder="0,05"
-                              />
-                            </td>
-                            <td className="px-3 py-2 text-carvao-600">{brl(custo)}</td>
-                            <td className="px-3 py-2">
-                              <input
-                                value={linha.observacao}
-                                maxLength={200}
-                                onChange={(e) => alterar({ observacao: e.target.value })}
-                                className="campo py-1.5"
-                                placeholder="Ex.: pesado cru"
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setFicha((atual) =>
-                                    atual
-                                      ? {
-                                          ...atual,
-                                          itens: atual.itens.filter((_, n) => n !== indice),
-                                        }
-                                      : atual,
-                                  )
-                                }
-                                className="rounded-md p-1.5 text-carvao-400 hover:bg-red-50 hover:text-red-600"
-                                aria-label="Remover insumo"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {ficha.itens.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="px-3 py-6 text-center text-carvao-400">
-                            Receita vazia. Adicione o primeiro insumo.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <Botao
-                  variante="secundario"
-                  type="button"
-                  icone={<Plus className="h-4 w-4" />}
-                  onClick={() =>
-                    setFicha((atual) =>
-                      atual
-                        ? {
-                            ...atual,
-                            itens: [
-                              ...atual.itens,
-                              { insumo_id: "", quantidade: "1", observacao: "" },
-                            ],
-                          }
-                        : atual,
-                    )
-                  }
-                >
-                  Adicionar insumo
-                </Botao>
-
-                {(() => {
-                  // O custo da receita é o custo de verdade de produzir; o do
-                  // cadastro é o que alguém digitou um dia.
-                  const custoReceita = ficha.itens.reduce((soma, l) => {
-                    const insumo = insumos.find((i) => String(i.id) === l.insumo_id);
-                    return soma + valorNumero(l.quantidade) * Number(insumo?.preco_custo ?? 0);
-                  }, 0);
-                  const venda = Number(ficha.produto.preco_venda);
-                  const margem =
-                    custoReceita > 0 ? ((venda - custoReceita) / custoReceita) * 100 : null;
-                  return (
-                    <div className="grid gap-3 rounded-lg bg-carvao-50 p-3 text-sm sm:grid-cols-4">
-                      <Resumo titulo="Custo da receita" valor={brl(custoReceita)} />
-                      <Resumo titulo="Custo no cadastro" valor={brl(ficha.produto.preco_custo)} />
-                      <Resumo titulo="Preço de venda" valor={brl(venda)} />
-                      <Resumo
-                        titulo="Margem sobre a receita"
-                        valor={margem === null ? "-" : `${margem.toFixed(0)}%`}
-                        tom={margem !== null && margem < 0 ? "text-red-600" : "text-emerald-700"}
-                      />
-                    </div>
-                  );
-                })()}
-              </>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <Botao variante="secundario" type="button" onClick={() => setFicha(null)}>
-                Cancelar
-              </Botao>
-              <Botao carregando={salvando} onClick={salvarFicha}>
-                Salvar ficha
-              </Botao>
-            </div>
-          </div>
-        )}
-      </Modal>
     </>
-  );
-}
-
-function Resumo({ titulo, valor, tom }: { titulo: string; valor: string; tom?: string }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-carvao-500">{titulo}</p>
-      <p className={cx("font-bold", tom ?? "text-carvao-900")}>{valor}</p>
-    </div>
   );
 }

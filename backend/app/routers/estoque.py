@@ -30,7 +30,6 @@ def _produto_out(p: models.Produto) -> schemas.ProdutoOut:
         preco_venda=venda,
         estoque_atual=Decimal(str(p.estoque_atual or 0)),
         estoque_minimo=Decimal(str(p.estoque_minimo or 0)),
-        itens_ficha=len(p.ficha),
         ativo=p.ativo,
         categoria_nome=p.categoria.nome if p.categoria else None,
         fornecedor_nome=p.fornecedor.nome if p.fornecedor else None,
@@ -182,109 +181,6 @@ def desativar_produto(produto_id: int, db: DB, _: SomenteAdmin):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado")
     produto.ativo = False
     db.commit()
-
-
-# --------------------------------------------------------------------------- #
-# Ficha tecnica
-# --------------------------------------------------------------------------- #
-def _ficha_out(produto: models.Produto) -> schemas.FichaOut:
-    itens = []
-    custo = Decimal("0")
-    for item in sorted(produto.ficha, key=lambda i: i.insumo.nome if i.insumo else ""):
-        quantidade = Decimal(str(item.quantidade))
-        unitario = Decimal(str(item.insumo.preco_custo or 0)) if item.insumo else Decimal("0")
-        total = quantidade * unitario
-        custo += total
-        itens.append(
-            schemas.FichaItemOut(
-                insumo_id=item.insumo_id,
-                insumo=item.insumo.nome if item.insumo else "-",
-                quantidade=quantidade,
-                custo_unitario=unitario,
-                custo_total=total,
-                estoque_insumo=Decimal(str(item.insumo.estoque_atual or 0)) if item.insumo else Decimal("0"),
-                observacao=item.observacao,
-            )
-        )
-
-    venda = Decimal(str(produto.preco_venda or 0))
-    # A margem se mede contra o custo da receita, que é o custo de verdade de
-    # produzir -- não contra o preço de custo digitado no cadastro.
-    margem = (venda - custo) / custo * 100 if custo > 0 else None
-    return schemas.FichaOut(
-        produto_id=produto.id,
-        produto=produto.nome,
-        itens=itens,
-        custo_calculado=round(custo, 4),
-        custo_cadastrado=Decimal(str(produto.preco_custo or 0)),
-        preco_venda=venda,
-        margem_calculada=round(margem, 2) if margem is not None else None,
-    )
-
-
-def _produto_da_ficha(db: DB, produto_id: int) -> models.Produto:
-    produto = db.get(models.Produto, produto_id)
-    if not produto:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado")
-    if produto.tipo != models.TipoProduto.FINAL:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Só produto final tem ficha técnica: o insumo é o que entra nela",
-        )
-    return produto
-
-
-@router.get("/produtos/{produto_id}/ficha", response_model=schemas.FichaOut)
-def obter_ficha(produto_id: int, db: DB, _: CurrentUser):
-    return _ficha_out(_produto_da_ficha(db, produto_id))
-
-
-@router.put("/produtos/{produto_id}/ficha", response_model=schemas.FichaOut)
-def salvar_ficha(produto_id: int, dados: schemas.FichaIn, db: DB, _: SomenteAdmin):
-    """Substitui a receita inteira do produto.
-
-    Trocar tudo de uma vez é mais simples de entender do que uma sequência de
-    adições e remoções, e a tela edita a receita como um bloco só.
-    """
-    produto = _produto_da_ficha(db, produto_id)
-
-    vistos: set[int] = set()
-    novos: list[models.FichaTecnicaItem] = []
-    for entrada in dados.itens:
-        if entrada.insumo_id == produto.id:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT, "Um produto não pode ser insumo de si mesmo"
-            )
-        if entrada.insumo_id in vistos:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT, "O mesmo insumo aparece duas vezes na ficha"
-            )
-        vistos.add(entrada.insumo_id)
-
-        insumo = db.get(models.Produto, entrada.insumo_id)
-        if not insumo:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND, f"Insumo {entrada.insumo_id} não encontrado"
-            )
-        if insumo.tipo != models.TipoProduto.INSUMO:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"'{insumo.nome}' é produto final: só item de uso e consumo entra na receita",
-            )
-        novos.append(
-            models.FichaTecnicaItem(
-                insumo_id=insumo.id,
-                quantidade=entrada.quantidade,
-                observacao=entrada.observacao,
-            )
-        )
-
-    produto.ficha.clear()
-    db.flush()
-    produto.ficha.extend(novos)
-    db.commit()
-    db.refresh(produto)
-    return _ficha_out(produto)
 
 
 # --------------------------------------------------------------------------- #
