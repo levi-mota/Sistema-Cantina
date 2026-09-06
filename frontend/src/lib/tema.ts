@@ -10,12 +10,12 @@ function temaDoSistema(): Tema {
 }
 
 /** O tema salvo pelo operador; sem escolha, o do sistema. */
-export function temaInicial(): Tema {
+function temaInicial(): Tema {
   const salvo = localStorage.getItem(CHAVE);
   return salvo === "claro" || salvo === "escuro" ? salvo : temaDoSistema();
 }
 
-export function aplicarTema(tema: Tema) {
+function aplicarTema(tema: Tema) {
   document.documentElement.dataset.tema = tema;
   document
     .querySelector('meta[name="theme-color"]')

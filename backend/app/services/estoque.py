@@ -29,17 +29,15 @@ def movimentar(
     atual = Decimal(str(produto.estoque_atual or 0))
 
     if tipo in SAIDAS and not permitir_negativo:
-        # Conferir em Python e gravar depois abre uma janela entre a leitura e a
-        # escrita: dois caixas vendendo a ultima unidade ao mesmo tempo leriam o
-        # mesmo saldo e ambos passariam. Quem decide aqui e o banco, numa
-        # instrucao so -- se ninguem casa a condicao, nao havia saldo.
+        # Quem decide e o banco, numa instrucao so: conferir em Python e gravar
+        # depois deixaria dois caixas venderem a mesma ultima unidade.
         resultado = db.execute(
             update(models.Produto)
             .where(
                 models.Produto.id == produto.id,
-                models.Produto.estoque_atual >= float(quantidade),
+                models.Produto.estoque_atual >= quantidade,
             )
-            .values(estoque_atual=models.Produto.estoque_atual - float(quantidade))
+            .values(estoque_atual=models.Produto.estoque_atual - quantidade)
             .execution_options(synchronize_session=False)
         )
         if resultado.rowcount == 0:
@@ -50,10 +48,8 @@ def movimentar(
                     f"disponível {atual}, solicitado {quantidade}"
                 ),
             )
-        # O saldo real e o que ficou no banco, nao o que estava em memoria.
-        db.refresh(produto)
+        db.refresh(produto)  # o saldo real e o que ficou no banco
         novo_saldo = Decimal(str(produto.estoque_atual or 0))
-        atual = novo_saldo + quantidade
     else:
         if tipo in ENTRADAS:
             novo_saldo = atual + quantidade

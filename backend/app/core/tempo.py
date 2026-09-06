@@ -1,12 +1,6 @@
-"""Fuso do balcão.
-
-Os carimbos de data e hora são gravados em UTC -- é o que mantém o histórico
-coerente se o servidor mudar de máquina ou o horário de verão voltar. Mas todo
-recorte que o usuário pede ("hoje", "este mês", "de 01/09 a 07/09") é dito no
-relógio da cantina, e é aqui que um vira o outro.
-
-Sem esta conversão, o dia do relatório começa às 21h do dia anterior: a última
-hora de venda cai no dia seguinte e o total do dia nunca bate com a gaveta.
+"""Fuso do balcão: os carimbos são gravados em UTC, mas "hoje" é dito no
+relógio da cantina. Sem esta conversão o dia do relatório começaria às 21h da
+véspera, e a última hora de venda cairia no dia seguinte.
 """
 
 from datetime import date, datetime, time, timedelta, timezone
@@ -32,11 +26,8 @@ def inicio_do_dia(dia: date) -> datetime:
 
 
 def fim_do_dia(dia: date) -> datetime:
-    """Fim exclusivo: 00:00 do dia seguinte.
-
-    Exclusivo por causa dos microssegundos -- `time.max` deixa de fora tudo o
-    que acontecer no último milionésimo de segundo do dia.
-    """
+    """Fim exclusivo (00:00 do dia seguinte): `time.max` perderia o último
+    milionésimo de segundo."""
     return _para_utc(datetime.combine(dia + timedelta(days=1), time.min))
 
 
@@ -46,5 +37,5 @@ def dia_local(momento: datetime) -> date:
 
 
 def intervalo(inicio: date, fim: date) -> tuple[datetime, datetime]:
-    """Os dois carimbos em UTC que cercam o período pedido em datas locais."""
+    """Os carimbos UTC que cercam o período pedido em datas locais."""
     return inicio_do_dia(inicio), fim_do_dia(fim)

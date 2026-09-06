@@ -61,6 +61,51 @@ function sugestoesDeCedula(total: number): number[] {
   return [...new Set(lista.map((v) => Number(v.toFixed(2))))].slice(0, 4);
 }
 
+/** Itens e totais de uma venda: o mesmo resumo serve ao detalhe e ao comprovante. */
+function ResumoVenda({ venda }: { venda: Venda }) {
+  return (
+    <div className="space-y-3 text-sm">
+      <ul className="divide-y divide-carvao-100">
+        {venda.itens.map((i) => (
+          <li key={i.id} className="flex justify-between py-1.5">
+            <span className="text-carvao-700">
+              {Number(i.quantidade)}x {i.descricao}
+            </span>
+            <span className="font-medium">{brl(i.total)}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="space-y-1 border-t border-carvao-200 pt-2">
+        <div className="flex justify-between text-base font-bold">
+          <span>Total</span>
+          <span>{brl(venda.total)}</span>
+        </div>
+        <div className="flex justify-between text-carvao-600">
+          <span>Pagamento</span>
+          <span>{rotulo(venda.forma_pagamento)}</span>
+        </div>
+        {Number(venda.troco) > 0 && (
+          <div className="flex justify-between text-lg font-bold text-emerald-700">
+            <span>Troco</span>
+            <span>{brl(venda.troco)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-carvao-600">
+          <span>Consumidor</span>
+          <span>
+            {venda.cliente_nome ??
+              (venda.documento_cliente ? documentoFormatado(venda.documento_cliente) : "Diverso")}
+          </span>
+        </div>
+        <div className="flex justify-between text-carvao-600">
+          <span>Atendente</span>
+          <span>{venda.usuario_nome ?? "-"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Atalho que tambem e botao: mostra a tecla e executa a mesma acao no clique. */
 function Acao({
   tecla,
@@ -173,10 +218,8 @@ export default function Pdv() {
   const botaoForma = useRef<HTMLButtonElement>(null);
   const listaRef = useRef<HTMLDivElement>(null);
   /**
-   * Instante em que o ultimo passo foi aberto. O Enter que abre um modal
-   * continua subindo ate a janela, e o atalho do modal recem-montado o
-   * receberia de volta -- confirmando sozinho o que acabou de aparecer.
-   * Comparar o timeStamp descarta exatamente essa tecla, e so ela.
+   * Instante em que o ultimo passo foi aberto: o Enter que abre um modal sobe
+   * ate a janela, e o atalho do modal recem-montado o confirmaria sozinho.
    */
   const abertoEm = useRef(0);
 
@@ -234,18 +277,6 @@ export default function Pdv() {
     forma === "DINHEIRO" && recebido !== "" ? Math.max(total - valorNumero(recebido), 0) : 0;
 
   // --- Carrinho -----------------------------------------------------------
-  function alterarQtd(produtoId: number, delta: number) {
-    setCarrinho((atual) =>
-      atual
-        .map((i) =>
-          i.produto.id === produtoId
-            ? { ...i, quantidade: Math.min(i.quantidade + delta, disponivel(i.produto)) }
-            : i,
-        )
-        .filter((i) => i.quantidade > 0),
-    );
-  }
-
   const limpar = useCallback(() => {
     setCarrinho([]);
     setDesconto("0,00");
@@ -296,11 +327,12 @@ export default function Pdv() {
     setVendaAberta(false);
   }, [limpar]);
 
-  /** Soma (ou tira) uma unidade do produto destacado, sem abrir o passo. */
-  const ajustarDestacado = useCallback(
-    (delta: number) => {
-      const produto = filtrados[destaque] ?? filtrados[0];
-      if (!produto) return;
+  /**
+   * Soma ou tira unidades de um produto no carrinho, sempre respeitando o
+   * disponivel. E o caminho unico: lista, catalogo e botoes passam por aqui.
+   */
+  const alterarNoCarrinho = useCallback(
+    (produto: Produto, delta: number) => {
       const teto = disponivel(produto);
       const atual = carrinho.find((i) => i.produto.id === produto.id)?.quantidade ?? 0;
       if (delta > 0 && atual >= teto) {
@@ -319,30 +351,16 @@ export default function Pdv() {
         return nova > 0 ? [...sem, { produto, quantidade: nova }] : sem;
       });
     },
-    [filtrados, destaque, carrinho, disponivel],
+    [carrinho, disponivel],
   );
 
-  /** Inclui uma unidade na venda, seja pela lista ou pelo catalogo. */
-  const incluirUmaUnidade = useCallback(
-    (produto: Produto) => {
-      const teto = disponivel(produto);
-      const atual = carrinho.find((i) => i.produto.id === produto.id)?.quantidade ?? 0;
-      if (atual >= teto) {
-        setErro(
-          teto <= 0
-            ? `"${produto.nome}" está sem estoque.`
-            : `Só há ${teto} de "${produto.nome}" em estoque.`,
-        );
-        return;
-      }
-      setErro(null);
-      setUltimoLancado(produto.id);
-      setCarrinho((itens) => {
-        const sem = itens.filter((i) => i.produto.id !== produto.id);
-        return [...sem, { produto, quantidade: atual + 1 }];
-      });
+  /** O mesmo, para o produto destacado na lista (teclas + e -). */
+  const ajustarDestacado = useCallback(
+    (delta: number) => {
+      const produto = filtrados[destaque] ?? filtrados[0];
+      if (produto) alterarNoCarrinho(produto, delta);
     },
-    [carrinho, disponivel],
+    [filtrados, destaque, alterarNoCarrinho],
   );
 
   const catalogo = useMemo(() => {
@@ -396,8 +414,7 @@ export default function Pdv() {
     }
 
     function aoTeclar(e: KeyboardEvent) {
-      // Digitacao em outro campo nao e comando da venda. Sem isto, procurar
-      // uma venda antiga apagava item do carrinho a cada Backspace.
+      // Digitacao em outro campo nao e comando da venda.
       const alvo = e.target as HTMLElement | null;
       if (alvo && alvo !== campoBusca.current) {
         const etiqueta = alvo.tagName;
@@ -430,8 +447,7 @@ export default function Pdv() {
         abrirPagamento();
         return;
       }
-      // Bloco numerico: + e - somam uma unidade do item destacado, / procura
-      // uma venda antiga. Tudo ao alcance da mao que ja digita a quantidade.
+      // Bloco numerico, ao alcance da mao que ja digita a quantidade.
       if ((e.key === "+" || e.key === "-") && buscaVazia) {
         e.preventDefault();
         ajustarDestacado(e.key === "+" ? 1 : -1);
@@ -1222,7 +1238,7 @@ export default function Pdv() {
                         variante="secundario"
                         className="whitespace-nowrap"
                         disabled={teto <= 0 || !vendaAberta}
-                        onClick={() => incluirUmaUnidade(p)}
+                        onClick={() => alterarNoCarrinho(p, 1)}
                       >
                         +1
                       </Botao>
@@ -1333,34 +1349,7 @@ export default function Pdv() {
         aoFechar={() => setDetalhe(null)}
         largura="max-w-sm"
       >
-        {detalhe && (
-          <div className="space-y-3 text-sm">
-            <ul className="divide-y divide-carvao-100">
-              {detalhe.itens.map((i) => (
-                <li key={i.id} className="flex justify-between py-1.5">
-                  <span className="text-carvao-700">
-                    {Number(i.quantidade)}x {i.descricao}
-                  </span>
-                  <span className="font-medium">{brl(i.total)}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="space-y-1 border-t border-carvao-200 pt-2">
-              <div className="flex justify-between text-base font-bold">
-                <span>Total</span>
-                <span>{brl(detalhe.total)}</span>
-              </div>
-              <div className="flex justify-between text-carvao-600">
-                <span>Pagamento</span>
-                <span>{rotulo(detalhe.forma_pagamento)}</span>
-              </div>
-              <div className="flex justify-between text-carvao-600">
-                <span>Atendente</span>
-                <span>{detalhe.usuario_nome ?? "-"}</span>
-              </div>
-            </div>
-          </div>
-        )}
+        {detalhe && <ResumoVenda venda={detalhe} />}
       </Modal>
 
       {/* Só existe no papel: a regra de impressão está em index.css. */}
@@ -1374,42 +1363,8 @@ export default function Pdv() {
         largura="max-w-sm"
       >
         {comprovante && (
-          <div className="space-y-3 text-sm">
-            <ul className="divide-y divide-carvao-100">
-              {comprovante.itens.map((i) => (
-                <li key={i.id} className="flex justify-between py-1.5">
-                  <span className="text-carvao-700">
-                    {Number(i.quantidade)}x {i.descricao}
-                  </span>
-                  <span className="font-medium">{brl(i.total)}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="space-y-1 border-t border-carvao-200 pt-2">
-              <div className="flex justify-between text-base font-bold">
-                <span>Total</span>
-                <span>{brl(comprovante.total)}</span>
-              </div>
-              <div className="flex justify-between text-carvao-600">
-                <span>Pagamento</span>
-                <span>{rotulo(comprovante.forma_pagamento)}</span>
-              </div>
-              {Number(comprovante.troco) > 0 && (
-                <div className="flex justify-between text-lg font-bold text-emerald-700">
-                  <span>Troco</span>
-                  <span>{brl(comprovante.troco)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-carvao-600">
-                <span>Consumidor</span>
-                <span>
-                  {comprovante.cliente_nome ??
-                    (comprovante.documento_cliente
-                      ? documentoFormatado(comprovante.documento_cliente)
-                      : "Diverso")}
-                </span>
-              </div>
-            </div>
+          <div className="space-y-3">
+            <ResumoVenda venda={comprovante} />
             <div className="flex gap-2">
               <Botao
                 variante="secundario"
@@ -1719,7 +1674,7 @@ export default function Pdv() {
                 </button>
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => alterarQtd(produto.id, -1)}
+                    onClick={() => alterarNoCarrinho(produto, -1)}
                     tabIndex={-1}
                     className="rounded-md border border-carvao-200 p-1.5 text-carvao-600 hover:bg-carvao-100"
                     aria-label="Diminuir"
@@ -1728,7 +1683,7 @@ export default function Pdv() {
                   </button>
                   <span className="w-7 text-center text-sm font-semibold">{quantidade}</span>
                   <button
-                    onClick={() => alterarQtd(produto.id, 1)}
+                    onClick={() => alterarNoCarrinho(produto, 1)}
                     tabIndex={-1}
                     className="rounded-md border border-carvao-200 p-1.5 text-carvao-600 hover:bg-carvao-100"
                     aria-label="Aumentar"
@@ -1740,7 +1695,7 @@ export default function Pdv() {
                   {brl(Number(produto.preco_venda) * quantidade)}
                 </span>
                 <button
-                  onClick={() => alterarQtd(produto.id, -quantidade)}
+                  onClick={() => alterarNoCarrinho(produto, -quantidade)}
                   tabIndex={-1}
                   className="rounded-md p-1.5 text-carvao-400 hover:bg-red-50 hover:text-red-600"
                   aria-label="Remover"

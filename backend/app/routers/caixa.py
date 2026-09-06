@@ -225,24 +225,32 @@ def lancar_movimento(dados: schemas.MovimentoCaixaIn, db: DB, usuario: CurrentUs
     return servico.montar_saida(db, sessao)
 
 
-@router.post("/fechar", response_model=schemas.CaixaOut)
-def fechar(dados: schemas.FechamentoIn, db: DB, usuario: CurrentUser):
-    """Confere o valor contado contra o esperado e congela a quebra do turno."""
-    sessao = servico.exigir_sessao_do_usuario(db, usuario.id)
+def _congelar_fechamento(
+    db: DB, sessao: models.CaixaSessao, dados: schemas.FechamentoIn, por: models.Usuario
+) -> schemas.CaixaOut:
+    """Confere o contado contra o esperado e congela a quebra do turno."""
     conferencia = servico.conferir(db, sessao)
-
     informado = Decimal(str(dados.valor_informado))
+
     sessao.valor_informado = informado
     sessao.valor_esperado = conferencia.valor_esperado
     sessao.diferenca = informado - conferencia.valor_esperado
     sessao.observacao_fechamento = dados.observacao
-    sessao.usuario_fechamento_id = usuario.id
+    sessao.usuario_fechamento_id = por.id
     sessao.fechado_em = datetime.now(timezone.utc)
     sessao.status = models.StatusCaixa.FECHADA
 
     db.commit()
     db.refresh(sessao)
+    # A conferencia ja esta congelada nas colunas; recalcular seria repeti-la.
     return servico.montar_saida(db, sessao, incluir_conferencia=False)
+
+
+@router.post("/fechar", response_model=schemas.CaixaOut)
+def fechar(dados: schemas.FechamentoIn, db: DB, usuario: CurrentUser):
+    """Fecha o próprio turno."""
+    sessao = servico.exigir_sessao_do_usuario(db, usuario.id)
+    return _congelar_fechamento(db, sessao, dados, usuario)
 
 
 @router.post("/sessoes/{sessao_id}/fechar-forcado", response_model=schemas.CaixaOut)
@@ -257,20 +265,7 @@ def fechar_forcado(sessao_id: int, dados: schemas.FechamentoIn, db: DB, gestor: 
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão de caixa não encontrada")
     if sessao.status == models.StatusCaixa.FECHADA:
         raise HTTPException(status.HTTP_409_CONFLICT, "Este turno já está fechado")
-
-    conferencia = servico.conferir(db, sessao)
-    informado = Decimal(str(dados.valor_informado))
-    sessao.valor_informado = informado
-    sessao.valor_esperado = conferencia.valor_esperado
-    sessao.diferenca = informado - conferencia.valor_esperado
-    sessao.observacao_fechamento = dados.observacao
-    sessao.usuario_fechamento_id = gestor.id
-    sessao.fechado_em = datetime.now(timezone.utc)
-    sessao.status = models.StatusCaixa.FECHADA
-
-    db.commit()
-    db.refresh(sessao)
-    return servico.montar_saida(db, sessao, incluir_conferencia=False)
+    return _congelar_fechamento(db, sessao, dados, gestor)
 
 
 @router.post("/sessoes/{sessao_id}/reabrir", response_model=schemas.CaixaOut)

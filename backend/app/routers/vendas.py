@@ -97,6 +97,41 @@ def obter(venda_id: int, db: DB, _: CurrentUser):
     return _venda_out(venda)
 
 
+def _produto_vendavel(db: DB, produto_id: int) -> models.Produto:
+    """O produto pode ser vendido no balcão agora?"""
+    produto = db.get(models.Produto, produto_id)
+    if not produto or not produto.ativo:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Produto {produto_id} indisponível")
+    if produto.tipo != models.TipoProduto.FINAL:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"'{produto.nome}' é de uso e consumo e não pode ser vendido",
+        )
+    return produto
+
+
+def _montar_item(produto: models.Produto, entrada: schemas.VendaItemIn) -> models.VendaItem:
+    """Uma linha da venda, com o preço e o custo congelados no momento."""
+    preco = Decimal(str(entrada.preco_unitario or produto.preco_venda))
+    quantidade = Decimal(str(entrada.quantidade))
+    desconto = Decimal(str(entrada.desconto or 0))
+    total = preco * quantidade - desconto
+    if total < 0:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Desconto maior que o valor do item '{produto.nome}'",
+        )
+    return models.VendaItem(
+        produto_id=produto.id,
+        descricao=produto.nome,
+        quantidade=quantidade,
+        preco_unitario=preco,
+        custo_unitario=Decimal(str(produto.preco_custo or 0)),
+        desconto=desconto,
+        total=total,
+    )
+
+
 @router.post("", response_model=schemas.VendaOut, status_code=status.HTTP_201_CREATED)
 def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
     cliente = db.get(models.Parceiro, dados.cliente_id) if dados.cliente_id else None
@@ -133,43 +168,13 @@ def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
     db.flush()
 
     subtotal = Decimal("0")
-    for item in dados.itens:
-        produto = db.get(models.Produto, item.produto_id)
-        if not produto or not produto.ativo:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND, f"Produto {item.produto_id} indisponível"
-            )
-        if produto.tipo != models.TipoProduto.FINAL:
-            # Insumo é o que se usa para produzir; não tem preço de balcão. Se
-            # um dia ele for vendido de fato, vira produto final no cadastro.
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"'{produto.nome}' é de uso e consumo e não pode ser vendido",
-            )
-
-        preco = Decimal(str(item.preco_unitario or produto.preco_venda))
+    for entrada in dados.itens:
+        produto = _produto_vendavel(db, entrada.produto_id)
+        item = _montar_item(produto, entrada)
+        item.venda_id = venda.id
         quantidade = Decimal(str(item.quantidade))
-        desconto_item = Decimal(str(item.desconto or 0))
-        total_item = preco * quantidade - desconto_item
-        if total_item < 0:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Desconto maior que o valor do item '{produto.nome}'",
-            )
-        subtotal += total_item
-
-        db.add(
-            models.VendaItem(
-                venda_id=venda.id,
-                produto_id=produto.id,
-                descricao=produto.nome,
-                quantidade=quantidade,
-                preco_unitario=preco,
-                custo_unitario=Decimal(str(produto.preco_custo or 0)),
-                desconto=desconto_item,
-                total=total_item,
-            )
-        )
+        subtotal += Decimal(str(item.total))
+        db.add(item)
 
         servico_estoque.movimentar(
             db,
@@ -205,19 +210,6 @@ def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
     db.commit()
     db.refresh(venda)
     return _venda_out(venda)
-
-
-def _produto_vendavel(db: DB, produto_id: int) -> models.Produto:
-    """O produto pode ser vendido no balcão agora?"""
-    produto = db.get(models.Produto, produto_id)
-    if not produto or not produto.ativo:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Produto {produto_id} indisponível")
-    if produto.tipo != models.TipoProduto.FINAL:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            f"'{produto.nome}' é de uso e consumo e não pode ser vendido",
-        )
-    return produto
 
 
 def _exigir_venda_ajustavel(db: DB, venda: models.Venda, usuario: models.Usuario) -> None:
@@ -265,28 +257,10 @@ def alterar(venda_id: int, dados: schemas.VendaAlteracaoIn, db: DB, usuario: Cur
     subtotal = Decimal("0")
     for entrada in dados.itens:
         produto = _produto_vendavel(db, entrada.produto_id)
-        quantidade = Decimal(str(entrada.quantidade))
-        preco = Decimal(str(entrada.preco_unitario or produto.preco_venda))
-        desconto_item = Decimal(str(entrada.desconto or 0))
-        total_item = preco * quantidade - desconto_item
-        if total_item < 0:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Desconto maior que o valor do item '{produto.nome}'",
-            )
-        subtotal += total_item
-        depois[produto.id] = depois.get(produto.id, Decimal("0")) + quantidade
-        novos.append(
-            models.VendaItem(
-                produto_id=produto.id,
-                descricao=produto.nome,
-                quantidade=quantidade,
-                preco_unitario=preco,
-                custo_unitario=Decimal(str(produto.preco_custo or 0)),
-                desconto=desconto_item,
-                total=total_item,
-            )
-        )
+        item = _montar_item(produto, entrada)
+        subtotal += Decimal(str(item.total))
+        depois[produto.id] = depois.get(produto.id, Decimal("0")) + Decimal(str(item.quantidade))
+        novos.append(item)
 
     desconto = Decimal(str(dados.desconto if dados.desconto is not None else venda.desconto))
     if desconto > subtotal:

@@ -28,11 +28,7 @@ def _datas(inicio: date | None, fim: date | None) -> tuple[date, date]:
 
 
 def _intervalo(inicio: date | None, fim: date | None) -> tuple[datetime, datetime]:
-    """O mesmo periodo, ja em UTC, que e como os carimbos estao gravados.
-
-    O fim e exclusivo: use `>= ini` e `< fim`, nunca `between`, senao o ultimo
-    dia entra pela metade.
-    """
+    """O mesmo período em UTC. O fim é exclusivo: use `>= ini` e `< fim`."""
     return tempo.intervalo(*_datas(inicio, fim))
 
 
@@ -94,11 +90,8 @@ def dashboard(db: DB, _: CurrentUser):
 
 @router.get("/vendas-por-dia")
 def vendas_por_dia(db: DB, _: CurrentUser, inicio: date | None = None, fim: date | None = None):
-    """Uma linha por dia do calendário da cantina.
-
-    O agrupamento é feito aqui, e não no SQL, porque o banco só conhece o
-    carimbo em UTC: agrupar por ele faria o dia começar às 21h da véspera.
-    """
+    """Uma linha por dia do calendário da cantina. O agrupamento é feito aqui
+    porque o banco só conhece o carimbo em UTC."""
     ini, f = _intervalo(inicio, fim)
     linhas = db.execute(
         select(models.Venda.criado_em, models.Venda.total).where(

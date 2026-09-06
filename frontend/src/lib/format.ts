@@ -110,10 +110,6 @@ export function telefoneFormatado(tel?: string | null): string {
   return tel ?? "-";
 }
 
-export function cepFormatado(cep?: string | null): string {
-  const d = (cep ?? "").replace(/\D/g, "");
-  return d.length === 8 ? d.replace(/(\d{5})(\d{3})/, "$1-$2") : (cep ?? "-");
-}
 
 /**
  * Rotulo de exibicao para os valores de enum da API.
