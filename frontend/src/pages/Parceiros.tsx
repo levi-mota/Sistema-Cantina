@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Building2, Plus, Search, Sparkles, User } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { cepFormatado, documentoFormatado, rotulo, telefoneFormatado } from "../lib/format";
+import { documentoFormatado, rotulo, telefoneFormatado } from "../lib/format";
 import type { Empresa, Endereco, Parceiro, TipoParceiro, TipoPessoa } from "../lib/tipos";
 import {
   Botao,
@@ -122,7 +122,6 @@ export default function Parceiros() {
         cidade: data.cidade ?? f.cidade,
         uf: data.uf ?? f.uf,
       }));
-      setAviso(`Dados preenchidos via ${data.fonte}${data.situacao ? ` · ${data.situacao}` : ""}`);
     } catch (e) {
       setAviso(mensagemErro(e, "CNPJ não encontrado"));
     } finally {
@@ -147,7 +146,6 @@ export default function Parceiros() {
         cidade: data.cidade ?? f.cidade,
         uf: data.uf ?? f.uf,
       }));
-      setAviso(`Endereco preenchido via ${data.fonte}`);
     } catch (e) {
       setAviso(mensagemErro(e, "CEP não encontrado"));
     } finally {
@@ -178,7 +176,6 @@ export default function Parceiros() {
     <>
       <TituloPagina
         titulo="Clientes e fornecedores"
-        descricao="Cadastro único, com preenchimento automático por CNPJ e CEP"
         acoes={
           <Botao icone={<Plus className="h-4 w-4" />} onClick={() => abrir("novo")}>
             Novo cadastro
@@ -440,11 +437,6 @@ export default function Parceiros() {
           </div>
         </form>
       </Modal>
-
-      <p className="mt-3 text-xs text-carvao-400">
-        Dica: {cepFormatado("01310100")} e CNPJs sao consultados via ApiBrasil quando o token esta
-        configurado; sem token o sistema usa BrasilAPI/ViaCEP automaticamente.
-      </p>
     </>
   );
 }
