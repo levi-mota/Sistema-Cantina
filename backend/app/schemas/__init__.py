@@ -37,7 +37,7 @@ class LoginIn(BaseModel):
 
 
 class UsuarioBase(BaseModel):
-    nome: str
+    nome: str = Field(min_length=1, max_length=120)
     usuario: str = Field(min_length=2, max_length=40)
     perfil: models.Perfil = models.Perfil.USUARIO
     ativo: bool = True
@@ -48,7 +48,7 @@ class UsuarioCreate(UsuarioBase):
 
 
 class UsuarioUpdate(BaseModel):
-    nome: str | None = None
+    nome: str | None = Field(default=None, max_length=120)
     usuario: str | None = Field(default=None, min_length=2, max_length=40)
     senha: str | None = Field(default=None, min_length=4)
     perfil: models.Perfil | None = None
@@ -72,7 +72,7 @@ class TokenOut(BaseModel):
 class ParceiroBase(BaseModel):
     tipo: models.TipoParceiro = models.TipoParceiro.CLIENTE
     tipo_pessoa: models.TipoPessoa = models.TipoPessoa.FISICA
-    nome: str
+    nome: str = Field(min_length=1, max_length=150)
     nome_fantasia: str | None = None
     documento: str | None = None
     email: str | None = None
@@ -95,17 +95,17 @@ class ParceiroCreate(ParceiroBase):
 class ParceiroUpdate(BaseModel):
     tipo: models.TipoParceiro | None = None
     tipo_pessoa: models.TipoPessoa | None = None
-    nome: str | None = None
+    nome: str | None = Field(default=None, max_length=150)
     nome_fantasia: str | None = None
     documento: str | None = None
-    email: str | None = None
-    telefone: str | None = None
+    email: str | None = Field(default=None, max_length=150)
+    telefone: str | None = Field(default=None, max_length=20)
     cep: str | None = None
     logradouro: str | None = None
     numero: str | None = None
-    complemento: str | None = None
-    bairro: str | None = None
-    cidade: str | None = None
+    complemento: str | None = Field(default=None, max_length=80)
+    bairro: str | None = Field(default=None, max_length=80)
+    cidade: str | None = Field(default=None, max_length=80)
     uf: str | None = None
     observacoes: str | None = None
     ativo: bool | None = None
@@ -120,8 +120,8 @@ class ParceiroOut(ORMModel, ParceiroBase):
 # Estoque
 # --------------------------------------------------------------------------- #
 class CategoriaIn(BaseModel):
-    nome: str
-    descricao: str | None = None
+    nome: str = Field(min_length=1, max_length=80)
+    descricao: str | None = Field(default=None, max_length=200)
 
 
 class CategoriaOut(ORMModel, CategoriaIn):
@@ -130,7 +130,7 @@ class CategoriaOut(ORMModel, CategoriaIn):
 
 class ProdutoBase(BaseModel):
     codigo: str | None = None
-    nome: str
+    nome: str = Field(min_length=1, max_length=150)
     tipo: models.TipoProduto = models.TipoProduto.FINAL
     descricao: str | None = None
     categoria_id: int | None = None
@@ -148,9 +148,9 @@ class ProdutoCreate(ProdutoBase):
 
 class ProdutoUpdate(BaseModel):
     codigo: str | None = None
-    nome: str | None = None
+    nome: str | None = Field(default=None, max_length=150)
     tipo: models.TipoProduto | None = None
-    descricao: str | None = None
+    descricao: str | None = Field(default=None, max_length=200)
     categoria_id: int | None = None
     fornecedor_id: int | None = None
     unidade: str | None = None
@@ -174,7 +174,7 @@ class MovimentoIn(BaseModel):
     tipo: models.TipoMovimento
     quantidade: Unidades = Field(gt=0)
     custo_unitario: Decimal | None = None
-    motivo: str | None = None
+    motivo: str | None = Field(default=None, max_length=200)
     gerar_conta_pagar: bool = False
     fornecedor_id: int | None = None
     vencimento: date | None = None
@@ -217,7 +217,7 @@ class VendaIn(BaseModel):
     forma_pagamento: models.FormaPagamento = models.FormaPagamento.DINHEIRO
     desconto: Decimal = Field(default=Decimal("0"), ge=0)
     valor_recebido: Decimal = Field(default=Decimal("0"), ge=0)
-    observacao: str | None = None
+    observacao: str | None = Field(default=None, max_length=500)
     vencimento_fiado: date | None = None
     itens: list[VendaItemIn] = Field(min_length=1)
 
@@ -303,12 +303,12 @@ class TituloCreate(TituloBase):
 
 
 class TituloUpdate(BaseModel):
-    descricao: str | None = None
-    categoria: str | None = None
+    descricao: str | None = Field(default=None, max_length=200)
+    categoria: str | None = Field(default=None, max_length=80)
     parceiro_id: int | None = None
     valor: Decimal | None = None
     vencimento: date | None = None
-    observacao: str | None = None
+    observacao: str | None = Field(default=None, max_length=500)
     status: models.StatusTitulo | None = None
 
 
@@ -316,7 +316,7 @@ class BaixaIn(BaseModel):
     valor: Decimal = Field(gt=0)
     data: date | None = None
     forma_pagamento: models.FormaPagamento = models.FormaPagamento.DINHEIRO
-    observacao: str | None = None
+    observacao: str | None = Field(default=None, max_length=500)
 
 
 class TituloOut(ORMModel, TituloBase):
@@ -377,7 +377,7 @@ class EmpresaOut(BaseModel):
 # --------------------------------------------------------------------------- #
 class CaixaIn(BaseModel):
     nome: str = Field(min_length=1, max_length=60)
-    descricao: str | None = None
+    descricao: str | None = Field(default=None, max_length=200)
     ativo: bool = True
 
 
@@ -396,18 +396,18 @@ class CaixaTerminalOut(ORMModel):
 class AberturaIn(BaseModel):
     caixa_id: int
     valor_abertura: Decimal = Field(default=Decimal("0"), ge=0)
-    observacao: str | None = None
+    observacao: str | None = Field(default=None, max_length=500)
 
 
 class MovimentoCaixaIn(BaseModel):
     tipo: models.TipoMovimentoCaixa
     valor: Decimal = Field(gt=0)
-    motivo: str | None = None
+    motivo: str | None = Field(default=None, max_length=200)
 
 
 class FechamentoIn(BaseModel):
     valor_informado: Decimal = Field(ge=0)
-    observacao: str | None = None
+    observacao: str | None = Field(default=None, max_length=500)
 
 
 class MovimentoCaixaOut(ORMModel):
@@ -461,7 +461,7 @@ class CaixaOut(ORMModel):
 class ItemCompraIn(BaseModel):
     produto_id: int
     quantidade: Unidades = Field(gt=0)
-    observacao: str | None = None
+    observacao: str | None = Field(default=None, max_length=200)
 
 
 class ItemCompraOut(ORMModel):
@@ -486,7 +486,7 @@ class ItemCompraOut(ORMModel):
 class ItemRecebimentoIn(BaseModel):
     item_id: int
     quantidade_recebida: Unidades = Field(ge=0)
-    observacao: str | None = None
+    observacao: str | None = Field(default=None, max_length=200)
 
 
 class RecebimentoIn(BaseModel):
@@ -495,15 +495,15 @@ class RecebimentoIn(BaseModel):
 
 class ListaCompraIn(BaseModel):
     titulo: str = Field(min_length=1, max_length=120)
-    comprador: str | None = None
-    observacao: str | None = None
+    comprador: str | None = Field(default=None, max_length=120)
+    observacao: str | None = Field(default=None, max_length=500)
     itens: list[ItemCompraIn] = []
 
 
 class ListaCompraUpdate(BaseModel):
-    titulo: str | None = None
-    comprador: str | None = None
-    observacao: str | None = None
+    titulo: str | None = Field(default=None, max_length=120)
+    comprador: str | None = Field(default=None, max_length=120)
+    observacao: str | None = Field(default=None, max_length=500)
     itens: list[ItemCompraIn] | None = None
 
 

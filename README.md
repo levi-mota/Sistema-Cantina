@@ -95,10 +95,17 @@ Sistema em <http://localhost:5173>. O Vite já faz proxy de `/api` para o backen
 
 O login é um nome curto, sem e-mail — a ferramenta é de uso interno.
 
-| Usuário | Senha | Perfil |
-| --- | --- | --- |
-| `admin` | admin123 | ADMIN — acesso total |
-| `levi` | 123456 | USUARIO — PDV e caixa |
+O administrador nasce no primeiro boot com o usuário definido em
+`ADMIN_USUARIO` (padrão `admin`). A senha vem de `ADMIN_PASSWORD`; **sem ela
+definida, o sistema sorteia uma e a mostra uma única vez no log da subida** —
+procure por `[setup] Senha sorteada` no console ou no `journalctl`.
+
+Senha nenhuma fica escrita aqui nem no código: credencial em repositório é
+credencial pública, e este README já esteve num sistema publicado na internet.
+
+O `seed.py` e o `dados_teste.py` criam operadores de demonstração com senha
+**sorteada a cada execução**, mostrada ao final. São contas de teste: desative-as
+em Funcionários antes de a cantina entrar em uso.
 
 ### Acesso pelo celular
 

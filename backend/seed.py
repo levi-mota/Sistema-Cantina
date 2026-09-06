@@ -4,6 +4,7 @@ Uso:  .venv/Scripts/python seed.py
 """
 
 import random
+import secrets
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -14,6 +15,11 @@ from app.core import migracoes
 from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.services.estoque import movimentar
+
+# Sorteadas a cada execucao e mostradas no fim: senha em codigo vira usuario
+# permanente com senha publicada.
+SENHA_ADMIN = secrets.token_urlsafe(9)
+SENHA_OPERADOR = secrets.token_urlsafe(9)
 
 CATEGORIAS = ["Salgados", "Bebidas", "Doces", "Lanches", "Mercearia"]
 
@@ -47,7 +53,7 @@ def executar() -> None:
             models.Usuario(
                 nome="Administrador",
                 usuario="admin",
-                senha_hash=hash_password("admin123"),
+                senha_hash=hash_password(SENHA_ADMIN),
                 perfil=models.Perfil.ADMIN,
             )
         )
@@ -57,7 +63,7 @@ def executar() -> None:
             models.Usuario(
                 nome=nome,
                 usuario=login,
-                senha_hash=hash_password("123456"),
+                senha_hash=hash_password(SENHA_OPERADOR),
                 perfil=perfil,
             )
         )
@@ -343,8 +349,8 @@ def executar() -> None:
 
     db.commit()
     print("Demo criada com sucesso.")
-    print("  admin / admin123   (ADMIN - acesso total)")
-    print("  levi  / 123456     (USUARIO - PDV e caixa)")
+    print(f"  admin / {SENHA_ADMIN}   (ADMIN - acesso total)")
+    print(f"  levi  / {SENHA_OPERADOR}   (USUARIO - PDV e caixa)")
 
 
 if __name__ == "__main__":

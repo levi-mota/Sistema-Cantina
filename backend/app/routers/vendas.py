@@ -26,6 +26,10 @@ from app.services import estoque as servico_estoque
 router = APIRouter(prefix="/api/vendas", tags=["pdv"])
 
 
+def _e_gestor(usuario: models.Usuario) -> bool:
+    return usuario.perfil == models.Perfil.ADMIN
+
+
 def _venda_out(v: models.Venda) -> schemas.VendaOut:
     return schemas.VendaOut(
         id=v.id,
@@ -52,7 +56,7 @@ def _venda_out(v: models.Venda) -> schemas.VendaOut:
 @router.get("", response_model=list[schemas.VendaOut])
 def listar(
     db: DB,
-    _: CurrentUser,
+    usuario: CurrentUser,
     busca: str | None = None,
     inicio: date | None = None,
     fim: date | None = None,
@@ -62,6 +66,10 @@ def listar(
     limite: int = 100,
 ):
     stmt = select(models.Venda)
+    # Operador enxerga o proprio caixa. A gerencia enxerga o da casa inteira --
+    # e ja e ela quem responde pelo fechamento e pelos relatorios.
+    if not _e_gestor(usuario):
+        stmt = stmt.where(models.Venda.usuario_id == usuario.id)
     if busca:
         alvo = busca.strip()
         # No balcão se procura pelo número da venda ou pelo CPF do cliente; o
@@ -90,9 +98,11 @@ def listar(
 
 
 @router.get("/{venda_id}", response_model=schemas.VendaOut)
-def obter(venda_id: int, db: DB, _: CurrentUser):
+def obter(venda_id: int, db: DB, usuario: CurrentUser):
     venda = db.get(models.Venda, venda_id)
-    if not venda:
+    # Mesma resposta para "nao existe" e "nao e sua": responder diferente
+    # contaria, numero a numero, quantas vendas a casa fez.
+    if not venda or (not _e_gestor(usuario) and venda.usuario_id != usuario.id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Venda não encontrada")
     return _venda_out(venda)
 

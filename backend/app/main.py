@@ -1,3 +1,4 @@
+import secrets
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -26,20 +27,30 @@ from app.routers import (
 
 
 def criar_admin_inicial() -> None:
-    """Garante um usuário administrador no primeiro boot."""
+    """Garante um usuário administrador no primeiro boot.
+
+    Sem `ADMIN_PASSWORD` definido, a senha é sorteada e aparece uma única vez
+    no log. É melhor procurá-la no `journalctl` do que ter todo mundo que já
+    leu o repositório sabendo a senha do administrador.
+    """
     with SessionLocal() as db:
         if db.scalar(select(models.Usuario).limit(1)):
             return
+
+        senha = settings.admin_password.strip() or secrets.token_urlsafe(12)
         db.add(
             models.Usuario(
                 nome=settings.admin_nome,
                 usuario=settings.admin_usuario.lower(),
-                senha_hash=hash_password(settings.admin_password),
+                senha_hash=hash_password(senha),
                 perfil=models.Perfil.ADMIN,
             )
         )
         db.commit()
         print(f"[setup] Usuário admin criado: {settings.admin_usuario}")
+        if not settings.admin_password.strip():
+            print(f"[setup] Senha sorteada desta instalação: {senha}")
+            print("[setup] Anote agora e troque no primeiro acesso (Funcionários).")
 
 
 def criar_caixa_inicial() -> None:

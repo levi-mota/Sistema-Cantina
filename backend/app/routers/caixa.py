@@ -19,6 +19,10 @@ from app.services import caixa as servico
 router = APIRouter(prefix="/api/caixa", tags=["caixa"])
 
 
+def _e_gestor(usuario: models.Usuario) -> bool:
+    return usuario.perfil == models.Perfil.ADMIN
+
+
 # --------------------------------------------------------------------------- #
 # Terminais
 # --------------------------------------------------------------------------- #
@@ -127,21 +131,28 @@ def atual(db: DB, usuario: CurrentUser):
 
 
 @router.get("/abertas", response_model=list[schemas.CaixaOut])
-def abertas(db: DB, _: CurrentUser):
-    """Todos os turnos abertos agora, para a gerência acompanhar."""
-    return [servico.montar_saida(db, s) for s in servico.sessoes_abertas(db)]
+def abertas(db: DB, usuario: CurrentUser):
+    """Turnos abertos agora. A gerência vê todos; o operador, o seu."""
+    sessoes = servico.sessoes_abertas(db)
+    if not _e_gestor(usuario):
+        sessoes = [s for s in sessoes if s.usuario_abertura_id == usuario.id]
+    return [servico.montar_saida(db, s) for s in sessoes]
 
 
 @router.get("/sessoes", response_model=list[schemas.CaixaOut])
 def listar(
     db: DB,
-    _: CurrentUser,
+    usuario: CurrentUser,
     caixa_id: int | None = None,
     inicio: date | None = None,
     fim: date | None = None,
     limite: int = 60,
 ):
     stmt = select(models.CaixaSessao)
+    # A quebra de caixa de um operador e assunto dele com a gerencia, nao
+    # material de conversa entre colegas.
+    if not _e_gestor(usuario):
+        stmt = stmt.where(models.CaixaSessao.usuario_abertura_id == usuario.id)
     if caixa_id:
         stmt = stmt.where(models.CaixaSessao.caixa_id == caixa_id)
     if inicio:
@@ -157,9 +168,9 @@ def listar(
 
 
 @router.get("/sessoes/{sessao_id}", response_model=schemas.CaixaOut)
-def obter(sessao_id: int, db: DB, _: CurrentUser):
+def obter(sessao_id: int, db: DB, usuario: CurrentUser):
     sessao = db.get(models.CaixaSessao, sessao_id)
-    if not sessao:
+    if not sessao or (not _e_gestor(usuario) and sessao.usuario_abertura_id != usuario.id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sessão de caixa não encontrada")
     return servico.montar_saida(db, sessao)
 

@@ -120,7 +120,12 @@ def criar(dados: schemas.ParceiroCreate, db: DB, _: SomenteAdmin):
 
 
 @router.get("/{parceiro_id}", response_model=schemas.ParceiroOut)
-def obter(parceiro_id: int, db: DB, _: CurrentUser):
+def obter(parceiro_id: int, db: DB, _: SomenteAdmin):
+    """Ficha completa do cadastro -- documento, telefone, endereço.
+
+    Restrito à gerência: no balcão o PDV usa `/identificar/{documento}`, que
+    responde só o nome e se há cadastro, sem despejar o cadastro inteiro.
+    """
     parceiro = db.get(models.Parceiro, parceiro_id)
     if not parceiro:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Parceiro não encontrado")

@@ -13,6 +13,7 @@ Uso:  .venv/Scripts/python dados_teste.py [dias] [operadores]
 """
 
 import random
+import secrets
 import sys
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
@@ -34,7 +35,9 @@ OPERADORES = [
     ("Carla Dias", "carla"),
     ("Diego Ramos", "diego"),
 ]
-SENHA_OPERADORES = "123456"
+# Sorteada a cada execucao e mostrada uma vez no fim: senha fixa em script de
+# teste vira usuario permanente com senha publicada -- e ja aconteceu.
+SENHA_OPERADORES = secrets.token_urlsafe(9)
 
 CATEGORIAS = ["Salgados", "Bebidas", "Doces", "Lanches", "Mercearia", "Porções"]
 
@@ -227,7 +230,7 @@ def garantir_operadores(db, quantidade: int) -> list:
                 perfil=models.Perfil.USUARIO,
             )
             db.add(usuario)
-            print(f"  operador criado: {login} / {SENHA_OPERADORES}")
+            print(f"  operador criado: {login}")
         equipe.append(usuario)
 
     db.flush()
@@ -573,6 +576,10 @@ def executar(dias: int = 90, operadores: int = 3) -> None:
 
     def contar(modelo) -> int:
         return db.query(modelo).count()
+
+    print(f"\nSenha dos operadores desta execução: {SENHA_OPERADORES}")
+    print("Anote agora -- ela não volta a aparecer. E desative esses usuários")
+    print("antes de o sistema entrar em uso: são contas de teste.")
 
     print("\nBanco agora tem:")
     for rotulo, modelo in (
