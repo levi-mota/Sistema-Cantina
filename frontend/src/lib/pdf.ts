@@ -19,12 +19,18 @@ interface OpcoesPdf<T> {
   /** Nome do arquivo, sem a extensão. */
   arquivo: string;
   titulo: string;
-  /** Linha de contexto sob o título: normalmente o período consultado. */
-  subtitulo?: string;
+  /** Linhas de contexto sob o título: período, destinatário, observação. */
+  subtitulo?: string | (string | null | undefined)[];
   colunas: ColunaPdf<T>[];
   linhas: T[];
   /** Linha de totais, fixada no rodapé da tabela. */
   total?: (string | number)[];
+  /**
+   * Abre o PDF numa aba em vez de baixar. Vale para o que se lê antes de
+   * decidir: dali a pessoa imprime ou salva, sem ter de achar o arquivo na
+   * pasta de downloads para só então descobrir se era o que queria.
+   */
+  abrirEmAba?: boolean;
 }
 
 const LARANJA: [number, number, number] = [234, 88, 12];
@@ -39,8 +45,13 @@ export function baixarPdf<T>({
   colunas,
   linhas,
   total,
+  abrirEmAba,
 }: OpcoesPdf<T>) {
   if (linhas.length === 0) return;
+
+  const contexto = (Array.isArray(subtitulo) ? subtitulo : [subtitulo]).filter(
+    (linha): linha is string => !!linha && linha.trim().length > 0,
+  );
 
   // Muitas colunas não cabem em pé: o retrato viraria uma tabela espremida.
   const deitado = colunas.length > 6;
@@ -59,8 +70,12 @@ export function baixarPdf<T>({
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...CINZA);
-  if (subtitulo) doc.text(subtitulo, margem, 84);
-  doc.text(`Emitido em ${dataHora(new Date().toISOString())}`, margem, subtitulo ? 96 : 84);
+  let linhaY = 84;
+  for (const linha of contexto) {
+    doc.text(linha, margem, linhaY);
+    linhaY += 12;
+  }
+  doc.text(`Emitido em ${dataHora(new Date().toISOString())}`, margem, linhaY);
 
   // O cabeçalho e o rodapé ignoram o columnStyles -- headStyles e footStyles
   // vêm depois na cascata --, então o alinhamento vai célula a célula neles,
@@ -71,7 +86,7 @@ export function baixarPdf<T>({
   });
 
   autoTable(doc, {
-    startY: subtitulo ? 112 : 100,
+    startY: linhaY + 16,
     margin: { left: margem, right: margem, bottom: 40 },
     head: [colunas.map((c) => alinhada(c.titulo, c))],
     body: linhas.map((l) => colunas.map((c) => c.valor(l))),
@@ -97,6 +112,15 @@ export function baixarPdf<T>({
     },
   });
 
+  if (abrirEmAba) {
+    // A aba fica com o nome do arquivo em vez de um id de blob.
+    const janela = window.open(doc.output("bloburl"), "_blank");
+    if (janela) {
+      janela.document.title = arquivo;
+      return;
+    }
+    // Bloqueador de pop-up: baixar é melhor do que não entregar nada.
+  }
   doc.save(`${arquivo}.pdf`);
 }
 

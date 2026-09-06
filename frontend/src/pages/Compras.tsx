@@ -3,7 +3,8 @@ import {
   Check,
   ClipboardList,
   Copy,
-  Download,
+  FileText,
+  PackageCheck,
   Plus,
   Send,
   Sparkles,
@@ -13,7 +14,13 @@ import {
 import { api, mensagemErro } from "../lib/api";
 import { brl, dataHora, qtd, rotulo } from "../lib/format";
 import { baixarPdf } from "../lib/pdf";
-import type { ListaCompra, Produto, StatusCompra, SugestaoCompra } from "../lib/tipos";
+import type {
+  ItemCompra,
+  ListaCompra,
+  Produto,
+  StatusCompra,
+  SugestaoCompra,
+} from "../lib/tipos";
 import {
   Botao,
   Campo,
@@ -63,6 +70,20 @@ export default function Compras() {
 
   const [relatorio, setRelatorio] = useState<{ titulo: string; texto: string } | null>(null);
   const [copiado, setCopiado] = useState(false);
+
+  /** A conferência da entrega: o que foi pedido, ao lado do que chegou. */
+  const [conferencia, setConferencia] = useState<{
+    lista: ListaCompra;
+    linhas: {
+      item_id: number;
+      produto: string;
+      unidade: string;
+      solicitado: string;
+      chegou: boolean;
+      recebido: string;
+      observacao: string;
+    }[];
+  } | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -203,6 +224,104 @@ export default function Compras() {
     }
   }
 
+  /** Linhas de contexto do PDF: para quem é a lista e o que foi combinado. */
+  function contextoDaLista(lista: ListaCompra) {
+    return [
+      lista.comprador ? `Para: ${lista.comprador}` : null,
+      `Criada em ${dataHora(lista.criado_em)}${
+        lista.usuario_nome ? ` por ${lista.usuario_nome}` : ""
+      }`,
+      lista.observacao,
+    ];
+  }
+
+  function abrirConferencia(lista: ListaCompra) {
+    setErro(null);
+    setConferencia({
+      lista,
+      linhas: lista.itens.map((i) => ({
+        item_id: i.id,
+        produto: i.produto,
+        unidade: i.unidade,
+        solicitado: i.quantidade,
+        // Começa como "chegou tudo": é o caso comum, e conferir vira só
+        // corrigir as exceções em vez de digitar a lista inteira de novo.
+        chegou: i.quantidade_recebida == null || Number(i.quantidade_recebida) > 0,
+        recebido: i.quantidade_recebida ?? i.quantidade,
+        observacao: i.observacao ?? "",
+      })),
+    });
+  }
+
+  async function salvarConferencia() {
+    if (!conferencia) return;
+    setSalvando(true);
+    setErro(null);
+    try {
+      await api.post(`/compras/listas/${conferencia.lista.id}/receber`, {
+        itens: conferencia.linhas.map((l) => ({
+          item_id: l.item_id,
+          quantidade_recebida: l.chegou ? Number(l.recebido || 0) : 0,
+          observacao: l.observacao || null,
+        })),
+      });
+      setConferencia(null);
+      await carregar();
+    } catch (e) {
+      setErro(mensagemErro(e, "Não foi possível registrar o recebimento"));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  /** O comparativo do que foi pedido com o que chegou. */
+  function relatorioDeRecebimento(lista: ListaCompra) {
+    const recebido = (i: ItemCompra) => Number(i.quantidade_recebida ?? 0);
+    baixarPdf({
+      arquivo: `recebimento_${lista.id}`,
+      titulo: `Recebimento: ${lista.titulo}`,
+      subtitulo: contextoDaLista(lista),
+      abrirEmAba: true,
+      linhas: lista.itens,
+      colunas: [
+        { titulo: "Fornecedor", valor: (i) => i.fornecedor ?? "Sem fornecedor" },
+        { titulo: "Produto", valor: (i) => i.produto },
+        { titulo: "Pedido", valor: (i) => `${qtd(i.quantidade)} ${i.unidade}`, direita: true },
+        {
+          titulo: "Recebido",
+          valor: (i) =>
+            i.quantidade_recebida == null
+              ? "não conferido"
+              : `${qtd(i.quantidade_recebida)} ${i.unidade}`,
+          direita: true,
+        },
+        {
+          titulo: "Diferença",
+          valor: (i) =>
+            i.quantidade_recebida == null ? "" : qtd(recebido(i) - Number(i.quantidade)),
+          direita: true,
+        },
+        { titulo: "Custo estimado", valor: (i) => brl(i.custo_estimado), direita: true },
+        {
+          titulo: "Total recebido",
+          valor: (i) => (i.quantidade_recebida == null ? "" : brl(i.total_recebido ?? 0)),
+          direita: true,
+        },
+        { titulo: "Observação", valor: (i) => i.observacao ?? "" },
+      ],
+      total: [
+        "Total",
+        "",
+        "",
+        "",
+        "",
+        brl(lista.total_estimado),
+        brl(lista.total_recebido ?? 0),
+        "",
+      ],
+    });
+  }
+
   async function excluir(lista: ListaCompra) {
     if (!confirm(`Excluir a lista "${lista.titulo}"?`)) return;
     try {
@@ -302,9 +421,27 @@ export default function Compras() {
                     </>
                   )}
                   {l.status === "ENVIADA" && (
-                    <Botao variante="sucesso" onClick={() => mudarStatus(l, "CONCLUIDA")}>
+                    <Botao
+                      variante="sucesso"
+                      icone={<PackageCheck className="h-4 w-4" />}
+                      onClick={() => abrirConferencia(l)}
+                    >
                       Marcar recebida
                     </Botao>
+                  )}
+                  {l.status === "CONCLUIDA" && (
+                    <>
+                      <Botao
+                        variante="secundario"
+                        icone={<FileText className="h-4 w-4" />}
+                        onClick={() => relatorioDeRecebimento(l)}
+                      >
+                        Recebimento
+                      </Botao>
+                      <Botao variante="secundario" onClick={() => abrirConferencia(l)}>
+                        Corrigir conferência
+                      </Botao>
+                    </>
                   )}
                   {l.status === "RASCUNHO" && (
                     <Botao
@@ -394,6 +531,7 @@ export default function Compras() {
                     <th className="px-3 py-2">Produto</th>
                     <th className="px-3 py-2">Estoque</th>
                     <th className="w-28 px-3 py-2">Comprar</th>
+                    <th className="px-3 py-2">Observação</th>
                     <th className="px-3 py-2">Total</th>
                     <th className="px-3 py-2"></th>
                   </tr>
@@ -424,6 +562,21 @@ export default function Compras() {
                             );
                           }}
                           className="campo py-1.5 text-center"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="text"
+                          value={item.observacao}
+                          maxLength={200}
+                          onChange={(e) => {
+                            const valor = e.target.value;
+                            setItens((atual) =>
+                              atual.map((i, n) => (n === indice ? { ...i, observacao: valor } : i)),
+                            );
+                          }}
+                          className="campo py-1.5"
+                          placeholder="Ex.: marca X, caixa fechada"
                         />
                       </td>
                       <td className="px-3 py-2 font-medium text-carvao-800">
@@ -488,7 +641,8 @@ export default function Compras() {
         {relatorio && (
           <div className="space-y-3">
             <p className="text-sm text-carvao-500">
-              Itens agrupados por fornecedor. Copie e mande no WhatsApp, ou baixe o PDF.
+              Itens agrupados por fornecedor. Copie e mande no WhatsApp, ou abra o PDF para
+              imprimir ou salvar.
             </p>
             <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg bg-carvao-50 p-4 text-sm text-carvao-800">
               {relatorio.texto}
@@ -503,14 +657,15 @@ export default function Compras() {
               </Botao>
               <Botao
                 variante="secundario"
-                icone={<Download className="h-4 w-4" />}
+                icone={<FileText className="h-4 w-4" />}
                 onClick={() => {
                   const lista = listas.find((l) => l.titulo === relatorio.titulo);
                   if (!lista) return;
                   baixarPdf({
                     arquivo: `compras_${lista.id}`,
                     titulo: `Lista de compras: ${lista.titulo}`,
-                    subtitulo: lista.observacao ?? undefined,
+                    subtitulo: contextoDaLista(lista),
+                    abrirEmAba: true,
                     // Agrupado por fornecedor, na mesma ordem do texto: quem
                     // compra percorre uma loja de cada vez.
                     linhas: [...lista.itens].sort((a, b) =>
@@ -539,8 +694,132 @@ export default function Compras() {
               >
                 PDF
               </Botao>
-              <Botao variante="secundario" onClick={() => window.print()}>
-                Imprimir
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Conferencia da entrega */}
+      <Modal
+        aberto={!!conferencia}
+        titulo="O que chegou"
+        aoFechar={() => setConferencia(null)}
+        largura="max-w-3xl"
+      >
+        {conferencia && (
+          <div className="space-y-4">
+            <Erro mensagem={erro} />
+            <p className="text-sm text-carvao-500">
+              Desmarque o que não veio e corrija as quantidades. O que for marcado entra no
+              estoque pela quantidade recebida.
+            </p>
+
+            <div className="max-h-96 overflow-y-auto rounded-lg border border-carvao-100">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-carvao-50">
+                  <tr className="text-left text-xs uppercase tracking-wide text-carvao-600">
+                    <th className="w-12 px-3 py-2">Veio</th>
+                    <th className="px-3 py-2">Produto</th>
+                    <th className="px-3 py-2">Pedido</th>
+                    <th className="w-28 px-3 py-2">Recebido</th>
+                    <th className="px-3 py-2">Observação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-carvao-100">
+                  {conferencia.linhas.map((linha, indice) => {
+                    const alterar = (mudanca: Partial<(typeof conferencia.linhas)[number]>) =>
+                      setConferencia((atual) =>
+                        atual
+                          ? {
+                              ...atual,
+                              linhas: atual.linhas.map((l, n) =>
+                                n === indice ? { ...l, ...mudanca } : l,
+                              ),
+                            }
+                          : atual,
+                      );
+                    const falta =
+                      linha.chegou && Number(linha.recebido || 0) < Number(linha.solicitado);
+                    return (
+                      <tr key={linha.item_id} className={linha.chegou ? "" : "opacity-60"}>
+                        <td className="px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={linha.chegou}
+                            onChange={(e) =>
+                              alterar({
+                                chegou: e.target.checked,
+                                // Ao remarcar, volta ao que foi pedido: é o
+                                // palpite certo na maioria das vezes.
+                                recebido: e.target.checked ? linha.solicitado : linha.recebido,
+                              })
+                            }
+                            className="h-4 w-4 accent-marca-600"
+                            aria-label={`Recebi ${linha.produto}`}
+                          />
+                        </td>
+                        <td className="px-3 py-2 font-medium text-carvao-800">{linha.produto}</td>
+                        <td className="px-3 py-2 text-carvao-600">
+                          {qtd(linha.solicitado)} {linha.unidade}
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            disabled={!linha.chegou}
+                            value={linha.chegou ? linha.recebido : "0"}
+                            onChange={(e) =>
+                              alterar({
+                                recebido: e.target.value
+                                  .replace(/[^\d.,]/g, "")
+                                  .replace(",", "."),
+                              })
+                            }
+                            className={cx(
+                              "campo py-1.5 text-center",
+                              falta && "border-amber-300 bg-amber-50",
+                            )}
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="text"
+                            value={linha.observacao}
+                            maxLength={200}
+                            onChange={(e) => alterar({ observacao: e.target.value })}
+                            className="campo py-1.5"
+                            placeholder={linha.chegou ? "" : "Ex.: em falta no fornecedor"}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-carvao-50 px-3 py-2 text-sm">
+              <span className="text-carvao-600">
+                {conferencia.linhas.filter((l) => l.chegou).length} de{" "}
+                {conferencia.linhas.length} item(ns) recebidos
+              </span>
+              <span className="font-semibold text-carvao-900">
+                {brl(
+                  conferencia.linhas.reduce((soma, l) => {
+                    const item = conferencia.lista.itens.find((i) => i.id === l.item_id);
+                    const custo = Number(item?.custo_estimado ?? 0);
+                    return soma + (l.chegou ? Number(l.recebido || 0) : 0) * custo;
+                  }, 0),
+                )}
+              </span>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Botao variante="secundario" type="button" onClick={() => setConferencia(null)}>
+                Cancelar
+              </Botao>
+              <Botao carregando={salvando} onClick={salvarConferencia}>
+                Confirmar recebimento
               </Botao>
             </div>
           </div>

@@ -386,6 +386,10 @@ class ItemListaCompra(Base):
     custo_estimado: Mapped[float] = mapped_column(Dinheiro, default=0)
     estoque_no_momento: Mapped[float] = mapped_column(Quantidade, default=0)
     observacao: Mapped[str | None] = mapped_column(String(200))
+    # Preenchido na conferência da entrega. Nulo enquanto ninguém conferiu --
+    # diferente de zero, que é "chegou nada". Sem essa distinção, uma lista
+    # ainda não conferida pareceria uma entrega totalmente furada.
+    quantidade_recebida: Mapped[float | None] = mapped_column(Quantidade)
 
     lista: Mapped[ListaCompra] = relationship(back_populates="itens")
     produto: Mapped[Produto] = relationship(lazy="joined")

@@ -435,6 +435,20 @@ class ItemCompraOut(ORMModel):
     estoque_minimo: Decimal
     total_estimado: Decimal
     observacao: str | None = None
+    quantidade_recebida: Decimal | None = None
+    total_recebido: Decimal | None = None
+    # quantidade_recebida - quantidade. Negativo é falta; positivo, sobra.
+    diferenca: Decimal | None = None
+
+
+class ItemRecebimentoIn(BaseModel):
+    item_id: int
+    quantidade_recebida: Decimal = Field(ge=0)
+    observacao: str | None = None
+
+
+class RecebimentoIn(BaseModel):
+    itens: list[ItemRecebimentoIn] = []
 
 
 class ListaCompraIn(BaseModel):
@@ -464,6 +478,11 @@ class ListaCompraOut(ORMModel):
     itens: list[ItemCompraOut] = []
     total_estimado: Decimal = Decimal("0")
     quantidade_itens: int = 0
+    # Só faz sentido depois da conferência.
+    total_recebido: Decimal | None = None
+    itens_conferidos: int = 0
+    itens_completos: int = 0
+    itens_faltando: int = 0
 
 
 class SugestaoCompra(BaseModel):

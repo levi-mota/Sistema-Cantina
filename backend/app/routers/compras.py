@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from app import models, schemas
 from app.core.deps import DB, CurrentUser, exigir_admin
+from app.services import estoque as servico_estoque
 
 router = APIRouter(
     prefix="/api/compras",
@@ -25,6 +26,9 @@ def _item_out(item: models.ItemListaCompra) -> schemas.ItemCompraOut:
     quantidade = Decimal(str(item.quantidade))
     custo = Decimal(str(item.custo_estimado or 0))
     produto = item.produto
+    recebida = (
+        Decimal(str(item.quantidade_recebida)) if item.quantidade_recebida is not None else None
+    )
     return schemas.ItemCompraOut(
         id=item.id,
         produto_id=item.produto_id,
@@ -38,11 +42,15 @@ def _item_out(item: models.ItemListaCompra) -> schemas.ItemCompraOut:
         estoque_minimo=Decimal(str(produto.estoque_minimo or 0)) if produto else Decimal("0"),
         total_estimado=quantidade * custo,
         observacao=item.observacao,
+        quantidade_recebida=recebida,
+        total_recebido=None if recebida is None else recebida * custo,
+        diferenca=None if recebida is None else recebida - quantidade,
     )
 
 
 def _lista_out(lista: models.ListaCompra) -> schemas.ListaCompraOut:
     itens = [_item_out(i) for i in sorted(lista.itens, key=lambda i: i.id)]
+    conferidos = [i for i in itens if i.quantidade_recebida is not None]
     return schemas.ListaCompraOut(
         id=lista.id,
         titulo=lista.titulo,
@@ -56,6 +64,14 @@ def _lista_out(lista: models.ListaCompra) -> schemas.ListaCompraOut:
         itens=itens,
         total_estimado=sum((i.total_estimado for i in itens), Decimal("0")),
         quantidade_itens=len(itens),
+        total_recebido=(
+            sum((i.total_recebido or Decimal("0") for i in conferidos), Decimal("0"))
+            if conferidos
+            else None
+        ),
+        itens_conferidos=len(conferidos),
+        itens_completos=sum(1 for i in conferidos if (i.diferenca or Decimal("0")) >= 0),
+        itens_faltando=sum(1 for i in conferidos if (i.diferenca or Decimal("0")) < 0),
     )
 
 
@@ -227,6 +243,74 @@ def mudar_status(lista_id: int, novo: models.StatusCompra, db: DB, _: CurrentUse
     elif novo == models.StatusCompra.RASCUNHO:
         lista.enviada_em = None
         lista.concluida_em = None
+
+    db.commit()
+    db.refresh(lista)
+    return _lista_out(lista)
+
+
+@router.post("/listas/{lista_id}/receber", response_model=schemas.ListaCompraOut)
+def receber(lista_id: int, dados: schemas.RecebimentoIn, db: DB, usuario: CurrentUser):
+    """Confere a entrega item a item e conclui a lista.
+
+    Guarda quanto chegou de cada item, inclusive zero -- "não veio" é
+    informação, e é o que o relatório final precisa mostrar ao lado do que foi
+    pedido. Itens fora da conferência ficam como não conferidos.
+
+    O que chega entra no estoque: um movimento de ENTRADA por item, com o custo
+    estimado da lista, alimentando o custo médio como qualquer outra compra.
+
+    Conferir de novo não duplica a entrada -- só a diferença entra. Se a
+    correção for para menos, sai uma SAIDA de acerto, para o kardex continuar
+    contando a história inteira em vez de reescrevê-la.
+    """
+    lista = db.get(models.ListaCompra, lista_id)
+    if not lista:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista não encontrada")
+    if lista.status == models.StatusCompra.CANCELADA:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Lista cancelada não recebe mercadoria")
+    if not lista.itens:
+        raise HTTPException(status.HTTP_409_CONFLICT, "A lista não tem itens")
+
+    por_id = {item.id: item for item in lista.itens}
+    for entrada in dados.itens:
+        item = por_id.get(entrada.item_id)
+        if not item:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND, f"Item {entrada.item_id} não é desta lista"
+            )
+
+        ja_recebido = Decimal(str(item.quantidade_recebida or 0))
+        delta = entrada.quantidade_recebida - ja_recebido
+        if delta:
+            produto = db.get(models.Produto, item.produto_id)
+            if not produto:
+                raise HTTPException(
+                    status.HTTP_404_NOT_FOUND, f"Produto do item {item.id} não existe mais"
+                )
+            servico_estoque.movimentar(
+                db,
+                produto=produto,
+                tipo=(
+                    models.TipoMovimento.ENTRADA if delta > 0 else models.TipoMovimento.SAIDA
+                ),
+                quantidade=abs(delta),
+                custo_unitario=Decimal(str(item.custo_estimado or 0)) if delta > 0 else None,
+                motivo=f"Recebimento da compra #{lista.id}",
+                usuario_id=usuario.id,
+                # Acerto para menos não pode travar por saldo: o produto pode já
+                # ter sido vendido entre a conferência errada e a correção.
+                permitir_negativo=delta < 0,
+            )
+
+        item.quantidade_recebida = entrada.quantidade_recebida
+        if entrada.observacao is not None:
+            item.observacao = entrada.observacao or None
+
+    agora = datetime.now(timezone.utc)
+    lista.status = models.StatusCompra.CONCLUIDA
+    lista.concluida_em = agora
+    lista.enviada_em = lista.enviada_em or agora
 
     db.commit()
     db.refresh(lista)

@@ -258,6 +258,10 @@ export interface ItemCompra {
   estoque_minimo: string;
   total_estimado: string;
   observacao?: string | null;
+  /** Nulo enquanto ninguém conferiu a entrega. Zero é "não veio". */
+  quantidade_recebida?: string | null;
+  total_recebido?: string | null;
+  diferenca?: string | null;
 }
 
 export interface ListaCompra {
@@ -273,6 +277,10 @@ export interface ListaCompra {
   itens: ItemCompra[];
   total_estimado: string;
   quantidade_itens: number;
+  total_recebido?: string | null;
+  itens_conferidos: number;
+  itens_completos: number;
+  itens_faltando: number;
 }
 
 export interface SugestaoCompra {
