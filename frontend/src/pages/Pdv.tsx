@@ -41,6 +41,11 @@ import {
   cx,
 } from "../components/ui";
 
+/** Saldo em estoque, ja como numero: o backend manda string decimal. */
+function saldo(produto: Produto): number {
+  return Number(produto.estoque_atual ?? 0);
+}
+
 interface ItemCarrinho {
   produto: Produto;
   quantidade: number;
@@ -108,6 +113,21 @@ export default function Pdv() {
   const [escolhido, setEscolhido] = useState<Produto | null>(null);
   const [quantidadeTexto, setQuantidadeTexto] = useState("1");
   const quantidade = Number(quantidadeTexto || 0);
+  /**
+   * Quanto ainda da para vender de um produto. Alterando uma venda, o que ela
+   * ja baixou do estoque volta a contar: o backend so movimenta a diferenca.
+   */
+  const disponivel = useCallback(
+    (produto: Produto) => {
+      const naVenda = editando?.itens.find((i) => i.produto_id === produto.id);
+      return saldo(produto) + Number(naVenda?.quantidade ?? 0);
+    },
+    [editando],
+  );
+
+  /** Ninguem vende o que nao tem: o passo nao passa do disponivel. */
+  const limite = escolhido ? disponivel(escolhido) : 0;
+  const noLimite = escolhido !== null && quantidade >= limite;
 
   const campoBusca = useRef<HTMLInputElement>(null);
   const campoQuantidade = useRef<HTMLInputElement>(null);
@@ -183,7 +203,11 @@ export default function Pdv() {
   function alterarQtd(produtoId: number, delta: number) {
     setCarrinho((atual) =>
       atual
-        .map((i) => (i.produto.id === produtoId ? { ...i, quantidade: i.quantidade + delta } : i))
+        .map((i) =>
+          i.produto.id === produtoId
+            ? { ...i, quantidade: Math.min(i.quantidade + delta, disponivel(i.produto)) }
+            : i,
+        )
         .filter((i) => i.quantidade > 0),
     );
   }
@@ -231,17 +255,25 @@ export default function Pdv() {
     (delta: number) => {
       const produto = filtrados[destaque] ?? filtrados[0];
       if (!produto) return;
-      if (delta > 0 && Number(produto.estoque_atual) <= 0) return;
-      setUltimoLancado(produto.id);
-      setCarrinho((atual) => {
-        const item = atual.find((i) => i.produto.id === produto.id);
-        if (!item) return delta > 0 ? [...atual, { produto, quantidade: delta }] : atual;
-        return atual
-          .map((i) => (i.produto.id === produto.id ? { ...i, quantidade: i.quantidade + delta } : i))
-          .filter((i) => i.quantidade > 0);
+      const teto = disponivel(produto);
+      const atual = carrinho.find((i) => i.produto.id === produto.id)?.quantidade ?? 0;
+      if (delta > 0 && atual >= teto) {
+        setErro(
+          teto <= 0
+            ? `"${produto.nome}" está sem estoque.`
+            : `Só há ${teto} de "${produto.nome}" em estoque.`,
+        );
+        return;
+      }
+      const nova = Math.max(Math.min(atual + delta, teto), 0);
+      setErro(null);
+      setUltimoLancado(nova > 0 ? produto.id : null);
+      setCarrinho((itens) => {
+        const sem = itens.filter((i) => i.produto.id !== produto.id);
+        return nova > 0 ? [...sem, { produto, quantidade: nova }] : sem;
       });
     },
-    [filtrados, destaque],
+    [filtrados, destaque, carrinho, disponivel],
   );
 
   const abrirPagamento = useCallback(() => {
@@ -256,16 +288,17 @@ export default function Pdv() {
   /** Abre o passo de quantidade. Se o item ja esta no carrinho, edita o total. */
   const escolherProduto = useCallback(
     (produto: Produto) => {
-      if (Number(produto.estoque_atual) <= 0) return;
+      if (disponivel(produto) <= 0) return;
       abertoEm.current = performance.now();
+      setErro(null);
       const noCarrinho = carrinho.find((i) => i.produto.id === produto.id);
       const inicial = quantidadeDigitada > 1 ? quantidadeDigitada : (noCarrinho?.quantidade ?? 1);
-      setQuantidadeTexto(String(inicial));
+      setQuantidadeTexto(String(Math.min(inicial, disponivel(produto))));
       setEscolhido(produto);
       // O texto ja entra selecionado: a primeira tecla substitui o valor.
       requestAnimationFrame(() => campoQuantidade.current?.select());
     },
-    [carrinho, quantidadeDigitada],
+    [carrinho, quantidadeDigitada, disponivel],
   );
 
   // --- Atalhos de teclado da tela ----------------------------------------
@@ -381,7 +414,7 @@ export default function Pdv() {
   /** Confirma o passo: define a quantidade total daquele produto no carrinho. */
   const confirmarQuantidade = useCallback(() => {
     if (!escolhido) return;
-    const total = Math.max(Math.floor(quantidade), 0);
+    const total = Math.min(Math.max(Math.floor(quantidade), 0), disponivel(escolhido));
     setCarrinho((atual) => {
       const sem = atual.filter((i) => i.produto.id !== escolhido.id);
       return total > 0 ? [...sem, { produto: escolhido, quantidade: total }] : sem;
@@ -390,7 +423,7 @@ export default function Pdv() {
     setEscolhido(null);
     setBusca("");
     focarBusca();
-  }, [escolhido, quantidade, focarBusca]);
+  }, [escolhido, quantidade, disponivel, focarBusca]);
 
   // --- Atalhos do passo de quantidade ------------------------------------
   useEffect(() => {
@@ -411,7 +444,7 @@ export default function Pdv() {
       }
       if (e.key === "ArrowUp" || e.key === "+") {
         e.preventDefault();
-        setQuantidadeTexto((q) => String(Number(q || 0) + 1));
+        setQuantidadeTexto((q) => String(Math.min(Number(q || 0) + 1, limite)));
         return;
       }
       if (e.key === "ArrowDown" || e.key === "-") {
@@ -422,7 +455,7 @@ export default function Pdv() {
 
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [escolhido, confirmarQuantidade, focarBusca]);
+  }, [escolhido, limite, confirmarQuantidade, focarBusca]);
 
   // --- Identificacao do consumidor ---------------------------------------
   async function identificarConsumidor() {
@@ -666,9 +699,7 @@ export default function Pdv() {
           <div className="space-y-4">
             <div className="flex items-center justify-between text-sm text-carvao-600">
               <span>{brl(escolhido.preco_venda)} cada</span>
-              <span>
-                {Number(escolhido.estoque_atual)} em estoque
-              </span>
+              <span>{limite} disponível{limite === 1 ? "" : "is"}</span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -686,15 +717,19 @@ export default function Pdv() {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={quantidadeTexto}
-                onChange={(e) => setQuantidadeTexto(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) => {
+                  const digitado = Number(e.target.value.replace(/\D/g, "") || 0);
+                  setQuantidadeTexto(digitado > limite ? String(limite) : String(digitado));
+                }}
                 onFocus={(e) => e.target.select()}
                 autoFocus
                 className="campo w-full py-4 text-center text-3xl font-bold"
               />
               <button
-                onClick={() => setQuantidadeTexto((q) => String(Number(q || 0) + 1))}
+                onClick={() => setQuantidadeTexto((q) => String(Math.min(Number(q || 0) + 1, limite)))}
+                disabled={noLimite}
                 tabIndex={-1}
-                className="rounded-xl border border-carvao-200 p-4 text-carvao-600 active:bg-carvao-100"
+                className="rounded-xl border border-carvao-200 p-4 text-carvao-600 active:bg-carvao-100 disabled:opacity-40"
                 aria-label="Aumentar"
               >
                 <Plus className="h-5 w-5" />
@@ -702,21 +737,37 @@ export default function Pdv() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {[1, 2, 3, 5, 10].map((n) => (
+              {[1, 2, 3, 5, 10]
+                .filter((n) => n <= limite)
+                .map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setQuantidadeTexto(String(n))}
+                    tabIndex={-1}
+                    className={cx(
+                      "min-w-11 rounded-lg border px-3 py-2 text-sm font-semibold transition",
+                      quantidade === n
+                        ? "border-marca-500 bg-marca-50 text-marca-700"
+                        : "border-carvao-200 text-carvao-600 hover:bg-carvao-50",
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+              {limite > 1 && ![1, 2, 3, 5, 10].includes(limite) && (
                 <button
-                  key={n}
-                  onClick={() => setQuantidadeTexto(String(n))}
+                  onClick={() => setQuantidadeTexto(String(limite))}
                   tabIndex={-1}
                   className={cx(
                     "min-w-11 rounded-lg border px-3 py-2 text-sm font-semibold transition",
-                    quantidade === n
+                    quantidade === limite
                       ? "border-marca-500 bg-marca-50 text-marca-700"
                       : "border-carvao-200 text-carvao-600 hover:bg-carvao-50",
                   )}
                 >
-                  {n}
+                  {limite}
                 </button>
-              ))}
+              )}
             </div>
 
             <div className="flex items-center justify-between rounded-lg bg-carvao-50 px-3 py-2">
@@ -726,9 +777,10 @@ export default function Pdv() {
               </span>
             </div>
 
-            {Number(escolhido.estoque_atual) < quantidade && (
+            {noLimite && (
               <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                Estoque menor que a quantidade pedida.
+                É todo o estoque de "{escolhido.nome}". Para vender mais, registre a entrada no
+                estoque primeiro.
               </p>
             )}
 
@@ -1194,9 +1246,8 @@ export default function Pdv() {
               <ShoppingCart className="h-8 w-8 text-marca-600" />
               <span className="text-lg font-bold text-carvao-900">Nova venda</span>
               <span className="text-sm text-carvao-500">Carrinho zerado, pronto para vender</span>
-              <span className="mt-1 flex gap-1.5">
-                <kbd className={tecla}>Enter</kbd>
-                <kbd className={tecla}>+</kbd>
+              <span className="mt-1 flex items-center gap-1.5 text-xs text-carvao-500">
+                <kbd className={tecla}>Enter</kbd>, <kbd className={tecla}>+</kbd> ou{" "}
                 <kbd className={tecla}>N</kbd>
               </span>
             </button>
@@ -1210,9 +1261,8 @@ export default function Pdv() {
               <span className="text-sm text-carvao-500">
                 Reimprimir, alterar itens ou cancelar uma venda já fechada
               </span>
-              <span className="mt-1 flex gap-1.5">
-                <kbd className={tecla}>/</kbd>
-                <kbd className={tecla}>L</kbd>
+              <span className="mt-1 flex items-center gap-1.5 text-xs text-carvao-500">
+                <kbd className={tecla}>/</kbd> ou <kbd className={tecla}>L</kbd>
               </span>
             </button>
           </div>
