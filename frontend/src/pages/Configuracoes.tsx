@@ -281,8 +281,8 @@ export default function Configuracoes() {
                 className="campo font-mono text-sm"
               />
               <span className="mt-1 block text-xs text-carvao-400">
-                Uma linha por linha do papel, abaixo da logo: CNPJ, endereço, telefone. Sem a
-                logo ligada, escreva aqui o nome da cantina.
+                Uma linha por linha do papel, abaixo da logo: CNPJ, endereço, telefone.
+                Desligando a logo e deixando isto vazio, o recibo sai com MAANAIM CANTINA.
               </span>
             </label>
 

@@ -5,6 +5,9 @@ import { cx } from "./ui";
 /** A logo da marca, preta sobre branco e na largura da bobina (marca/gerar-logo-recibo.py). */
 export const LOGO_RECIBO = "/logo-recibo.png";
 
+/** Com a logo desligada e sem cabeçalho, é este nome que identifica o papel. */
+export const NOME_PADRAO = "MAANAIM CANTINA";
+
 export const RECIBO_PADRAO: ReciboConfig = {
   mostrar_logo: true,
   cabecalho: "",
@@ -41,17 +44,19 @@ export function Recibo({
     venda.cliente_nome ??
     (venda.documento_cliente ? documentoFormatado(venda.documento_cliente) : null);
   const totalItens = venda.itens.reduce((soma, i) => soma + Number(i.quantidade), 0);
+  // Recibo nenhum sai anônimo: sem a logo e sem cabeçalho, entra o nome da casa.
+  const escritas = config.cabecalho.split("\n").filter((linha) => linha.trim());
+  const cabecalho = escritas.length || config.mostrar_logo ? escritas : [NOME_PADRAO];
 
   return (
     <div className={cx("recibo", previa && "recibo-previa")}>
       <div style={{ textAlign: "center" }}>
         {config.mostrar_logo && <img src={LOGO_RECIBO} alt="" className="recibo-logo" />}
-        {config.cabecalho
-          .split("\n")
-          .filter((linha) => linha.trim())
-          .map((linha, i) => (
-            <div key={i}>{linha}</div>
-          ))}
+        {cabecalho.map((linha, i) => (
+          <div key={i}>
+            {i === 0 && !config.mostrar_logo ? <strong>{linha}</strong> : linha}
+          </div>
+        ))}
         <div className="recibo-numero">#{venda.id}</div>
         <div>{dataHora(venda.criado_em)}</div>
       </div>

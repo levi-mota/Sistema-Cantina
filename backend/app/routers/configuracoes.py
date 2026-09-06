@@ -4,7 +4,7 @@ O PIX tem rota própria (`/api/pix/config`), por causa da validação da chave.
 Aqui fica o recibo: o que sai impresso na bobina de 58 mm.
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.core.deps import DB, CurrentUser, SomenteAdmin
@@ -49,12 +49,7 @@ def obter_recibo(db: DB, _: CurrentUser):
 
 @router.put("/recibo", response_model=ReciboOut)
 def salvar_recibo(dados: ReciboIn, db: DB, gestor: SomenteAdmin):
-    if not dados.mostrar_logo and not dados.cabecalho.strip():
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Sem a logo e sem cabeçalho o recibo sai sem identificação. Deixe um dos dois.",
-        )
-
+    # Sem logo e sem cabeçalho não é erro: o recibo imprime o nome da casa.
     configuracao.gravar(
         db, configuracao.RECIBO_LOGO, "1" if dados.mostrar_logo else "0", gestor.id
     )
