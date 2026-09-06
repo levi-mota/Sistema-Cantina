@@ -167,11 +167,11 @@ para habilitar; sem a chave o PDV continua aceitando PIX, só não desenha o QR.
 * **Compras** — monta a lista de reposição e gera o relatório para quem vai comprar.
   A sugestão automática traz tudo o que está no mínimo ou abaixo, com a quantidade que
   recompõe o estoque; o relatório sai agrupado por fornecedor, pronto para mandar no
-  WhatsApp, baixar em CSV ou imprimir. A lista **não mexe no estoque** — a entrada é
+  WhatsApp, baixar em PDF ou imprimir. A lista **não mexe no estoque** — a entrada é
   feita no módulo de estoque quando a mercadoria chegar.
 * **Relatórios** — painel, faturamento por dia, **recebimento por forma de pagamento**,
   mais vendidos, DRE simplificado (receita − CMV − despesas pagas), curva ABC e
-  **quebras de caixa por operador**. Exportação em CSV.
+  **quebras de caixa por operador**. Cada bloco exporta em PDF.
 * **Funcionários** — cadastro da equipe e perfis de acesso.
 * **Clientes e fornecedores** — cadastro único com preenchimento automático por
   CNPJ e CEP, e limite de crédito usado pelo fiado no PDV. CPF e CNPJ são validados

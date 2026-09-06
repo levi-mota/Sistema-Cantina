@@ -12,6 +12,7 @@ import {
 
 import { api, mensagemErro } from "../lib/api";
 import { brl, dataHora, qtd, rotulo } from "../lib/format";
+import { baixarPdf } from "../lib/pdf";
 import type { ListaCompra, Produto, StatusCompra, SugestaoCompra } from "../lib/tipos";
 import {
   Botao,
@@ -45,22 +46,6 @@ const TONS: Record<StatusCompra, "neutro" | "info" | "sucesso" | "perigo"> = {
   CONCLUIDA: "sucesso",
   CANCELADA: "perigo",
 };
-
-function baixarCsv(nome: string, linhas: object[]) {
-  if (linhas.length === 0) return;
-  const registros = linhas as Record<string, unknown>[];
-  const colunas = Object.keys(registros[0]);
-  const conteudo = [
-    colunas.join(";"),
-    ...registros.map((l) => colunas.map((c) => String(l[c] ?? "").replace(/;/g, ",")).join(";")),
-  ].join("\n");
-  const url = URL.createObjectURL(new Blob([`﻿${conteudo}`], { type: "text/csv;charset=utf-8" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${nome}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
 
 export default function Compras() {
   const [listas, setListas] = useState<ListaCompra[]>([]);
@@ -503,7 +488,7 @@ export default function Compras() {
         {relatorio && (
           <div className="space-y-3">
             <p className="text-sm text-carvao-500">
-              Itens agrupados por fornecedor. Copie e mande no WhatsApp, ou baixe o CSV.
+              Itens agrupados por fornecedor. Copie e mande no WhatsApp, ou baixe o PDF.
             </p>
             <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg bg-carvao-50 p-4 text-sm text-carvao-800">
               {relatorio.texto}
@@ -521,24 +506,38 @@ export default function Compras() {
                 icone={<Download className="h-4 w-4" />}
                 onClick={() => {
                   const lista = listas.find((l) => l.titulo === relatorio.titulo);
-                  if (lista) {
-                    baixarCsv(
-                      `compras_${lista.id}`,
-                      lista.itens.map((i) => ({
-                        produto: i.produto,
-                        codigo: i.codigo ?? "",
-                        fornecedor: i.fornecedor ?? "",
-                        quantidade: i.quantidade,
-                        unidade: i.unidade,
-                        custo_estimado: i.custo_estimado,
-                        total_estimado: i.total_estimado,
-                        observacao: i.observacao ?? "",
-                      })),
-                    );
-                  }
+                  if (!lista) return;
+                  baixarPdf({
+                    arquivo: `compras_${lista.id}`,
+                    titulo: `Lista de compras: ${lista.titulo}`,
+                    subtitulo: lista.observacao ?? undefined,
+                    // Agrupado por fornecedor, na mesma ordem do texto: quem
+                    // compra percorre uma loja de cada vez.
+                    linhas: [...lista.itens].sort((a, b) =>
+                      (a.fornecedor ?? "").localeCompare(b.fornecedor ?? ""),
+                    ),
+                    colunas: [
+                      { titulo: "Fornecedor", valor: (i) => i.fornecedor ?? "Sem fornecedor" },
+                      { titulo: "Produto", valor: (i) => i.produto },
+                      { titulo: "Código", valor: (i) => i.codigo ?? "" },
+                      { titulo: "Qtd", valor: (i) => `${qtd(i.quantidade)} ${i.unidade}`, direita: true },
+                      { titulo: "Custo est.", valor: (i) => brl(i.custo_estimado), direita: true },
+                      { titulo: "Total est.", valor: (i) => brl(i.total_estimado), direita: true },
+                      { titulo: "Observação", valor: (i) => i.observacao ?? "" },
+                    ],
+                    total: [
+                      "Total",
+                      "",
+                      "",
+                      "",
+                      "",
+                      brl(lista.itens.reduce((a, i) => a + Number(i.total_estimado), 0)),
+                      "",
+                    ],
+                  });
                 }}
               >
-                CSV
+                PDF
               </Botao>
               <Botao variante="secundario" onClick={() => window.print()}>
                 Imprimir

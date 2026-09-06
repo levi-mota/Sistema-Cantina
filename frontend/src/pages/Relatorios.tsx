@@ -12,7 +12,8 @@ import {
 } from "recharts";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataBr, dataHora, hojeIso, porcentagem, primeiroDiaDoMes, qtd } from "../lib/format";
+import { brl, dataBr, dataHora, hojeIso, porcentagem, primeiroDiaDoMes, qtd, rotulo } from "../lib/format";
+import { baixarPdf, periodo } from "../lib/pdf";
 import { Botao, Campo, Cartao, Carregando, Erro, Selo, Tabela, TituloPagina, Vazio } from "../components/ui";
 
 interface MaisVendido {
@@ -95,26 +96,6 @@ interface TurnoComQuebra {
   contado: string;
   diferenca: string;
   observacao: string | null;
-}
-
-/** Gera um CSV a partir de qualquer lista e dispara o download no navegador. */
-function baixarCsv(nome: string, linhas: object[]) {
-  if (linhas.length === 0) return;
-  const registros = linhas as Record<string, unknown>[];
-  const colunas = Object.keys(registros[0]);
-  const conteudo = [
-    colunas.join(";"),
-    ...registros.map((l) =>
-      colunas.map((c) => String(l[c] ?? "").replace(/;/g, ",")).join(";"),
-    ),
-  ].join("\n");
-
-  const url = URL.createObjectURL(new Blob([`﻿${conteudo}`], { type: "text/csv;charset=utf-8" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${nome}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function Relatorios() {
@@ -234,9 +215,26 @@ export default function Relatorios() {
               <Botao
                 variante="secundario"
                 icone={<Download className="h-4 w-4" />}
-                onClick={() => baixarCsv(`vendas_${inicio}_a_${fim}`, porDia)}
+                onClick={() =>
+                  baixarPdf({
+                    arquivo: `faturamento_${inicio}_a_${fim}`,
+                    titulo: "Faturamento por dia",
+                    subtitulo: periodo(inicio, fim),
+                    linhas: porDia,
+                    colunas: [
+                      { titulo: "Dia", valor: (d) => dataBr(d.dia) },
+                      { titulo: "Vendas", valor: (d) => String(d.quantidade), direita: true },
+                      { titulo: "Faturamento", valor: (d) => brl(d.total), direita: true },
+                    ],
+                    total: [
+                      "Total",
+                      porDia.reduce((a, d) => a + d.quantidade, 0),
+                      brl(porDia.reduce((a, d) => a + Number(d.total), 0)),
+                    ],
+                  })
+                }
               >
-                CSV
+                PDF
               </Botao>
             </div>
             {porDia.length === 0 ? (
@@ -278,9 +276,22 @@ export default function Relatorios() {
                 <Botao
                   variante="secundario"
                   icone={<Download className="h-4 w-4" />}
-                  onClick={() => baixarCsv(`mais_vendidos_${inicio}_a_${fim}`, maisVendidos)}
+                  onClick={() =>
+                    baixarPdf({
+                      arquivo: `mais_vendidos_${inicio}_a_${fim}`,
+                      titulo: "Produtos mais vendidos",
+                      subtitulo: periodo(inicio, fim),
+                      linhas: maisVendidos,
+                      colunas: [
+                        { titulo: "Produto", valor: (p) => p.produto },
+                        { titulo: "Qtd", valor: (p) => qtd(p.quantidade), direita: true },
+                        { titulo: "Faturamento", valor: (p) => brl(p.faturamento), direita: true },
+                        { titulo: "Lucro bruto", valor: (p) => brl(p.lucro_bruto), direita: true },
+                      ],
+                    })
+                  }
                 >
-                  CSV
+                  PDF
                 </Botao>
               </div>
               {maisVendidos.length === 0 ? (
@@ -307,9 +318,23 @@ export default function Relatorios() {
                 <Botao
                   variante="secundario"
                   icone={<Download className="h-4 w-4" />}
-                  onClick={() => baixarCsv(`curva_abc_${inicio}_a_${fim}`, abc)}
+                  onClick={() =>
+                    baixarPdf({
+                      arquivo: `curva_abc_${inicio}_a_${fim}`,
+                      titulo: "Curva ABC de produtos",
+                      subtitulo: periodo(inicio, fim),
+                      linhas: abc,
+                      colunas: [
+                        { titulo: "Produto", valor: (l) => l.produto },
+                        { titulo: "Faturamento", valor: (l) => brl(l.faturamento), direita: true },
+                        { titulo: "Part.", valor: (l) => porcentagem(l.participacao), direita: true },
+                        { titulo: "Acum.", valor: (l) => porcentagem(l.acumulado), direita: true },
+                        { titulo: "Classe", valor: (l) => l.classe },
+                      ],
+                    })
+                  }
                 >
-                  CSV
+                  PDF
                 </Botao>
               </div>
               {abc.length === 0 ? (
@@ -347,9 +372,32 @@ export default function Relatorios() {
                 <Botao
                   variante="secundario"
                   icone={<Download className="h-4 w-4" />}
-                  onClick={() => baixarCsv(`pagamentos_${inicio}_a_${fim}`, pagamentos.formas)}
+                  onClick={() =>
+                    baixarPdf({
+                      arquivo: `pagamentos_${inicio}_a_${fim}`,
+                      titulo: "Recebimento por forma de pagamento",
+                      subtitulo: periodo(inicio, fim),
+                      linhas: pagamentos.formas,
+                      colunas: [
+                        { titulo: "Forma", valor: (f) => rotulo(f.forma) },
+                        { titulo: "Vendas", valor: (f) => String(f.quantidade), direita: true },
+                        { titulo: "Recebido", valor: (f) => brl(f.total), direita: true },
+                        { titulo: "Ticket médio", valor: (f) => brl(f.ticket_medio), direita: true },
+                        { titulo: "Desconto", valor: (f) => brl(f.desconto), direita: true },
+                        { titulo: "Part.", valor: (f) => porcentagem(f.participacao), direita: true },
+                      ],
+                      total: [
+                        "Total",
+                        pagamentos.quantidade_geral,
+                        brl(pagamentos.total_geral),
+                        brl(pagamentos.ticket_medio_geral),
+                        brl(pagamentos.formas.reduce((a, f) => a + Number(f.desconto), 0)),
+                        "100%",
+                      ],
+                    })
+                  }
                 >
-                  CSV
+                  PDF
                 </Botao>
               </div>
 
@@ -441,10 +489,27 @@ export default function Relatorios() {
                       variante="secundario"
                       icone={<Download className="h-4 w-4" />}
                       onClick={() =>
-                        baixarCsv(`pagamentos_por_dia_${inicio}_a_${fim}`, pagamentosDia)
+                        baixarPdf({
+                          arquivo: `pagamentos_por_dia_${inicio}_a_${fim}`,
+                          titulo: "Recebimento dia a dia, por forma",
+                          subtitulo: periodo(inicio, fim),
+                          linhas: pagamentosDia,
+                          colunas: [
+                            { titulo: "Dia", valor: (d) => dataBr(d.dia) },
+                            { titulo: "Dinheiro", valor: (d) => brl(d.DINHEIRO ?? 0), direita: true },
+                            { titulo: "PIX", valor: (d) => brl(d.PIX ?? 0), direita: true },
+                            { titulo: "Total", valor: (d) => brl(d.total), direita: true },
+                          ],
+                          total: [
+                            "Total",
+                            brl(pagamentosDia.reduce((a, d) => a + Number(d.DINHEIRO ?? 0), 0)),
+                            brl(pagamentosDia.reduce((a, d) => a + Number(d.PIX ?? 0), 0)),
+                            brl(pagamentosDia.reduce((a, d) => a + Number(d.total), 0)),
+                          ],
+                        })
                       }
                     >
-                      CSV dia a dia
+                      PDF dia a dia
                     </Botao>
                   </div>
                 </div>
@@ -459,9 +524,43 @@ export default function Relatorios() {
               <Botao
                 variante="secundario"
                 icone={<Download className="h-4 w-4" />}
-                onClick={() => baixarCsv(`quebras_operador_${inicio}_a_${fim}`, quebras)}
+                onClick={() =>
+                  baixarPdf({
+                    arquivo: `quebras_operador_${inicio}_a_${fim}`,
+                    titulo: "Quebras de caixa por operador",
+                    subtitulo: periodo(inicio, fim),
+                    linhas: quebras,
+                    colunas: [
+                      { titulo: "Operador", valor: (q) => q.operador },
+                      { titulo: "Turnos", valor: (q) => String(q.turnos), direita: true },
+                      {
+                        titulo: "Fechou certo",
+                        valor: (q) => `${q.turnos_exatos} de ${q.turnos} (${porcentagem(q.precisao)})`,
+                        direita: true,
+                      },
+                      {
+                        titulo: "Faltou",
+                        valor: (q) => `${brl(q.faltas)} (${q.turnos_com_falta}x)`,
+                        direita: true,
+                      },
+                      {
+                        titulo: "Sobrou",
+                        valor: (q) => `${brl(q.sobras)} (${q.turnos_com_sobra}x)`,
+                        direita: true,
+                      },
+                      { titulo: "Saldo", valor: (q) => brl(q.saldo), direita: true },
+                      { titulo: "Maior falta", valor: (q) => brl(q.maior_falta), direita: true },
+                      { titulo: "Movimentado", valor: (q) => brl(q.movimentado), direita: true },
+                      {
+                        titulo: "Falta / gaveta",
+                        valor: (q) => porcentagem(q.falta_percentual),
+                        direita: true,
+                      },
+                    ],
+                  })
+                }
               >
-                CSV
+                PDF
               </Botao>
             </div>
 
@@ -603,9 +702,27 @@ export default function Relatorios() {
                 <Botao
                   variante="secundario"
                   icone={<Download className="h-4 w-4" />}
-                  onClick={() => baixarCsv(`turnos_com_quebra_${inicio}_a_${fim}`, turnosRuins)}
+                  onClick={() =>
+                    baixarPdf({
+                      arquivo: `turnos_com_quebra_${inicio}_a_${fim}`,
+                      titulo: "Turnos com maior diferença",
+                      subtitulo: periodo(inicio, fim),
+                      linhas: turnosRuins,
+                      colunas: [
+                        { titulo: "Turno", valor: (t) => `#${t.sessao_id}` },
+                        { titulo: "Caixa", valor: (t) => t.caixa ?? "-" },
+                        { titulo: "Operador", valor: (t) => t.operador ?? "-" },
+                        { titulo: "Fechou", valor: (t) => t.fechado_por ?? "-" },
+                        { titulo: "Fechado em", valor: (t) => dataHora(t.fechado_em) },
+                        { titulo: "Esperado", valor: (t) => brl(t.esperado), direita: true },
+                        { titulo: "Contado", valor: (t) => brl(t.contado), direita: true },
+                        { titulo: "Diferença", valor: (t) => brl(t.diferenca), direita: true },
+                        { titulo: "Observação", valor: (t) => t.observacao ?? "" },
+                      ],
+                    })
+                  }
                 >
-                  CSV
+                  PDF
                 </Botao>
               </div>
               <Tabela
