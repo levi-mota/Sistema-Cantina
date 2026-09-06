@@ -6,6 +6,7 @@ import {
   LockKeyhole,
   Monitor,
   Plus,
+  Trash2,
   Unlock,
 } from "lucide-react";
 
@@ -66,6 +67,8 @@ export default function Caixa() {
 
   const [minhaSessao, setMinhaSessao] = useState<CaixaSessao | null>(null);
   const [terminais, setTerminais] = useState<CaixaTerminal[]>([]);
+  /** O caixa em edição pela gerência: nome, descrição e situação. */
+  const [editandoTerminal, setEditandoTerminal] = useState<CaixaTerminal | null>(null);
   const [outrasAbertas, setOutrasAbertas] = useState<CaixaSessao[]>([]);
   const [historico, setHistorico] = useState<CaixaSessao[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -119,6 +122,14 @@ export default function Caixa() {
     } finally {
       setSalvando(false);
     }
+  }
+
+  async function apagarTerminal(t: CaixaTerminal) {
+    if (!confirm(`Apagar o caixa "${t.nome}"?`)) return;
+    await executar(
+      () => api.delete(`/caixa/terminais/${t.id}`),
+      () => undefined,
+    );
   }
 
   if (carregando) return <Carregando texto="Conferindo os caixas..." />;
@@ -236,6 +247,28 @@ export default function Caixa() {
                   Abrir este caixa
                 </Botao>
               )}
+              {gestor && (
+                <div className="mt-1 flex gap-2">
+                  <Botao
+                    variante="secundario"
+                    className="flex-1"
+                    onClick={() => {
+                      setFormTerminal({ nome: t.nome, descricao: t.descricao ?? "" });
+                      setEditandoTerminal(t);
+                    }}
+                  >
+                    Editar
+                  </Botao>
+                  <Botao
+                    variante="secundario"
+                    onClick={() => apagarTerminal(t)}
+                    aria-label={`Apagar ${t.nome}`}
+                    title="Só é possível apagar um caixa que nunca foi usado"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Botao>
+                </div>
+              )}
               {ocupadoPorOutro && gestor && (
                 <Botao
                   variante="secundario"
@@ -309,9 +342,8 @@ export default function Caixa() {
               <Linha rotulo="Sangrias" valor={brl(c?.sangrias)} sinal="-" />
               <Linha rotulo="Saldo esperado" valor={brl(c?.valor_esperado)} destaque />
               <p className="mt-3 border-t border-carvao-100 pt-3 text-xs text-carvao-500">
-                PIX, cartão e fiado somam {brl(c?.vendas_outras_formas)} neste turno, mas não
-                entram na conta porque não passam pela gaveta. Recebimento de fiado em dinheiro
-                deve ser lançado aqui como suprimento.
+                O PIX soma {brl(c?.vendas_outras_formas)} neste turno, mas não entra na conta
+                porque não passa pela gaveta: ele bate com o extrato do banco.
               </p>
             </Cartao>
 
@@ -561,6 +593,69 @@ export default function Caixa() {
         </form>
       </Modal>
 
+      {/* Editar caixa */}
+      <Modal
+        aberto={!!editandoTerminal}
+        titulo={`Editar ${editandoTerminal?.nome ?? "caixa"}`}
+        aoFechar={() => setEditandoTerminal(null)}
+        largura="max-w-md"
+      >
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!editandoTerminal) return;
+            void executar(
+              () =>
+                api.put(`/caixa/terminais/${editandoTerminal.id}`, {
+                  nome: formTerminal.nome,
+                  descricao: formTerminal.descricao || null,
+                  ativo: editandoTerminal.ativo,
+                }),
+              () => setEditandoTerminal(null),
+            );
+          }}
+        >
+          <Erro mensagem={erro} />
+          <Campo
+            rotulo="Nome"
+            required
+            autoFocus
+            value={formTerminal.nome}
+            onChange={(e) => setFormTerminal({ ...formTerminal, nome: e.target.value })}
+          />
+          <Campo
+            rotulo="Descrição"
+            value={formTerminal.descricao}
+            onChange={(e) => setFormTerminal({ ...formTerminal, descricao: e.target.value })}
+            placeholder="Ex.: balcão do pátio"
+          />
+
+          {editandoTerminal && (
+            <label className="flex items-center gap-2 text-sm text-carvao-700">
+              <input
+                type="checkbox"
+                checked={editandoTerminal.ativo}
+                onChange={(e) =>
+                  setEditandoTerminal({ ...editandoTerminal, ativo: e.target.checked })
+                }
+                className="h-4 w-4 accent-marca-600"
+              />
+              Caixa disponível para abertura
+            </label>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Botao variante="secundario" type="button" onClick={() => setEditandoTerminal(null)}>
+              Cancelar
+            </Botao>
+            <Botao type="submit" carregando={salvando}>
+              Salvar
+            </Botao>
+          </div>
+        </form>
+      </Modal>
+
       {/* Abrir */}
       <Modal
         aberto={!!abrindo}
@@ -635,7 +730,7 @@ export default function Caixa() {
           <p className="rounded-lg bg-carvao-50 px-3 py-2 text-sm text-carvao-600">
             {movimento === "SANGRIA"
               ? "Retirada de dinheiro da gaveta (cofre, pagamento na hora)."
-              : "Entrada de dinheiro na gaveta (reforço de troco, recebimento de fiado)."}{" "}
+              : "Entrada de dinheiro na gaveta (reforço de troco, dinheiro trazido do cofre)."}{" "}
             Na gaveta agora: <strong className="text-carvao-900">{brl(c?.valor_esperado)}</strong>
           </p>
           <CampoValor
@@ -763,7 +858,7 @@ export default function Caixa() {
               Cancelar
             </Botao>
             <Botao variante="perigo" type="submit" carregando={salvando}>
-              Fechar caixa
+              Confirmar fechamento
             </Botao>
           </div>
         </form>

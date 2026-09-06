@@ -9,7 +9,7 @@ from datetime import date, datetime, time, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app import models, schemas
 from app.core.deps import DB, CurrentUser, SomenteAdmin
@@ -83,10 +83,12 @@ def atualizar_terminal(terminal_id: int, dados: schemas.CaixaIn, db: DB, _: Some
 
 @router.delete("/terminais/{terminal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def excluir_terminal(terminal_id: int, db: DB, _: SomenteAdmin):
-    """Remove o caixa. Se ele já tem histórico, e desativado em vez de apagado.
+    """Apaga o caixa, desde que nunca tenha sido usado.
 
-    Apagar um caixa com turnos levaria junto a conferência daqueles turnos, que
-    e justamente o registro que o modulo existe para guardar.
+    Um caixa com turnos guarda a conferência daqueles turnos -- quanto foi
+    contado, quanto faltou, quem operou --, que é justamente o registro que o
+    módulo existe para manter. Nesse caso o caminho é desativar: ele sai da
+    lista de escolha e o histórico continua de pé.
     """
     terminal = db.get(models.Caixa, terminal_id)
     if not terminal:
@@ -97,13 +99,17 @@ def excluir_terminal(terminal_id: int, db: DB, _: SomenteAdmin):
             status.HTTP_409_CONFLICT, "Feche o turno aberto deste caixa antes de removê-lo"
         )
 
-    tem_historico = db.scalar(
-        select(models.CaixaSessao.id).where(models.CaixaSessao.caixa_id == terminal_id).limit(1)
+    turnos = db.scalar(
+        select(func.count(models.CaixaSessao.id)).where(
+            models.CaixaSessao.caixa_id == terminal_id
+        )
     )
-    if tem_historico:
-        terminal.ativo = False
-        db.commit()
-        return
+    if turnos:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Este caixa tem {turnos} turno(s) registrados e não pode ser apagado. "
+            "Desative-o para tirá-lo da lista sem perder o histórico.",
+        )
 
     db.delete(terminal)
     db.commit()
