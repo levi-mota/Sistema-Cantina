@@ -597,7 +597,7 @@ export default function Estoque() {
               dica={
                 produtoModal === "novo"
                   ? "Código de barras, se houver. Em branco, o sistema gera pela categoria."
-                  : "Apagar o código faz o sistema gerar outro pela categoria."
+                  : undefined
               }
             />
             <Seletor
