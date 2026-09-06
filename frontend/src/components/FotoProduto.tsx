@@ -46,9 +46,14 @@ export function FotoProduto({
   const campo = useRef<HTMLInputElement>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
-  // Muda a cada gravação para o navegador buscar a imagem nova em vez de
-  // mostrar a que ele guardou por uma hora.
-  const [versao, setVersao] = useState(0);
+  /**
+   * Carimbo que muda a cada gravação **e a cada abertura** do formulário.
+   *
+   * Um contador simples nao servia: ele nasce zero toda vez que o modal abre,
+   * e `?v=0` ja estava no cache do navegador com a foto anterior -- trocava-se
+   * a imagem, fechava, reabria e a antiga voltava. O relogio nunca repete.
+   */
+  const [versao, setVersao] = useState(() => Date.now());
 
   const endereco = `/api/publico/produtos/${produtoId}/foto?v=${versao}`;
 
@@ -62,7 +67,7 @@ export function FotoProduto({
     try {
       const imagem = await reduzir(arquivo);
       await api.put(`/estoque/produtos/${produtoId}/foto`, { imagem });
-      setVersao((v) => v + 1);
+      setVersao(Date.now());
       aoMudar(true);
     } catch (falha) {
       setErro(mensagemErro(falha, "Não foi possível usar esta imagem"));
