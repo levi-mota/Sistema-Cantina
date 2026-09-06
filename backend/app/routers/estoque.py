@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func, or_, select
 
 from app import models, schemas
+from app.core import tempo
 from app.core.deps import DB, CurrentUser, SomenteAdmin
 from app.services import estoque as servico
 
@@ -325,7 +326,7 @@ def registrar_movimento(dados: schemas.MovimentoIn, db: DB, usuario: SomenteAdmi
                 categoria="Mercadorias",
                 parceiro_id=dados.fornecedor_id or produto.fornecedor_id,
                 valor=total,
-                vencimento=dados.vencimento or (date.today() + timedelta(days=30)),
+                vencimento=dados.vencimento or (tempo.hoje() + timedelta(days=30)),
                 observacao=dados.motivo,
             )
         )

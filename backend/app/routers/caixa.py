@@ -5,13 +5,14 @@ fechamento; um operador opera um caixa por vez, e as vendas dele entram no turno
 que ele abriu.
 """
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func, select
 
 from app import models, schemas
+from app.core import tempo
 from app.core.deps import DB, CurrentUser, SomenteAdmin
 from app.services import caixa as servico
 
@@ -144,9 +145,9 @@ def listar(
     if caixa_id:
         stmt = stmt.where(models.CaixaSessao.caixa_id == caixa_id)
     if inicio:
-        stmt = stmt.where(models.CaixaSessao.aberto_em >= datetime.combine(inicio, time.min))
+        stmt = stmt.where(models.CaixaSessao.aberto_em >= tempo.inicio_do_dia(inicio))
     if fim:
-        stmt = stmt.where(models.CaixaSessao.aberto_em <= datetime.combine(fim, time.max))
+        stmt = stmt.where(models.CaixaSessao.aberto_em < tempo.fim_do_dia(fim))
     sessoes = db.scalars(stmt.order_by(models.CaixaSessao.id.desc()).limit(limite)).all()
     # Sessoes fechadas ja guardam a conferencia congelada; nao recalculamos.
     return [

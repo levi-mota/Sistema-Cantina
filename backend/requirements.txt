@@ -9,3 +9,5 @@ bcrypt==4.2.1
 python-multipart==0.0.20
 httpx==0.28.1
 python-dotenv==1.1.1
+# O Windows nao traz banco de fusos: sem ele, ZoneInfo("America/Sao_Paulo") falha.
+tzdata==2026.3

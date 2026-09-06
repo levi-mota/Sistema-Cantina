@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 
 from app import models, schemas
+from app.core import tempo
 from app.core.deps import DB, CurrentUser, exigir_admin
 
 # Modulo de gestao: fora do alcance de quem so opera o caixa.
@@ -38,7 +39,7 @@ def _titulo_out(t: models.Titulo) -> schemas.TituloOut:
         status=t.status,
         forma_pagamento=t.forma_pagamento,
         observacao=t.observacao,
-        vencido=t.status in ABERTOS and t.vencimento < date.today(),
+        vencido=t.status in ABERTOS and t.vencimento < tempo.hoje(),
         criado_em=t.criado_em,
     )
 
@@ -68,7 +69,7 @@ def listar(
         stmt = stmt.where(models.Titulo.vencimento <= fim)
     if apenas_vencidos:
         stmt = stmt.where(
-            models.Titulo.vencimento < date.today(), models.Titulo.status.in_(ABERTOS)
+            models.Titulo.vencimento < tempo.hoje(), models.Titulo.status.in_(ABERTOS)
         )
     titulos = db.scalars(stmt.order_by(models.Titulo.vencimento).limit(limite)).all()
     return [_titulo_out(t) for t in titulos]
@@ -76,7 +77,7 @@ def listar(
 
 @router.get("/resumo")
 def resumo(db: DB, _: CurrentUser, dias_a_vencer: int = 7):
-    hoje = date.today()
+    hoje = tempo.hoje()
     horizonte = hoje + timedelta(days=dias_a_vencer)
 
     def soma(tipo: models.TipoTitulo, **filtros) -> Decimal:
@@ -172,7 +173,7 @@ def baixar(titulo_id: int, dados: schemas.BaixaIn, db: DB, _: CurrentUser):
     titulo.forma_pagamento = dados.forma_pagamento
     if Decimal(str(titulo.valor_pago)) >= Decimal(str(titulo.valor)):
         titulo.status = models.StatusTitulo.PAGO
-        titulo.quitado_em = dados.data or date.today()
+        titulo.quitado_em = dados.data or tempo.hoje()
     else:
         titulo.status = models.StatusTitulo.PARCIAL
 

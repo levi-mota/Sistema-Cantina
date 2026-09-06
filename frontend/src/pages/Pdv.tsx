@@ -383,9 +383,28 @@ export default function Pdv() {
 
   // --- Atalhos de teclado da tela ----------------------------------------
   useEffect(() => {
-    if (pagamentoAberto || comprovante || escolhido || catalogoAberto || !vendaAberta) return;
+    if (
+      pagamentoAberto ||
+      comprovante ||
+      escolhido ||
+      catalogoAberto ||
+      localizarAberto ||
+      detalhe ||
+      !vendaAberta
+    ) {
+      return;
+    }
 
     function aoTeclar(e: KeyboardEvent) {
+      // Digitacao em outro campo nao e comando da venda. Sem isto, procurar
+      // uma venda antiga apagava item do carrinho a cada Backspace.
+      const alvo = e.target as HTMLElement | null;
+      if (alvo && alvo !== campoBusca.current) {
+        const etiqueta = alvo.tagName;
+        if (etiqueta === "INPUT" || etiqueta === "TEXTAREA" || etiqueta === "SELECT") return;
+        if (alvo.isContentEditable) return;
+      }
+
       // Com a busca vazia as teclas sobram para o carrinho: nada do que o
       // operador digita ali corre o risco de virar comando por engano.
       const buscaVazia = busca.trim() === "";
@@ -462,6 +481,8 @@ export default function Pdv() {
     comprovante,
     escolhido,
     catalogoAberto,
+    localizarAberto,
+    detalhe,
     vendaAberta,
     busca,
     carrinho.length,

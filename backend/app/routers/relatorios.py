@@ -1,12 +1,13 @@
 """Relatórios que cruzam PDV, estoque e financeiro."""
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import case, func, select
 
 from app import models
+from app.core import tempo
 from app.core.deps import DB, CurrentUser, exigir_admin
 
 # Modulo de gestao: fora do alcance de quem so opera o caixa.
@@ -19,10 +20,20 @@ router = APIRouter(
 VENDA_VALIDA = models.Venda.status == models.StatusVenda.FINALIZADA
 
 
-def _intervalo(inicio: date | None, fim: date | None) -> tuple[datetime, datetime]:
-    fim = fim or date.today()
+def _datas(inicio: date | None, fim: date | None) -> tuple[date, date]:
+    """O periodo pedido, em datas do calendario da cantina."""
+    fim = fim or tempo.hoje()
     inicio = inicio or (fim - timedelta(days=29))
-    return datetime.combine(inicio, time.min), datetime.combine(fim, time.max)
+    return inicio, fim
+
+
+def _intervalo(inicio: date | None, fim: date | None) -> tuple[datetime, datetime]:
+    """O mesmo periodo, ja em UTC, que e como os carimbos estao gravados.
+
+    O fim e exclusivo: use `>= ini` e `< fim`, nunca `between`, senao o ultimo
+    dia entra pela metade.
+    """
+    return tempo.intervalo(*_datas(inicio, fim))
 
 
 @router.get("/dashboard")
@@ -32,15 +43,17 @@ def dashboard(db: DB, _: CurrentUser):
     O financeiro tem tela própria, então não entra aqui -- cada consulta a mais
     é uma consulta que roda a cada abertura do painel.
     """
-    hoje_ini, hoje_fim = _intervalo(date.today(), date.today())
-    mes_ini, mes_fim = _intervalo(date.today().replace(day=1), date.today())
+    hoje = tempo.hoje()
+    hoje_ini, hoje_fim = _intervalo(hoje, hoje)
+    mes_ini, mes_fim = _intervalo(hoje.replace(day=1), hoje)
 
     def total_vendas(ini: datetime, fim: datetime) -> Decimal:
         return Decimal(
             str(
                 db.scalar(
                     select(func.coalesce(func.sum(models.Venda.total), 0)).where(
-                        VENDA_VALIDA, models.Venda.criado_em.between(ini, fim)
+                        VENDA_VALIDA, models.Venda.criado_em >= ini,
+                        models.Venda.criado_em < fim
                     )
                 )
                 or 0
@@ -49,7 +62,8 @@ def dashboard(db: DB, _: CurrentUser):
 
     qtd_hoje = db.scalar(
         select(func.count(models.Venda.id)).where(
-            VENDA_VALIDA, models.Venda.criado_em.between(hoje_ini, hoje_fim)
+            VENDA_VALIDA, models.Venda.criado_em >= hoje_ini,
+            models.Venda.criado_em < hoje_fim
         )
     )
     vendas_hoje = total_vendas(hoje_ini, hoje_fim)
@@ -80,18 +94,25 @@ def dashboard(db: DB, _: CurrentUser):
 
 @router.get("/vendas-por-dia")
 def vendas_por_dia(db: DB, _: CurrentUser, inicio: date | None = None, fim: date | None = None):
+    """Uma linha por dia do calendário da cantina.
+
+    O agrupamento é feito aqui, e não no SQL, porque o banco só conhece o
+    carimbo em UTC: agrupar por ele faria o dia começar às 21h da véspera.
+    """
     ini, f = _intervalo(inicio, fim)
-    dia = func.date(models.Venda.criado_em)
     linhas = db.execute(
-        select(dia, func.sum(models.Venda.total), func.count(models.Venda.id))
-        .where(VENDA_VALIDA, models.Venda.criado_em.between(ini, f))
-        .group_by(dia)
-        .order_by(dia)
+        select(models.Venda.criado_em, models.Venda.total).where(
+            VENDA_VALIDA, models.Venda.criado_em >= ini, models.Venda.criado_em < f
+        )
     ).all()
-    return [
-        {"dia": d, "total": Decimal(str(total or 0)), "quantidade": qtd}
-        for d, total, qtd in linhas
-    ]
+
+    por_dia: dict[str, dict] = {}
+    for criado_em, total in linhas:
+        chave = tempo.dia_local(criado_em).isoformat()
+        registro = por_dia.setdefault(chave, {"dia": chave, "total": Decimal("0"), "quantidade": 0})
+        registro["total"] += Decimal(str(total or 0))
+        registro["quantidade"] += 1
+    return [por_dia[k] for k in sorted(por_dia)]
 
 
 @router.get("/produtos-mais-vendidos")
@@ -111,7 +132,8 @@ def produtos_mais_vendidos(
             ),
         )
         .join(models.Venda, models.Venda.id == models.VendaItem.venda_id)
-        .where(VENDA_VALIDA, models.Venda.criado_em.between(ini, f))
+        .where(VENDA_VALIDA, models.Venda.criado_em >= ini,
+            models.Venda.criado_em < f)
         .group_by(models.VendaItem.produto_id, models.VendaItem.descricao)
         .order_by(func.sum(models.VendaItem.total).desc())
         .limit(limite)
@@ -139,7 +161,8 @@ def vendas_por_pagamento(
             func.sum(models.Venda.total),
             func.count(models.Venda.id),
         )
-        .where(VENDA_VALIDA, models.Venda.criado_em.between(ini, f))
+        .where(VENDA_VALIDA, models.Venda.criado_em >= ini,
+            models.Venda.criado_em < f)
         .group_by(models.Venda.forma_pagamento)
     ).all()
     return [
@@ -152,12 +175,15 @@ def vendas_por_pagamento(
 def dre_simplificado(db: DB, _: CurrentUser, inicio: date | None = None, fim: date | None = None):
     """Receita de vendas x CMV x despesas pagas no período."""
     ini, f = _intervalo(inicio, fim)
+    # Titulo tem data pura, sem hora: o periodo entra como o gestor digitou.
+    dia_inicial, dia_final = _datas(inicio, fim)
 
     receita = Decimal(
         str(
             db.scalar(
                 select(func.coalesce(func.sum(models.Venda.total), 0)).where(
-                    VENDA_VALIDA, models.Venda.criado_em.between(ini, f)
+                    VENDA_VALIDA, models.Venda.criado_em >= ini,
+            models.Venda.criado_em < f
                 )
             )
             or 0
@@ -173,7 +199,8 @@ def dre_simplificado(db: DB, _: CurrentUser, inicio: date | None = None, fim: da
                     )
                 )
                 .join(models.Venda, models.Venda.id == models.VendaItem.venda_id)
-                .where(VENDA_VALIDA, models.Venda.criado_em.between(ini, f))
+                .where(VENDA_VALIDA, models.Venda.criado_em >= ini,
+            models.Venda.criado_em < f)
             )
             or 0
         )
@@ -183,7 +210,8 @@ def dre_simplificado(db: DB, _: CurrentUser, inicio: date | None = None, fim: da
             db.scalar(
                 select(func.coalesce(func.sum(models.Titulo.valor_pago), 0)).where(
                     models.Titulo.tipo == models.TipoTitulo.PAGAR,
-                    models.Titulo.quitado_em.between(ini.date(), f.date()),
+                    models.Titulo.quitado_em >= dia_inicial,
+                    models.Titulo.quitado_em <= dia_final,
                 )
             )
             or 0
@@ -208,7 +236,8 @@ def curva_abc(db: DB, _: CurrentUser, inicio: date | None = None, fim: date | No
     linhas = db.execute(
         select(models.VendaItem.descricao, func.sum(models.VendaItem.total))
         .join(models.Venda, models.Venda.id == models.VendaItem.venda_id)
-        .where(VENDA_VALIDA, models.Venda.criado_em.between(ini, f))
+        .where(VENDA_VALIDA, models.Venda.criado_em >= ini,
+            models.Venda.criado_em < f)
         .group_by(models.VendaItem.descricao)
         .order_by(func.sum(models.VendaItem.total).desc())
     ).all()
@@ -218,9 +247,12 @@ def curva_abc(db: DB, _: CurrentUser, inicio: date | None = None, fim: date | No
     acumulado = Decimal("0")
     for nome, valor in linhas:
         valor = Decimal(str(valor or 0))
+        # A faixa e decidida pelo que veio ANTES do item: quem cruza os 80% e
+        # justamente quem forma a classe A, e nao pode ser rebaixado por isso.
+        anterior = (acumulado / total * 100) if total else Decimal("0")
         acumulado += valor
         percentual = (acumulado / total * 100) if total else Decimal("0")
-        classe = "A" if percentual <= 80 else "B" if percentual <= 95 else "C"
+        classe = "A" if anterior < 80 else "B" if anterior < 95 else "C"
         resultado.append(
             {
                 "produto": nome,
@@ -244,7 +276,7 @@ TURNO_FECHADO = models.CaixaSessao.status == models.StatusCaixa.FECHADA
 
 def _periodo_turnos(inicio: date | None, fim: date | None):
     ini, f = _intervalo(inicio, fim)
-    return models.CaixaSessao.fechado_em.between(ini, f)
+    return (models.CaixaSessao.fechado_em >= ini, models.CaixaSessao.fechado_em < f)
 
 
 @router.get("/quebras-por-operador")
@@ -272,11 +304,11 @@ def quebras_por_operador(
             func.sum(case((diferenca > 0, 1), else_=0)),
             func.sum(case((diferenca < 0, 1), else_=0)),
             func.sum(case((diferenca == 0, 1), else_=0)),
-            func.coalesce(func.min(diferenca), 0),
+            func.coalesce(func.min(negativa), 0),
             func.coalesce(func.sum(models.CaixaSessao.valor_esperado), 0),
         )
         .join(models.Usuario, models.Usuario.id == models.CaixaSessao.usuario_abertura_id)
-        .where(TURNO_FECHADO, _periodo_turnos(inicio, fim))
+        .where(TURNO_FECHADO, *_periodo_turnos(inicio, fim))
         .group_by(models.CaixaSessao.usuario_abertura_id, models.Usuario.nome)
         .order_by(func.coalesce(func.sum(negativa), 0))
     ).all()
@@ -331,7 +363,7 @@ def quebras_detalhe(
     """Turnos fechados do período, do pior para o melhor."""
     stmt = (
         select(models.CaixaSessao)
-        .where(TURNO_FECHADO, _periodo_turnos(inicio, fim))
+        .where(TURNO_FECHADO, *_periodo_turnos(inicio, fim))
         .order_by(models.CaixaSessao.diferenca)
         .limit(limite)
     )
@@ -374,7 +406,8 @@ def pagamentos(db: DB, _: CurrentUser, inicio: date | None = None, fim: date | N
             func.count(models.Venda.id),
             func.coalesce(func.sum(models.Venda.desconto), 0),
         )
-        .where(VENDA_VALIDA, models.Venda.criado_em.between(ini, f))
+        .where(VENDA_VALIDA, models.Venda.criado_em >= ini,
+            models.Venda.criado_em < f)
         .group_by(models.Venda.forma_pagamento)
         .order_by(func.sum(models.Venda.total).desc())
     ).all()
@@ -408,20 +441,22 @@ def pagamentos(db: DB, _: CurrentUser, inicio: date | None = None, fim: date | N
 def pagamentos_por_dia(
     db: DB, _: CurrentUser, inicio: date | None = None, fim: date | None = None
 ):
-    """Uma linha por dia, com uma coluna por forma de pagamento."""
-    ini, f = _intervalo(inicio, fim)
-    dia = func.date(models.Venda.criado_em)
+    """Uma linha por dia, com uma coluna por forma de pagamento.
 
+    O dia é o do calendário da cantina; ver `vendas_por_dia`.
+    """
+    ini, f = _intervalo(inicio, fim)
     linhas = db.execute(
-        select(dia, models.Venda.forma_pagamento, func.coalesce(func.sum(models.Venda.total), 0))
-        .where(VENDA_VALIDA, models.Venda.criado_em.between(ini, f))
-        .group_by(dia, models.Venda.forma_pagamento)
-        .order_by(dia)
+        select(
+            models.Venda.criado_em, models.Venda.forma_pagamento, models.Venda.total
+        ).where(VENDA_VALIDA, models.Venda.criado_em >= ini, models.Venda.criado_em < f)
     ).all()
 
     por_dia: dict[str, dict[str, object]] = {}
-    for data, forma, total in linhas:
-        registro = por_dia.setdefault(data, {"dia": data, "total": Decimal("0")})
-        registro[forma.value] = Decimal(str(total or 0))
-        registro["total"] = registro["total"] + Decimal(str(total or 0))  # type: ignore[operator]
-    return list(por_dia.values())
+    for criado_em, forma, total in linhas:
+        chave = tempo.dia_local(criado_em).isoformat()
+        registro = por_dia.setdefault(chave, {"dia": chave, "total": Decimal("0")})
+        valor = Decimal(str(total or 0))
+        registro[forma.value] = Decimal(str(registro.get(forma.value, 0))) + valor
+        registro["total"] = registro["total"] + valor  # type: ignore[operator]
+    return [por_dia[k] for k in sorted(por_dia)]

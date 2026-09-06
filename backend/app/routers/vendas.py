@@ -10,13 +10,14 @@ Uma venda finalizada dispara duas integrações:
   * caixa -> a venda entra na conferência da gaveta daquele turno.
 """
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date
 from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import or_, select
 
 from app import models, schemas
+from app.core import tempo
 from app.core.deps import DB, CurrentUser
 from app.services import caixa as servico_caixa
 from app.services import documento as servico_documento
@@ -75,10 +76,11 @@ def listar(
         stmt = stmt.where(or_(*condicoes))
     if caixa_sessao_id:
         stmt = stmt.where(models.Venda.caixa_sessao_id == caixa_sessao_id)
+    # As datas vem do calendario da cantina; os carimbos estao em UTC.
     if inicio:
-        stmt = stmt.where(models.Venda.criado_em >= datetime.combine(inicio, time.min))
+        stmt = stmt.where(models.Venda.criado_em >= tempo.inicio_do_dia(inicio))
     if fim:
-        stmt = stmt.where(models.Venda.criado_em <= datetime.combine(fim, time.max))
+        stmt = stmt.where(models.Venda.criado_em < tempo.fim_do_dia(fim))
     if cliente_id:
         stmt = stmt.where(models.Venda.cliente_id == cliente_id)
     if status_venda:

@@ -217,9 +217,25 @@ def atualizar(lista_id: int, dados: schemas.ListaCompraUpdate, db: DB, _: Curren
 
 @router.delete("/listas/{lista_id}", status_code=status.HTTP_204_NO_CONTENT)
 def excluir(lista_id: int, db: DB, _: CurrentUser):
+    """Apaga a lista, desde que nada dela tenha chegado.
+
+    Conferido o recebimento, a lista vira a origem de movimentos de estoque que
+    citam o número dela. Apagá-la deixa o kardex apontando para uma compra que
+    não existe mais, e não há como auditar de onde veio aquela entrada. Nesse
+    caso o caminho é cancelar: a lista sai de circulação e o histórico fica.
+    """
     lista = db.get(models.ListaCompra, lista_id)
     if not lista:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lista não encontrada")
+
+    recebidos = sum(1 for i in lista.itens if i.quantidade_recebida is not None)
+    if recebidos or lista.status == models.StatusCompra.CONCLUIDA:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Esta lista já teve {recebidos} item(ns) conferidos no recebimento e não pode "
+            "ser apagada. Cancele-a para tirá-la da lista sem perder o histórico.",
+        )
+
     db.delete(lista)
     db.commit()
 

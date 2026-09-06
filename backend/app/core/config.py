@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
     database_url: str = "sqlite:///./cantina.db"
+    # Relogio do balcao: e nele que "hoje" e "este mes" sao ditos.
+    fuso: str = "America/Sao_Paulo"
     cors_origins: str = "http://localhost:5173"
 
     apibrasil_token: str = ""

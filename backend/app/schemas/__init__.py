@@ -200,8 +200,9 @@ class MovimentoOut(ORMModel):
 class VendaItemIn(BaseModel):
     produto_id: int
     quantidade: Unidades = Field(gt=0)
-    preco_unitario: Decimal | None = None
-    desconto: Decimal = Decimal("0")
+    preco_unitario: Decimal | None = Field(default=None, ge=0)
+    # Desconto negativo seria acrescimo pela porta dos fundos.
+    desconto: Decimal = Field(default=Decimal("0"), ge=0)
 
 
 # O PDV da cantina recebe apenas em dinheiro e PIX. As demais formas seguem
@@ -214,8 +215,8 @@ class VendaIn(BaseModel):
     # Padrao da venda e consumidor diverso; informar o documento identifica.
     documento_cliente: str | None = None
     forma_pagamento: models.FormaPagamento = models.FormaPagamento.DINHEIRO
-    desconto: Decimal = Decimal("0")
-    valor_recebido: Decimal = Decimal("0")
+    desconto: Decimal = Field(default=Decimal("0"), ge=0)
+    valor_recebido: Decimal = Field(default=Decimal("0"), ge=0)
     observacao: str | None = None
     vencimento_fiado: date | None = None
     itens: list[VendaItemIn] = Field(min_length=1)
@@ -237,8 +238,8 @@ class VendaAlteracaoIn(BaseModel):
     """
 
     forma_pagamento: models.FormaPagamento | None = None
-    desconto: Decimal | None = None
-    valor_recebido: Decimal | None = None
+    desconto: Decimal | None = Field(default=None, ge=0)
+    valor_recebido: Decimal | None = Field(default=None, ge=0)
     itens: list[VendaItemIn] = Field(min_length=1)
 
     @field_validator("forma_pagamento")

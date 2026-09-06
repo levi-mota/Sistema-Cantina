@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 from fastapi import HTTPException, status
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app import models
@@ -27,11 +28,21 @@ def movimentar(
     quantidade = Decimal(str(quantidade))
     atual = Decimal(str(produto.estoque_atual or 0))
 
-    if tipo in ENTRADAS:
-        novo_saldo = atual + quantidade
-    elif tipo in SAIDAS:
-        novo_saldo = atual - quantidade
-        if novo_saldo < 0 and not permitir_negativo:
+    if tipo in SAIDAS and not permitir_negativo:
+        # Conferir em Python e gravar depois abre uma janela entre a leitura e a
+        # escrita: dois caixas vendendo a ultima unidade ao mesmo tempo leriam o
+        # mesmo saldo e ambos passariam. Quem decide aqui e o banco, numa
+        # instrucao so -- se ninguem casa a condicao, nao havia saldo.
+        resultado = db.execute(
+            update(models.Produto)
+            .where(
+                models.Produto.id == produto.id,
+                models.Produto.estoque_atual >= float(quantidade),
+            )
+            .values(estoque_atual=models.Produto.estoque_atual - float(quantidade))
+            .execution_options(synchronize_session=False)
+        )
+        if resultado.rowcount == 0:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
@@ -39,10 +50,18 @@ def movimentar(
                     f"disponível {atual}, solicitado {quantidade}"
                 ),
             )
-    else:  # AJUSTE define o saldo absoluto
-        novo_saldo = quantidade
-
-    produto.estoque_atual = novo_saldo
+        # O saldo real e o que ficou no banco, nao o que estava em memoria.
+        db.refresh(produto)
+        novo_saldo = Decimal(str(produto.estoque_atual or 0))
+        atual = novo_saldo + quantidade
+    else:
+        if tipo in ENTRADAS:
+            novo_saldo = atual + quantidade
+        elif tipo in SAIDAS:
+            novo_saldo = atual - quantidade
+        else:  # AJUSTE define o saldo absoluto
+            novo_saldo = quantidade
+        produto.estoque_atual = novo_saldo
 
     # Entradas recalculam o custo medio ponderado.
     if tipo in ENTRADAS and custo_unitario is not None and novo_saldo > 0:
