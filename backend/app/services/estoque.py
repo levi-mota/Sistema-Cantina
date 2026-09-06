@@ -31,6 +31,11 @@ def movimentar(
     if tipo in SAIDAS and not permitir_negativo:
         # Quem decide e o banco, numa instrucao so: conferir em Python e gravar
         # depois deixaria dois caixas venderem a mesma ultima unidade.
+        #
+        # O flush vem antes porque a sessao nao tem autoflush: sem ele, entrada
+        # de estoque feita na mesma transacao ainda estaria so na memoria, e o
+        # UPDATE compararia com o saldo velho -- recusando saida que cabe.
+        db.flush()
         resultado = db.execute(
             update(models.Produto)
             .where(
