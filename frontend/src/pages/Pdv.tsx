@@ -114,6 +114,13 @@ export default function Pdv() {
   const campoRecebido = useRef<HTMLInputElement>(null);
   const botaoForma = useRef<HTMLButtonElement>(null);
   const listaRef = useRef<HTMLDivElement>(null);
+  /**
+   * Instante em que o ultimo passo foi aberto. O Enter que abre um modal
+   * continua subindo ate a janela, e o atalho do modal recem-montado o
+   * receberia de volta -- confirmando sozinho o que acabou de aparecer.
+   * Comparar o timeStamp descarta exatamente essa tecla, e so ela.
+   */
+  const abertoEm = useRef(0);
 
   const carregar = useCallback(async () => {
     try {
@@ -239,11 +246,27 @@ export default function Pdv() {
 
   const abrirPagamento = useCallback(() => {
     if (carrinho.length === 0 || !caixa) return;
+    abertoEm.current = performance.now();
     setRecebido("");
     setPixCobranca(null);
     setPixImagem(null);
     setPagamentoAberto(true);
   }, [carrinho.length, caixa]);
+
+  /** Abre o passo de quantidade. Se o item ja esta no carrinho, edita o total. */
+  const escolherProduto = useCallback(
+    (produto: Produto) => {
+      if (Number(produto.estoque_atual) <= 0) return;
+      abertoEm.current = performance.now();
+      const noCarrinho = carrinho.find((i) => i.produto.id === produto.id);
+      const inicial = quantidadeDigitada > 1 ? quantidadeDigitada : (noCarrinho?.quantidade ?? 1);
+      setQuantidadeTexto(String(inicial));
+      setEscolhido(produto);
+      // O texto ja entra selecionado: a primeira tecla substitui o valor.
+      requestAnimationFrame(() => campoQuantidade.current?.select());
+    },
+    [carrinho, quantidadeDigitada],
+  );
 
   // --- Atalhos de teclado da tela ----------------------------------------
   useEffect(() => {
@@ -254,6 +277,17 @@ export default function Pdv() {
       // operador digita ali corre o risco de virar comando por engano.
       const buscaVazia = busca.trim() === "";
 
+      if (e.key === "Enter") {
+        e.preventDefault();
+        // Sem nada digitado nao ha produto para adicionar: Enter fecha a venda.
+        if (buscaVazia) {
+          abrirPagamento();
+          return;
+        }
+        const produto = filtrados[destaque] ?? filtrados[0];
+        if (produto) escolherProduto(produto);
+        return;
+      }
       if (e.key === "Backspace" && buscaVazia) {
         e.preventDefault();
         setCarrinho((atual) => atual.slice(0, -1));
@@ -312,7 +346,9 @@ export default function Pdv() {
     vendaAberta,
     busca,
     carrinho.length,
-    filtrados.length,
+    filtrados,
+    destaque,
+    escolherProduto,
     abrirPagamento,
     abrirLocalizar,
     ajustarDestacado,
@@ -342,20 +378,6 @@ export default function Pdv() {
   }, [vendaAberta, localizarAberto, comprovante, novaVenda, abrirLocalizar]);
 
 
-  /** Abre o passo de quantidade. Se o item ja esta no carrinho, edita o total. */
-  const escolherProduto = useCallback(
-    (produto: Produto) => {
-      if (Number(produto.estoque_atual) <= 0) return;
-      const noCarrinho = carrinho.find((i) => i.produto.id === produto.id);
-      const inicial = quantidadeDigitada > 1 ? quantidadeDigitada : (noCarrinho?.quantidade ?? 1);
-      setQuantidadeTexto(String(inicial));
-      setEscolhido(produto);
-      // O texto ja entra selecionado: a primeira tecla substitui o valor.
-      requestAnimationFrame(() => campoQuantidade.current?.select());
-    },
-    [carrinho, quantidadeDigitada],
-  );
-
   /** Confirma o passo: define a quantidade total daquele produto no carrinho. */
   const confirmarQuantidade = useCallback(() => {
     if (!escolhido) return;
@@ -370,23 +392,12 @@ export default function Pdv() {
     focarBusca();
   }, [escolhido, quantidade, focarBusca]);
 
-  function aoTeclarBusca(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    // Sem nada digitado nao ha produto para adicionar: Enter fecha a venda.
-    if (busca.trim() === "") {
-      abrirPagamento();
-      return;
-    }
-    const produto = filtrados[destaque] ?? filtrados[0];
-    if (produto) escolherProduto(produto);
-  }
-
   // --- Atalhos do passo de quantidade ------------------------------------
   useEffect(() => {
     if (!escolhido) return;
 
     function aoTeclar(e: KeyboardEvent) {
+      if (e.timeStamp <= abertoEm.current) return;
       if (e.key === "Enter") {
         e.preventDefault();
         confirmarQuantidade();
@@ -568,6 +579,7 @@ export default function Pdv() {
     if (!pagamentoAberto) return;
 
     function aoTeclar(e: KeyboardEvent) {
+      if (e.timeStamp <= abertoEm.current) return;
       const alvo = e.target as HTMLElement | null;
       const digitando = alvo?.tagName === "INPUT" || alvo?.tagName === "TEXTAREA";
 
@@ -1222,7 +1234,6 @@ export default function Pdv() {
             ref={campoBusca}
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            onKeyDown={aoTeclarBusca}
             placeholder="Buscar, ler código de barras ou 3* para quantidade..."
             className="campo py-3 pl-9 text-base"
             autoFocus
