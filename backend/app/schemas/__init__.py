@@ -229,6 +229,29 @@ class VendaIn(BaseModel):
         return valor
 
 
+class VendaAlteracaoIn(BaseModel):
+    """Ajuste de uma venda já finalizada: o cliente trocou de ideia no balcão.
+
+    Só o que pode mudar depois de fechar: os itens e o pagamento. Cliente e
+    turno ficam como estão -- quem quiser mudar isso cancela e refaz.
+    """
+
+    forma_pagamento: models.FormaPagamento | None = None
+    desconto: Decimal | None = None
+    valor_recebido: Decimal | None = None
+    itens: list[VendaItemIn] = Field(min_length=1)
+
+    @field_validator("forma_pagamento")
+    @classmethod
+    def _forma_aceita(
+        cls, valor: models.FormaPagamento | None
+    ) -> models.FormaPagamento | None:
+        if valor is not None and valor not in FORMAS_PDV:
+            aceitas = ", ".join(sorted(f.value for f in FORMAS_PDV))
+            raise ValueError(f"O PDV aceita apenas: {aceitas}")
+        return valor
+
+
 class VendaItemOut(ORMModel):
     id: int
     produto_id: int

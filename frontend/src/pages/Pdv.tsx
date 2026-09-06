@@ -9,6 +9,7 @@ import {
   LockKeyhole,
   Minus,
   Plus,
+  Printer,
   QrCode,
   Search,
   ShoppingCart,
@@ -17,10 +18,19 @@ import {
 } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, documentoFormatado, rotulo, valorNumero, valorTexto } from "../lib/format";
+import {
+  brl,
+  dataHora,
+  documentoFormatado,
+  rotulo,
+  valorNumero,
+  valorTexto,
+} from "../lib/format";
 import type { CaixaSessao, Identificacao, PixCobranca, Produto, Venda } from "../lib/tipos";
+import { Recibo } from "../components/Recibo";
 import {
   Botao,
+  Campo,
   CampoValor,
   Cartao,
   Carregando,
@@ -70,6 +80,18 @@ export default function Pdv() {
   const [recebido, setRecebido] = useState("");
   const [finalizando, setFinalizando] = useState(false);
   const [comprovante, setComprovante] = useState<Venda | null>(null);
+  /** A venda que está no papel neste momento (impressão ou reimpressão). */
+  const [paraImprimir, setParaImprimir] = useState<Venda | null>(null);
+
+  // Localizar venda: o cliente troca de ideia depois de fechar, e refazer a
+  // venda inteira criaria dois registros para a mesma compra.
+  const [localizarAberto, setLocalizarAberto] = useState(false);
+  const [buscaVenda, setBuscaVenda] = useState("");
+  const [vendas, setVendas] = useState<Venda[]>([]);
+  const [buscandoVendas, setBuscandoVendas] = useState(false);
+  const [detalhe, setDetalhe] = useState<Venda | null>(null);
+  /** Quando preenchido, finalizar altera esta venda em vez de criar outra. */
+  const [editando, setEditando] = useState<Venda | null>(null);
 
   const [pixConfigurado, setPixConfigurado] = useState(false);
   const [pixCobranca, setPixCobranca] = useState<PixCobranca | null>(null);
@@ -164,6 +186,7 @@ export default function Pdv() {
     setPixImagem(null);
     setBusca("");
     setEscolhido(null);
+    setEditando(null);
   }, []);
 
   const focarBusca = useCallback(() => {
@@ -185,13 +208,18 @@ export default function Pdv() {
     function aoTeclar(e: KeyboardEvent) {
       if (e.key === "F2") {
         e.preventDefault();
-        abrirPagamento();
+        limpar();
+        focarBusca();
         return;
       }
       if (e.key === "F4") {
         e.preventDefault();
-        limpar();
-        focarBusca();
+        abrirPagamento();
+        return;
+      }
+      if (e.key === "F8") {
+        e.preventDefault();
+        abrirLocalizar();
         return;
       }
       if (e.key === "Backspace" && e.altKey) {
@@ -349,20 +377,97 @@ export default function Pdv() {
     }
   }
 
+  // --- Localizar, alterar e imprimir --------------------------------------
+  const carregarVendas = useCallback(async () => {
+    setBuscandoVendas(true);
+    try {
+      const { data } = await api.get<Venda[]>("/vendas", {
+        params: { busca: buscaVenda || undefined, limite: 20 },
+      });
+      setVendas(data);
+    } catch (e) {
+      setErro(mensagemErro(e));
+    } finally {
+      setBuscandoVendas(false);
+    }
+  }, [buscaVenda]);
+
+  const abrirLocalizar = useCallback(() => {
+    setErro(null);
+    setLocalizarAberto(true);
+  }, []);
+
+  useEffect(() => {
+    if (!localizarAberto) return;
+    const t = setTimeout(() => void carregarVendas(), 250);
+    return () => clearTimeout(t);
+  }, [localizarAberto, carregarVendas]);
+
+  /** Manda a venda para o papel: monta o recibo e chama a impressão. */
+  function imprimir(venda: Venda) {
+    setParaImprimir(venda);
+    // Um instante para o recibo entrar no DOM antes de a janela de impressão
+    // abrir. É temporizador, e não requestAnimationFrame: com a aba em segundo
+    // plano o navegador não desenha quadro nenhum, e a impressão nunca sairia.
+    setTimeout(() => window.print(), 50);
+  }
+
+  /** Traz a venda para o carrinho para ajustar itens sem refazê-la. */
+  function editarVenda(venda: Venda) {
+    const itens: ItemCarrinho[] = [];
+    for (const item of venda.itens) {
+      const produto = produtos.find((p) => p.id === item.produto_id);
+      if (!produto) {
+        setErro(`O produto "${item.descricao}" saiu do cadastro. Cancele a venda e refaça.`);
+        return;
+      }
+      itens.push({ produto, quantidade: Number(item.quantidade) });
+    }
+    setCarrinho(itens);
+    setEditando(venda);
+    setDocumento(venda.documento_cliente ?? "");
+    setClienteId(venda.cliente_id ? String(venda.cliente_id) : "");
+    setDesconto(valorTexto(venda.desconto));
+    setForma(venda.forma_pagamento === "PIX" ? "PIX" : "DINHEIRO");
+    setLocalizarAberto(false);
+    setDetalhe(null);
+    focarBusca();
+  }
+
+  async function cancelarVenda(venda: Venda) {
+    if (!confirm(`Cancelar a venda #${venda.id}? Os itens voltam para o estoque.`)) return;
+    setErro(null);
+    try {
+      await api.post(`/vendas/${venda.id}/cancelar`);
+      await carregarVendas();
+      await carregar();
+      setDetalhe(null);
+    } catch (e) {
+      setErro(mensagemErro(e));
+    }
+  }
+
   // --- Finalizacao --------------------------------------------------------
   const finalizar = useCallback(async () => {
     if (forma === "DINHEIRO" && recebido !== "" && valorNumero(recebido) < total) return;
     setErro(null);
     setFinalizando(true);
     try {
-      const { data } = await api.post<Venda>("/vendas", {
-        cliente_id: clienteId ? Number(clienteId) : null,
-        documento_cliente: documento.replace(/\D/g, "") || null,
+      const corpo = {
         forma_pagamento: forma,
         desconto: valorNumero(desconto),
         valor_recebido: forma === "DINHEIRO" ? valorNumero(recebido) : 0,
         itens: carrinho.map((i) => ({ produto_id: i.produto.id, quantidade: i.quantidade })),
-      });
+      };
+      // Editando, a venda continua sendo a mesma: só os itens mudam.
+      const { data } = editando
+        ? await api.put<Venda>(`/vendas/${editando.id}`, corpo)
+        : await api.post<Venda>("/vendas", {
+            ...corpo,
+            cliente_id: clienteId ? Number(clienteId) : null,
+            documento_cliente: documento.replace(/\D/g, "") || null,
+          });
+      setEditando(null);
       setComprovante(data);
       setPagamentoAberto(false);
       limpar();
@@ -372,7 +477,7 @@ export default function Pdv() {
     } finally {
       setFinalizando(false);
     }
-  }, [forma, recebido, total, clienteId, documento, desconto, carrinho, limpar, carregar]);
+  }, [forma, recebido, total, clienteId, documento, desconto, carrinho, limpar, carregar, editando]);
 
   // --- Atalhos do modal de pagamento -------------------------------------
   useEffect(() => {
@@ -382,13 +487,13 @@ export default function Pdv() {
       const alvo = e.target as HTMLElement | null;
       const digitando = alvo?.tagName === "INPUT" || alvo?.tagName === "TEXTAREA";
 
-      if (e.key === "F1" || (e.key === "1" && !digitando)) {
+      if (e.key === "1" && !digitando) {
         e.preventDefault();
         setForma("DINHEIRO");
         requestAnimationFrame(() => campoRecebido.current?.focus());
         return;
       }
-      if (e.key === "F2" || (e.key === "2" && !digitando)) {
+      if (e.key === "2" && !digitando) {
         e.preventDefault();
         setForma("PIX");
         return;
@@ -457,8 +562,9 @@ export default function Pdv() {
             <span className="hidden items-center gap-2 sm:flex">
               <kbd className={tecla}>↑↓</kbd> navegar
               <kbd className={tecla}>Enter</kbd> adicionar
-              <kbd className={tecla}>F2</kbd> pagar
-              <kbd className={tecla}>F4</kbd> limpar
+              <kbd className={tecla}>F2</kbd> nova venda
+              <kbd className={tecla}>F4</kbd> finalizar
+              <kbd className={tecla}>F8</kbd> localizar
               <kbd className={tecla}>Alt+←</kbd> tirar último
             </span>
           </div>
@@ -538,10 +644,17 @@ export default function Pdv() {
               tabIndex={-1}
               className="ml-auto text-xs font-semibold text-red-600 hover:underline"
             >
-              Limpar (F4)
+              Nova venda (F2)
             </button>
           )}
         </div>
+
+        {editando && (
+          <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Alterando a <strong>venda #{editando.id}</strong>. Ao finalizar, ela é atualizada e o
+            estoque recebe só a diferença.
+          </div>
+        )}
 
         {carrinho.length === 0 ? (
           <Vazio titulo="Carrinho vazio" descricao="Busque o produto e tecle Enter." />
@@ -610,7 +723,11 @@ export default function Pdv() {
             tabIndex={-1}
             onClick={abrirPagamento}
           >
-            {caixa ? "Finalizar venda (F2)" : "Abra o caixa para vender"}
+            {!caixa
+              ? "Abra o caixa para vender"
+              : editando
+                ? `Salvar a venda #${editando.id} (F4)`
+                : "Finalizar venda (F4)"}
           </Botao>
         </div>
       </Cartao>
@@ -937,6 +1054,121 @@ export default function Pdv() {
         </div>
       </Modal>
 
+      {/* Localizar venda */}
+      <Modal
+        aberto={localizarAberto}
+        titulo="Localizar venda"
+        aoFechar={() => {
+          setLocalizarAberto(false);
+          focarBusca();
+        }}
+        largura="max-w-2xl"
+      >
+        <div className="space-y-3">
+          <Erro mensagem={erro} />
+          <Campo
+            autoFocus
+            value={buscaVenda}
+            onChange={(e) => setBuscaVenda(e.target.value)}
+            placeholder="Número da venda, CPF ou nome do cliente"
+          />
+
+          {buscandoVendas ? (
+            <p className="py-6 text-center text-sm text-carvao-400">Procurando...</p>
+          ) : vendas.length === 0 ? (
+            <Vazio titulo="Nenhuma venda encontrada" />
+          ) : (
+            <ul className="max-h-96 divide-y divide-carvao-100 overflow-y-auto rounded-lg border border-carvao-100">
+              {vendas.map((v) => (
+                <li key={v.id} className="p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-carvao-900">
+                        Venda #{v.id}
+                        {v.status === "CANCELADA" && (
+                          <span className="ml-2 text-xs font-normal text-red-600">CANCELADA</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-carvao-500">
+                        {dataHora(v.criado_em)} · {rotulo(v.forma_pagamento)} ·{" "}
+                        {v.cliente_nome ??
+                          (v.documento_cliente
+                            ? documentoFormatado(v.documento_cliente)
+                            : "Consumidor diverso")}
+                      </p>
+                    </div>
+                    <span className="font-bold text-carvao-900">{brl(v.total)}</span>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <Botao variante="secundario" onClick={() => setDetalhe(v)}>
+                      Detalhes
+                    </Botao>
+                    <Botao
+                      variante="secundario"
+                      icone={<Printer className="h-4 w-4" />}
+                      onClick={() => imprimir(v)}
+                    >
+                      Imprimir
+                    </Botao>
+                    {v.status !== "CANCELADA" && (
+                      <>
+                        <Botao variante="secundario" onClick={() => editarVenda(v)}>
+                          Alterar itens
+                        </Botao>
+                        <Botao variante="perigo" onClick={() => cancelarVenda(v)}>
+                          Cancelar
+                        </Botao>
+                      </>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Modal>
+
+      {/* Detalhe da venda localizada */}
+      <Modal
+        aberto={!!detalhe}
+        titulo={`Venda #${detalhe?.id}`}
+        aoFechar={() => setDetalhe(null)}
+        largura="max-w-sm"
+      >
+        {detalhe && (
+          <div className="space-y-3 text-sm">
+            <ul className="divide-y divide-carvao-100">
+              {detalhe.itens.map((i) => (
+                <li key={i.id} className="flex justify-between py-1.5">
+                  <span className="text-carvao-700">
+                    {Number(i.quantidade)}x {i.descricao}
+                  </span>
+                  <span className="font-medium">{brl(i.total)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="space-y-1 border-t border-carvao-200 pt-2">
+              <div className="flex justify-between text-base font-bold">
+                <span>Total</span>
+                <span>{brl(detalhe.total)}</span>
+              </div>
+              <div className="flex justify-between text-carvao-600">
+                <span>Pagamento</span>
+                <span>{rotulo(detalhe.forma_pagamento)}</span>
+              </div>
+              <div className="flex justify-between text-carvao-600">
+                <span>Atendente</span>
+                <span>{detalhe.usuario_nome ?? "-"}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Só existe no papel: a regra de impressão está em index.css. */}
+      {paraImprimir && <Recibo venda={paraImprimir} />}
+
       {/* Comprovante */}
       <Modal
         aberto={!!comprovante}
@@ -984,15 +1216,25 @@ export default function Pdv() {
                 </span>
               </div>
             </div>
-            <Botao
-              className="w-full py-3"
-              onClick={() => {
-                setComprovante(null);
-                focarBusca();
-              }}
-            >
-              Nova venda (Enter)
-            </Botao>
+            <div className="flex gap-2">
+              <Botao
+                variante="secundario"
+                className="flex-1 py-3"
+                icone={<Printer className="h-4 w-4" />}
+                onClick={() => imprimir(comprovante)}
+              >
+                Imprimir
+              </Botao>
+              <Botao
+                className="flex-1 py-3"
+                onClick={() => {
+                  setComprovante(null);
+                  focarBusca();
+                }}
+              >
+                Nova venda (Enter)
+              </Botao>
+            </div>
           </div>
         )}
       </Modal>

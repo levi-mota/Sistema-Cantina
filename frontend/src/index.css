@@ -78,3 +78,50 @@
   border: 3px solid transparent;
   background-clip: content-box;
 }
+
+/* --------------------------------------------------------------------------
+   Recibo em bobina térmica de 58mm.
+
+   A impressora recebe a página inteira do navegador, então na hora de imprimir
+   tudo some e só o recibo aparece, ocupando a largura da bobina. Fonte
+   monoespaçada porque é ela que mantém valor e descrição alinhados em coluna.
+   -------------------------------------------------------------------------- */
+.recibo {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .recibo,
+  .recibo * {
+    visibility: visible;
+  }
+
+  .recibo {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+    color: #000;
+    font-family: "Courier New", Courier, monospace;
+    /* 11px cabe 32 caracteres numa bobina de 58mm sem estourar a margem. */
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .recibo hr {
+    border: none;
+    border-top: 1px dashed #000;
+    margin: 4px 0;
+  }
+
+  @page {
+    size: 58mm auto;
+    margin: 2mm;
+  }
+}
