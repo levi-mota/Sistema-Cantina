@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowDownUp, History, Package, Plus, Search } from "lucide-react";
+import { AlertTriangle, ArrowDownUp, History, Package, Plus, Search } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
 import { brl, dataHora, hojeIso, qtd, rotulo } from "../lib/format";
@@ -52,6 +52,8 @@ export default function Estoque() {
 
   const [produtoModal, setProdutoModal] = useState<Produto | "novo" | null>(null);
   const [form, setForm] = useState(FORM_VAZIO);
+  /** Produto já cadastrado com o mesmo código (trava) ou o mesmo nome (avisa). */
+  const [repetido, setRepetido] = useState<{ codigo?: Produto; nome?: Produto }>({});
   const [salvando, setSalvando] = useState(false);
 
   const [movProduto, setMovProduto] = useState<Produto | null>(null);
@@ -102,6 +104,7 @@ export default function Estoque() {
 
   function abrirProduto(p: Produto | "novo") {
     setErro(null);
+    setRepetido({});
     setProdutoModal(p);
     setForm(
       p === "novo"
@@ -119,6 +122,55 @@ export default function Estoque() {
           },
     );
   }
+
+  // Procura o produto já cadastrado enquanto se digita. Código repetido é erro
+  // certo -- o PDV leria a etiqueta e traria o item errado --, então trava.
+  // Nome repetido é só suspeita: dá para ter dois itens de nome parecido, mas
+  // quase sempre é a mesma coisa cadastrada duas vezes, e aí o estoque de um
+  // fica parado enquanto o outro vende.
+  useEffect(() => {
+    if (!produtoModal) return;
+    const codigo = form.codigo.trim();
+    const nome = form.nome.trim();
+    if (!codigo && nome.length < 3) {
+      setRepetido({});
+      return;
+    }
+
+    const meuId = produtoModal === "novo" ? null : produtoModal.id;
+    let cancelado = false;
+    const t = setTimeout(async () => {
+      try {
+        const buscar = async (termo: string) => {
+          const { data } = await api.get<Produto[]>("/estoque/produtos", {
+            params: { busca: termo },
+          });
+          return data.filter((p) => p.id !== meuId);
+        };
+        const achado: { codigo?: Produto; nome?: Produto } = {};
+        if (codigo) {
+          const iguais = await buscar(codigo);
+          achado.codigo = iguais.find((p) => (p.codigo ?? "").trim() === codigo);
+        }
+        if (nome.length >= 3) {
+          const iguais = await buscar(nome);
+          achado.nome = iguais.find(
+            (p) => p.nome.trim().toLocaleLowerCase() === nome.toLocaleLowerCase(),
+          );
+        }
+        if (!cancelado) setRepetido(achado);
+      } catch {
+        // A busca é um apoio: se falhar, o cadastro segue e a API ainda barra
+        // o código repetido ao salvar.
+        if (!cancelado) setRepetido({});
+      }
+    }, 400);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(t);
+    };
+  }, [form.codigo, form.nome, produtoModal]);
 
   async function salvarProduto(e: React.FormEvent) {
     e.preventDefault();
@@ -405,6 +457,34 @@ export default function Estoque() {
       >
         <form onSubmit={salvarProduto} className="space-y-4">
           <Erro mensagem={erro} />
+
+          {(repetido.codigo || repetido.nome) && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="flex-1">
+                {repetido.codigo ? (
+                  <>
+                    Este código já é de <strong>{repetido.codigo.nome}</strong>
+                  </>
+                ) : (
+                  <>
+                    Já existe um produto chamado <strong>{repetido.nome?.nome}</strong>
+                  </>
+                )}
+              </span>
+              <Botao
+                type="button"
+                variante="secundario"
+                onClick={() => {
+                  const alvo = repetido.codigo ?? repetido.nome;
+                  if (alvo) abrirProduto(alvo);
+                }}
+              >
+                Abrir o cadastro
+              </Botao>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Campo
               rotulo="Nome"
@@ -477,7 +557,12 @@ export default function Estoque() {
             <Botao variante="secundario" type="button" onClick={() => setProdutoModal(null)}>
               Cancelar
             </Botao>
-            <Botao type="submit" carregando={salvando}>
+            <Botao
+              type="submit"
+              carregando={salvando}
+              disabled={!!repetido.codigo}
+              title={repetido.codigo ? "Este código já está em outro produto" : undefined}
+            >
               Salvar
             </Botao>
           </div>

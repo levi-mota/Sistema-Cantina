@@ -101,15 +101,32 @@ def listar_produtos(
     return [_produto_out(p) for p in produtos]
 
 
+def exigir_codigo_livre(db, codigo: str | None, ignorar_id: int | None = None) -> None:
+    """O código de barras aponta para um produto só.
+
+    Repetido, o PDV leria o código e traria o item errado. Produto sem código é
+    normal -- muita coisa da cantina não tem etiqueta -- e pode se repetir.
+    """
+    if not codigo:
+        return
+    stmt = select(models.Produto).where(models.Produto.codigo == codigo)
+    if ignorar_id is not None:
+        stmt = stmt.where(models.Produto.id != ignorar_id)
+    existente = db.scalar(stmt)
+    if existente:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Código já cadastrado para '{existente.nome}'",
+        )
+
+
 @router.post(
     "/produtos", response_model=schemas.ProdutoOut, status_code=status.HTTP_201_CREATED
 )
 def criar_produto(dados: schemas.ProdutoCreate, db: DB, usuario: SomenteAdmin):
     payload = dados.model_dump()
     estoque_inicial = Decimal(str(payload.pop("estoque_inicial", 0) or 0))
-    if payload.get("codigo"):
-        if db.scalar(select(models.Produto).where(models.Produto.codigo == payload["codigo"])):
-            raise HTTPException(status.HTTP_409_CONFLICT, "Código já cadastrado")
+    exigir_codigo_livre(db, payload.get("codigo"))
 
     produto = models.Produto(**payload)
     db.add(produto)
@@ -143,7 +160,10 @@ def atualizar_produto(produto_id: int, dados: schemas.ProdutoUpdate, db: DB, _: 
     produto = db.get(models.Produto, produto_id)
     if not produto:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado")
-    for campo, valor in dados.model_dump(exclude_unset=True).items():
+    campos = dados.model_dump(exclude_unset=True)
+    if "codigo" in campos:
+        exigir_codigo_livre(db, campos["codigo"], ignorar_id=produto.id)
+    for campo, valor in campos.items():
         setattr(produto, campo, valor)
     db.commit()
     db.refresh(produto)
