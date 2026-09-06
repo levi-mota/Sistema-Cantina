@@ -30,3 +30,6 @@ Thumbs.db
 
 # Execucao dos scripts (pids e logs)
 scripts/.run/
+
+# A arte original da marca fica fora do repositorio
+marca/logo-original-*.png

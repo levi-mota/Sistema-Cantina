@@ -1,11 +1,14 @@
 # Marca
 
-Os arquivos que a aplicação usa ficam em `frontend/public/`. Esta pasta guarda a
-origem e os scripts que os produzem, para a marca poder ser refeita.
+Os arquivos que a aplicação usa ficam em `frontend/public/`. Esta pasta guarda os
+scripts que os produzem, para a marca poder ser refeita a partir da arte original.
+
+A arte original **não está aqui**. O logotipo e o nome são da cantina; o código
+é que está aberto para leitura (veja o [LICENSE](../LICENSE)).
 
 | Arquivo | O que é |
 | --- | --- |
-| `logo-original-alagoas.png` | Arte recebida (Maanaim Alagoas, branca sobre transparente) |
+| _(arte original)_ | Recebida da gráfica, branca sobre transparente. **Não fica no repositório**: é da cantina, e este código está público apenas para leitura. Guarde-a fora e passe o caminho ao script. |
 | `gerar-logo.py` | Troca "ALAGOAS" por "CANTINA" e gera o logo horizontal |
 | `gerar-icone.py` | Desenha o ícone quadrado (favicon e atalho do celular) |
 | `gerar-logo-recibo.py` | Inverte o logo para preto sobre branco, na largura da bobina |

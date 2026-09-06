@@ -11,12 +11,13 @@ from PIL import Image, ImageDraw, ImageFont
 
 RAIZ = Path(__file__).resolve().parent.parent
 
-# A arte de origem e o arquivo que a grafica entregou; sem argumento, usa a
-# copia guardada nesta pasta.
+# A arte de origem nao fica no repositorio -- ela e da cantina, e o codigo aqui
+# esta publico so para leitura. Passe o caminho do arquivo que a grafica
+# entregou:
 #   python marca/gerar-logo.py caminho/para/LOGO-BRANCO.png
-ORIGEM = (
-    Path(sys.argv[1]) if len(sys.argv) > 1 else RAIZ / "marca" / "logo-original-alagoas.png"
-)
+if len(sys.argv) < 2:
+    raise SystemExit("Informe o caminho da arte original: python marca/gerar-logo.py ARTE.png")
+ORIGEM = Path(sys.argv[1])
 DESTINO = RAIZ / "frontend" / "public"
 
 FONTE = r"C:\Windows\Fonts\Candaraz.ttf"  # Candara negrito italico: o que mais se aproxima
