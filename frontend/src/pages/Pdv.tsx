@@ -61,6 +61,42 @@ function sugestoesDeCedula(total: number): number[] {
   return [...new Set(lista.map((v) => Number(v.toFixed(2))))].slice(0, 4);
 }
 
+/** Atalho que tambem e botao: mostra a tecla e executa a mesma acao no clique. */
+function Acao({
+  tecla,
+  titulo,
+  onClick,
+  desabilitado,
+  children,
+}: {
+  tecla: string;
+  titulo: string;
+  onClick: () => void;
+  desabilitado?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={desabilitado}
+      title={titulo}
+      aria-label={titulo}
+      tabIndex={-1}
+      className={cx(
+        "flex items-center gap-1.5 rounded-md border border-carvao-200 bg-white px-1.5 py-1",
+        "font-mono text-[11px] text-carvao-500 transition",
+        "hover:border-marca-300 hover:bg-marca-50 hover:text-marca-700",
+        "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-carvao-200",
+        "disabled:hover:bg-white disabled:hover:text-carvao-500",
+      )}
+    >
+      <span className="rounded border border-carvao-200 bg-carvao-50 px-1">{tecla}</span>
+      {children && <span className="font-sans">{children}</span>}
+    </button>
+  );
+}
+
 export default function Pdv() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [caixa, setCaixa] = useState<CaixaSessao | null>(null);
@@ -1288,22 +1324,47 @@ export default function Pdv() {
         </div>
 
         {caixa ? (
-          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-carvao-500">
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-carvao-500">
             <span className="flex items-center gap-1.5">
               <BadgeCheck className="h-3.5 w-3.5 text-emerald-600" />
               {caixa.caixa_nome} · turno #{caixa.id}
             </span>
-            <span className="hidden items-center gap-2 sm:flex">
-              <kbd className={tecla}>↑↓←→</kbd> navegar
-              <kbd className={tecla}>Enter</kbd> adicionar
-              <span className="text-carvao-400">|</span>
-              <span>
-                com a busca vazia: <kbd className={tecla}>+</kbd> <kbd className={tecla}>−</kbd> uma
-                unidade, <kbd className={tecla}>Enter</kbd> finaliza,{" "}
-                <kbd className={tecla}>Backspace</kbd> tira o último,{" "}
-                <kbd className={tecla}>/</kbd> localiza, <kbd className={tecla}>Esc</kbd> sai
-              </span>
-            </span>
+
+            {/* Cada atalho e tambem um botao: quem prefere o mouse clica. */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Acao tecla="↑" titulo="Subir na lista" onClick={() => setDestaque((d) => Math.max(d - 1, 0))} desabilitado={filtrados.length === 0} />
+              <Acao tecla="↓" titulo="Descer na lista" onClick={() => setDestaque((d) => Math.min(d + 1, Math.max(filtrados.length - 1, 0)))} desabilitado={filtrados.length === 0} />
+              <Acao
+                tecla="Enter"
+                titulo="Escolher a quantidade do produto destacado"
+                onClick={() => {
+                  const produto = filtrados[destaque] ?? filtrados[0];
+                  if (produto) escolherProduto(produto);
+                }}
+                desabilitado={filtrados.length === 0}
+              >
+                Adicionar
+              </Acao>
+              <Acao tecla="+" titulo="Somar uma unidade do produto destacado" onClick={() => ajustarDestacado(1)} desabilitado={filtrados.length === 0}>
+                1 un
+              </Acao>
+              <Acao tecla="−" titulo="Tirar uma unidade do produto destacado" onClick={() => ajustarDestacado(-1)} desabilitado={filtrados.length === 0} />
+
+              <span className="mx-0.5 h-4 w-px bg-carvao-200" />
+
+              <Acao tecla="Backspace" titulo="Tirar o último item do carrinho" onClick={() => setCarrinho((atual) => atual.slice(0, -1))} desabilitado={carrinho.length === 0}>
+                Tirar o último
+              </Acao>
+              <Acao tecla="Enter" titulo="Ir para o pagamento" onClick={abrirPagamento} desabilitado={carrinho.length === 0}>
+                Finalizar
+              </Acao>
+              <Acao tecla="/" titulo="Localizar uma venda já fechada" onClick={abrirLocalizar}>
+                Localizar
+              </Acao>
+              <Acao tecla="Esc" titulo="Voltar para a tela inicial" onClick={fecharVenda}>
+                Sair
+              </Acao>
+            </div>
           </div>
         ) : (
           avisoCaixa
