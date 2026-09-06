@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, ArrowDownUp, History, Package, Plus, Search } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataHora, hojeIso, qtd, rotulo } from "../lib/format";
+import { apenasDigitos, brl, dataHora, hojeIso, inteiro, qtd, rotulo } from "../lib/format";
 import type {
   Categoria,
   Movimento,
@@ -32,13 +32,13 @@ const TIPOS_MOVIMENTO: { valor: TipoMovimento; texto: string }[] = [
   { valor: "AJUSTE", texto: "Ajuste de inventário (define o saldo)" },
 ];
 
+// Tudo é comprado e vendido por unidade: a unidade não é escolha de cadastro.
 const FORM_VAZIO = {
   codigo: "",
   nome: "",
   tipo: "FINAL" as TipoProduto,
   categoria_id: "",
   fornecedor_id: "",
-  unidade: "UN",
   preco_custo: "0",
   preco_venda: "0",
   estoque_minimo: "0",
@@ -125,10 +125,9 @@ export default function Estoque() {
             tipo: p.tipo,
             categoria_id: String(p.categoria_id ?? ""),
             fornecedor_id: String(p.fornecedor_id ?? ""),
-            unidade: p.unidade,
             preco_custo: p.preco_custo,
             preco_venda: p.preco_venda,
-            estoque_minimo: p.estoque_minimo,
+            estoque_minimo: inteiro(p.estoque_minimo),
             estoque_inicial: "0",
           },
     );
@@ -193,7 +192,6 @@ export default function Estoque() {
       tipo: form.tipo,
       categoria_id: form.categoria_id ? Number(form.categoria_id) : null,
       fornecedor_id: form.fornecedor_id ? Number(form.fornecedor_id) : null,
-      unidade: form.unidade,
       preco_custo: Number(form.preco_custo || 0),
       preco_venda: Number(form.preco_venda || 0),
       estoque_minimo: Number(form.estoque_minimo || 0),
@@ -354,7 +352,7 @@ export default function Estoque() {
                               : "sucesso"
                         }
                       >
-                        {qtd(p.estoque_atual)} {p.unidade}
+                        {qtd(p.estoque_atual)}
                       </Selo>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-sm">
@@ -430,7 +428,7 @@ export default function Estoque() {
                                 : "sucesso"
                           }
                         >
-                          {qtd(p.estoque_atual)} {p.unidade}
+                          {qtd(p.estoque_atual)}
                         </Selo>
                       </td>
                       <td className="px-4 py-2.5">
@@ -569,18 +567,14 @@ export default function Estoque() {
               opcoes={fornecedores.map((f) => ({ valor: f.id, texto: f.nome }))}
             />
             <Campo
-              rotulo="Unidade"
-              value={form.unidade}
-              onChange={(e) => setForm({ ...form, unidade: e.target.value })}
-              dica="UN, KG, L, CX..."
-            />
-            <Campo
               rotulo="Estoque mínimo"
-              type="number"
-              step="0.001"
+              inputMode="numeric"
+              step="1"
               min="0"
               value={form.estoque_minimo}
-              onChange={(e) => setForm({ ...form, estoque_minimo: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, estoque_minimo: apenasDigitos(e.target.value) })
+              }
             />
             <Campo
               rotulo="Preço de custo (R$)"
@@ -603,11 +597,13 @@ export default function Estoque() {
             {produtoModal === "novo" && (
               <Campo
                 rotulo="Estoque inicial"
-                type="number"
-                step="0.001"
+                inputMode="numeric"
+                step="1"
                 min="0"
                 value={form.estoque_inicial}
-                onChange={(e) => setForm({ ...form, estoque_inicial: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, estoque_inicial: apenasDigitos(e.target.value) })
+                }
               />
             )}
           </div>
@@ -639,7 +635,7 @@ export default function Estoque() {
           <p className="rounded-lg bg-carvao-50 px-3 py-2 text-sm text-carvao-600">
             Saldo atual:{" "}
             <strong className="text-carvao-900">
-              {qtd(movProduto?.estoque_atual)} {movProduto?.unidade}
+              {qtd(movProduto?.estoque_atual)}
             </strong>
           </p>
           <Seletor
@@ -650,12 +646,12 @@ export default function Estoque() {
           />
           <Campo
             rotulo={movForm.tipo === "AJUSTE" ? "Saldo contado" : "Quantidade"}
-            type="number"
-            step="0.001"
-            min="0.001"
+            inputMode="numeric"
             required
             value={movForm.quantidade}
-            onChange={(e) => setMovForm({ ...movForm, quantidade: e.target.value })}
+            onChange={(e) =>
+              setMovForm({ ...movForm, quantidade: apenasDigitos(e.target.value) })
+            }
           />
           {movForm.tipo === "ENTRADA" && (
             <>

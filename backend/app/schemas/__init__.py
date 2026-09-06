@@ -2,10 +2,26 @@
 
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from app import models
+
+
+def _inteiro(valor: Decimal) -> Decimal:
+    """Tudo na cantina é contado por unidade: meia coxinha não existe.
+
+    A regra mora aqui, e não só nos campos da tela, para valer também para quem
+    chamar a API direto -- e para o estoque nunca terminar com 2,5 de um item
+    que só existe inteiro.
+    """
+    if valor != valor.to_integral_value():
+        raise ValueError("A quantidade é em unidades inteiras")
+    return valor
+
+
+Unidades = Annotated[Decimal, AfterValidator(_inteiro)]
 
 
 class ORMModel(BaseModel):
@@ -122,12 +138,12 @@ class ProdutoBase(BaseModel):
     unidade: str = "UN"
     preco_custo: Decimal = Decimal("0")
     preco_venda: Decimal = Decimal("0")
-    estoque_minimo: Decimal = Decimal("0")
+    estoque_minimo: Unidades = Decimal("0")
     ativo: bool = True
 
 
 class ProdutoCreate(ProdutoBase):
-    estoque_inicial: Decimal = Decimal("0")
+    estoque_inicial: Unidades = Decimal("0")
 
 
 class ProdutoUpdate(BaseModel):
@@ -140,7 +156,7 @@ class ProdutoUpdate(BaseModel):
     unidade: str | None = None
     preco_custo: Decimal | None = None
     preco_venda: Decimal | None = None
-    estoque_minimo: Decimal | None = None
+    estoque_minimo: Unidades | None = None
     ativo: bool | None = None
 
 
@@ -156,7 +172,7 @@ class ProdutoOut(ORMModel, ProdutoBase):
 class MovimentoIn(BaseModel):
     produto_id: int
     tipo: models.TipoMovimento
-    quantidade: Decimal = Field(gt=0)
+    quantidade: Unidades = Field(gt=0)
     custo_unitario: Decimal | None = None
     motivo: str | None = None
     gerar_conta_pagar: bool = False
@@ -183,7 +199,7 @@ class MovimentoOut(ORMModel):
 # --------------------------------------------------------------------------- #
 class VendaItemIn(BaseModel):
     produto_id: int
-    quantidade: Decimal = Field(gt=0)
+    quantidade: Unidades = Field(gt=0)
     preco_unitario: Decimal | None = None
     desconto: Decimal = Decimal("0")
 
@@ -420,7 +436,7 @@ class CaixaOut(ORMModel):
 # --------------------------------------------------------------------------- #
 class ItemCompraIn(BaseModel):
     produto_id: int
-    quantidade: Decimal = Field(gt=0)
+    quantidade: Unidades = Field(gt=0)
     observacao: str | None = None
 
 
@@ -445,7 +461,7 @@ class ItemCompraOut(ORMModel):
 
 class ItemRecebimentoIn(BaseModel):
     item_id: int
-    quantidade_recebida: Decimal = Field(ge=0)
+    quantidade_recebida: Unidades = Field(ge=0)
     observacao: str | None = None
 
 

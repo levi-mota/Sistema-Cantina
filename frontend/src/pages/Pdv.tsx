@@ -620,7 +620,7 @@ export default function Pdv() {
             <div className="flex items-center justify-between text-sm text-carvao-600">
               <span>{brl(escolhido.preco_venda)} cada</span>
               <span>
-                {Number(escolhido.estoque_atual)} {escolhido.unidade} em estoque
+                {Number(escolhido.estoque_atual)} em estoque
               </span>
             </div>
 

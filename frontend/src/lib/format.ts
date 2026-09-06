@@ -9,6 +9,21 @@ export function qtd(valor: string | number | null | undefined): string {
   return numero.format(Number(valor ?? 0));
 }
 
+/**
+ * Normaliza uma quantidade para caixa de formulário. Tudo é contado por
+ * unidade, então "12.000" que vem da API vira "12" -- ninguém digita casas
+ * decimais num campo de unidades.
+ */
+export function inteiro(valor: string | number | null | undefined): string {
+  const numero = Math.trunc(Number(valor ?? 0));
+  return Number.isFinite(numero) ? String(numero) : "0";
+}
+
+/** Só dígitos: o que se digita num campo de unidades. */
+export function apenasDigitos(texto: string): string {
+  return texto.replace(/\D/g, "");
+}
+
 export function porcentagem(valor: string | number | null | undefined, casas = 1): string {
   return `${Number(valor ?? 0).toFixed(casas)}%`;
 }

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
-import { brl, dataHora, qtd, rotulo } from "../lib/format";
+import { apenasDigitos, brl, dataHora, inteiro, qtd, rotulo } from "../lib/format";
 import { baixarPdf } from "../lib/pdf";
 import type {
   ItemCompra,
@@ -243,11 +243,11 @@ export default function Compras() {
         item_id: i.id,
         produto: i.produto,
         unidade: i.unidade,
-        solicitado: i.quantidade,
+        solicitado: inteiro(i.quantidade),
         // Começa como "chegou tudo": é o caso comum, e conferir vira só
         // corrigir as exceções em vez de digitar a lista inteira de novo.
         chegou: i.quantidade_recebida == null || Number(i.quantidade_recebida) > 0,
-        recebido: i.quantidade_recebida ?? i.quantidade,
+        recebido: inteiro(i.quantidade_recebida ?? i.quantidade),
         observacao: i.observacao ?? "",
       })),
     });
@@ -287,8 +287,8 @@ export default function Compras() {
       const diferenca = chegou - pedido(i);
       if (chegou === 0) return "Não veio";
       if (diferenca === 0) return "Completo";
-      if (diferenca < 0) return `Faltou ${qtd(-diferenca)} ${i.unidade}`;
-      return `Sobrou ${qtd(diferenca)} ${i.unidade}`;
+      if (diferenca < 0) return `Faltou ${qtd(-diferenca)}`;
+      return `Sobrou ${qtd(diferenca)}`;
     };
 
     const conferidos = lista.itens.filter((i) => i.quantidade_recebida != null);
@@ -336,12 +336,12 @@ export default function Compras() {
       colunas: [
         { titulo: "Produto", valor: (i) => i.produto },
         { titulo: "Fornecedor", valor: (i) => i.fornecedor ?? "Sem fornecedor" },
-        { titulo: "Pedido", valor: (i) => `${qtd(i.quantidade)} ${i.unidade}`, direita: true },
+        { titulo: "Pedido", valor: (i) => qtd(i.quantidade), direita: true },
         {
           titulo: "Recebido",
           valor: (i) => {
             const chegou = recebido(i);
-            return chegou === null ? "-" : `${qtd(chegou)} ${i.unidade}`;
+            return chegou === null ? "-" : qtd(chegou);
           },
           direita: true,
         },
@@ -497,7 +497,7 @@ export default function Compras() {
                   {l.itens.map((i) => (
                     <li key={i.id} className="flex justify-between gap-2">
                       <span className="truncate text-carvao-700">
-                        {qtd(i.quantidade)} {i.unidade} · {i.produto}
+                        {qtd(i.quantidade)} · {i.produto}
                       </span>
                       <span className="shrink-0 text-carvao-500">{brl(i.total_estimado)}</span>
                     </li>
@@ -543,7 +543,7 @@ export default function Compras() {
                 .filter((p) => !itens.some((i) => i.produto_id === p.id))
                 .map((p) => ({
                   valor: p.id,
-                  texto: `${p.nome} (estoque ${Number(p.estoque_atual)} ${p.unidade})`,
+                  texto: `${p.nome} (estoque ${qtd(p.estoque_atual)})`,
                 }))}
             />
             <Botao
@@ -583,7 +583,7 @@ export default function Compras() {
                         </p>
                       </td>
                       <td className="px-3 py-2 text-carvao-600">
-                        {item.estoque} {item.unidade}
+                        {qtd(item.estoque)}
                       </td>
                       <td className="px-3 py-2">
                         <input
@@ -591,7 +591,7 @@ export default function Compras() {
                           inputMode="numeric"
                           value={item.quantidade}
                           onChange={(e) => {
-                            const valor = e.target.value.replace(/[^\d.,]/g, "").replace(",", ".");
+                            const valor = apenasDigitos(e.target.value);
                             setItens((atual) =>
                               atual.map((i, n) =>
                                 n === indice ? { ...i, quantidade: valor } : i,
@@ -712,7 +712,7 @@ export default function Compras() {
                       { titulo: "Fornecedor", valor: (i) => i.fornecedor ?? "Sem fornecedor" },
                       { titulo: "Produto", valor: (i) => i.produto },
                       { titulo: "Código", valor: (i) => i.codigo ?? "" },
-                      { titulo: "Quantidade", valor: (i) => `${qtd(i.quantidade)} ${i.unidade}`, direita: true },
+                      { titulo: "Quantidade", valor: (i) => qtd(i.quantidade), direita: true },
                       { titulo: "Custo estimado", valor: (i) => brl(i.custo_estimado), direita: true },
                       { titulo: "Total estimado", valor: (i) => brl(i.total_estimado), direita: true },
                       { titulo: "Observação", valor: (i) => i.observacao ?? "" },
@@ -797,7 +797,7 @@ export default function Compras() {
                         </td>
                         <td className="px-3 py-2 font-medium text-carvao-800">{linha.produto}</td>
                         <td className="px-3 py-2 text-carvao-600">
-                          {qtd(linha.solicitado)} {linha.unidade}
+                          {qtd(linha.solicitado)}
                         </td>
                         <td className="px-3 py-2">
                           <input
@@ -806,11 +806,7 @@ export default function Compras() {
                             disabled={!linha.chegou}
                             value={linha.chegou ? linha.recebido : "0"}
                             onChange={(e) =>
-                              alterar({
-                                recebido: e.target.value
-                                  .replace(/[^\d.,]/g, "")
-                                  .replace(",", "."),
-                              })
+                              alterar({ recebido: apenasDigitos(e.target.value) })
                             }
                             className={cx(
                               "campo py-1.5 text-center",
