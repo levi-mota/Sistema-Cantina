@@ -162,6 +162,12 @@ para habilitar; sem a chave o PDV continua aceitando PIX, só não desenha o QR.
 * **Estoque** — produtos, categorias, saldo, estoque mínimo, custo médio ponderado e
   kardex completo. Entradas, saídas, perdas e ajuste de inventário. Uma entrada de
   compra pode **gerar a conta a pagar** do fornecedor automaticamente.
+  O produto é **final** (vai ao PDV) ou de **uso e consumo** (farinha, ketchup,
+  embalagem: controlado e comprado, mas não vendido).
+* **Ficha técnica** — a receita de cada produto final: quais itens de uso e consumo
+  ele gasta e quanto de cada um, com fração (0,05 do vidro de ketchup). Dá o **custo
+  real de produzir** e a margem sobre esse custo, e é a base do consumo esperado no
+  fechamento do expediente.
 * **Contas a pagar / a receber** — títulos com parcelamento, baixa total ou parcial,
   cancelamento e destaque de vencidos.
 * **Compras** — monta a lista de reposição e gera o relatório para quem vai comprar.

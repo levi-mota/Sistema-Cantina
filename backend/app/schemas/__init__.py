@@ -163,10 +163,45 @@ class ProdutoUpdate(BaseModel):
 class ProdutoOut(ORMModel, ProdutoBase):
     id: int
     estoque_atual: Decimal
+    # Quantos insumos a receita tem. Zero é produto sem ficha técnica.
+    itens_ficha: int = 0
     categoria_nome: str | None = None
     fornecedor_nome: str | None = None
     margem: Decimal | None = None
     abaixo_minimo: bool = False
+
+
+class FichaItemIn(BaseModel):
+    insumo_id: int
+    # Fracionada de propósito: 0,05 do vidro de ketchup por lanche.
+    quantidade: Decimal = Field(gt=0)
+    observacao: str | None = None
+
+
+class FichaItemOut(ORMModel):
+    insumo_id: int
+    insumo: str
+    quantidade: Decimal
+    custo_unitario: Decimal
+    custo_total: Decimal
+    estoque_insumo: Decimal
+    observacao: str | None = None
+
+
+class FichaIn(BaseModel):
+    itens: list[FichaItemIn] = []
+
+
+class FichaOut(ORMModel):
+    produto_id: int
+    produto: str
+    itens: list[FichaItemOut] = []
+    # Quanto custa produzir uma unidade, somando os insumos da receita.
+    custo_calculado: Decimal
+    # O custo que está no cadastro hoje, para comparar com o calculado.
+    custo_cadastrado: Decimal
+    preco_venda: Decimal
+    margem_calculada: Decimal | None = None
 
 
 class MovimentoIn(BaseModel):

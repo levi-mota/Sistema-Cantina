@@ -63,8 +63,30 @@ export interface Produto {
   estoque_atual: string;
   estoque_minimo: string;
   margem?: string | null;
+  /** Quantos insumos a receita tem. Zero é produto sem ficha técnica. */
+  itens_ficha: number;
   abaixo_minimo: boolean;
   ativo: boolean;
+}
+
+export interface FichaItem {
+  insumo_id: number;
+  insumo: string;
+  quantidade: string;
+  custo_unitario: string;
+  custo_total: string;
+  estoque_insumo: string;
+  observacao?: string | null;
+}
+
+export interface Ficha {
+  produto_id: number;
+  produto: string;
+  itens: FichaItem[];
+  custo_calculado: string;
+  custo_cadastrado: string;
+  preco_venda: string;
+  margem_calculada?: string | null;
 }
 
 export interface Movimento {

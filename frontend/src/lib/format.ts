@@ -32,10 +32,10 @@ export function apenasDigitos(texto: string): string {
  * digita, senão a vírgula sumiria a cada tecla e seria impossível chegar aos
  * centavos. Só o que não é número nem vírgula é descartado.
  */
-export function valorDigitado(texto: string): string {
+export function valorDigitado(texto: string, casas = 2): string {
   const limpo = texto.replace(/[^\d,]/g, "");
   const [inteiro, ...resto] = limpo.split(",");
-  const centavos = resto.join("").slice(0, 2);
+  const centavos = resto.join("").slice(0, casas);
   // Sem zeros à esquerda, mas "0," precisa sobreviver para virar "0,50".
   const inteiroLimpo = inteiro.replace(/^0+(?=\d)/, "");
   const comPontos = inteiroLimpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -56,6 +56,22 @@ export function valorTexto(valor: string | number | null | undefined): string {
   const numero = Number(valor ?? 0);
   if (!Number.isFinite(numero)) return "";
   return numero.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d),)/g, ".");
+}
+
+/**
+ * Quantidade de receita: aceita fração até três casas. Um lanche gasta 0,05 do
+ * vidro de ketchup, então aqui a vírgula é obrigatória -- diferente de compra e
+ * venda, que são sempre em unidades inteiras.
+ */
+export function quantidadeDigitada(texto: string): string {
+  return valorDigitado(texto, 3);
+}
+
+/** 0.050 -> "0,05"; 1.000 -> "1". Sem zeros de enfeite. */
+export function quantidadeTexto(valor: string | number | null | undefined): string {
+  const numero = Number(valor ?? 0);
+  if (!Number.isFinite(numero)) return "";
+  return String(Number(numero.toFixed(3))).replace(".", ",");
 }
 
 export function porcentagem(valor: string | number | null | undefined, casas = 1): string {

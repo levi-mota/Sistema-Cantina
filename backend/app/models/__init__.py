@@ -12,6 +12,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -195,6 +196,37 @@ class Produto(Base):
 
     categoria: Mapped[Categoria | None] = relationship(lazy="joined")
     fornecedor: Mapped[Parceiro | None] = relationship(lazy="joined")
+    ficha: Mapped[list["FichaTecnicaItem"]] = relationship(
+        back_populates="produto",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        foreign_keys="FichaTecnicaItem.produto_id",
+    )
+
+
+class FichaTecnicaItem(Base):
+    """Um insumo dentro da receita de um produto final.
+
+    A quantidade é por unidade produzida e pode ser fracionada: um X-burguer
+    gasta 0,05 do vidro de ketchup que se compra inteiro. A fração vive só
+    aqui, no cálculo -- o estoque continua sendo contado em unidades, porque o
+    consumo real vem da contagem no fim do expediente, e não de uma baixa
+    automática a cada venda.
+    """
+
+    __tablename__ = "ficha_tecnica"
+    __table_args__ = (UniqueConstraint("produto_id", "insumo_id", name="uq_ficha_produto_insumo"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    produto_id: Mapped[int] = mapped_column(
+        ForeignKey("produtos.id", ondelete="CASCADE"), index=True
+    )
+    insumo_id: Mapped[int] = mapped_column(ForeignKey("produtos.id"), index=True)
+    quantidade: Mapped[float] = mapped_column(Quantidade)
+    observacao: Mapped[str | None] = mapped_column(String(200))
+
+    produto: Mapped[Produto] = relationship(foreign_keys=[produto_id], back_populates="ficha")
+    insumo: Mapped[Produto] = relationship(foreign_keys=[insumo_id], lazy="joined")
 
 
 class MovimentoEstoque(Base):
