@@ -91,7 +91,9 @@ export default function Caixa() {
     try {
       const [atual, t, abertas, lista] = await Promise.all([
         api.get<CaixaSessao | null>("/caixa/atual"),
-        api.get<CaixaTerminal[]>("/caixa/terminais"),
+        api.get<CaixaTerminal[]>("/caixa/terminais", {
+          params: { apenas_ativos: !gestor },
+        }),
         api.get<CaixaSessao[]>("/caixa/abertas"),
         api.get<CaixaSessao[]>("/caixa/sessoes", { params: { limite: 30 } }),
       ]);
@@ -104,7 +106,7 @@ export default function Caixa() {
     } finally {
       setCarregando(false);
     }
-  }, []);
+  }, [gestor]);
 
   useEffect(() => {
     void carregar();
@@ -202,7 +204,9 @@ export default function Caixa() {
           return (
             <Cartao
               key={t.id}
-              className={`p-4 ${t.minha_sessao ? "ring-2 ring-marca-500" : ""}`}
+              className={`p-4 ${t.minha_sessao ? "ring-2 ring-marca-500" : ""} ${
+                t.ativo ? "" : "opacity-60"
+              }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -215,9 +219,23 @@ export default function Caixa() {
                   )}
                 </div>
                 <Selo
-                  tom={t.minha_sessao ? "marca" : t.sessao_id ? "alerta" : "neutro"}
+                  tom={
+                    !t.ativo
+                      ? "neutro"
+                      : t.minha_sessao
+                        ? "marca"
+                        : t.sessao_id
+                          ? "alerta"
+                          : "neutro"
+                  }
                 >
-                  {t.minha_sessao ? "SEU TURNO" : t.sessao_id ? "OCUPADO" : "LIVRE"}
+                  {!t.ativo
+                    ? "DESATIVADO"
+                    : t.minha_sessao
+                      ? "SEU TURNO"
+                      : t.sessao_id
+                        ? "OCUPADO"
+                        : "LIVRE"}
                 </Selo>
               </div>
 
@@ -235,7 +253,7 @@ export default function Caixa() {
                 )}
               </p>
 
-              {!t.sessao_id && !minhaSessao && (
+              {t.ativo && !t.sessao_id && !minhaSessao && (
                 <Botao
                   className="mt-1 w-full"
                   icone={<Unlock className="h-4 w-4" />}
@@ -299,36 +317,37 @@ export default function Caixa() {
           </p>
         </Cartao>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-          <div className="space-y-4">
-            <Cartao className="p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-bold text-carvao-900">
-                      {minhaSessao.caixa_nome} · turno #{minhaSessao.id}
-                    </h2>
-                    <Selo tom="sucesso">ABERTO</Selo>
-                  </div>
-                  <p className="mt-0.5 text-sm text-carvao-500">
-                    Aberto por {minhaSessao.usuario_abertura_nome} em{" "}
-                    {dataHora(minhaSessao.aberto_em)}
-                  </p>
+        <div className="space-y-4">
+          <Cartao className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-bold text-carvao-900">
+                    {minhaSessao.caixa_nome} · turno #{minhaSessao.id}
+                  </h2>
+                  <Selo tom="sucesso">ABERTO</Selo>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-carvao-500">
-                    Deveria ter nesta gaveta
-                  </p>
-                  <p className="text-3xl font-bold text-carvao-900">{brl(c?.valor_esperado)}</p>
-                </div>
-              </div>
-              {minhaSessao.observacao_abertura && (
-                <p className="mt-3 rounded-lg bg-carvao-50 px-3 py-2 text-sm text-carvao-600">
-                  {minhaSessao.observacao_abertura}
+                <p className="mt-0.5 text-sm text-carvao-500">
+                  Aberto por {minhaSessao.usuario_abertura_nome} em{" "}
+                  {dataHora(minhaSessao.aberto_em)}
                 </p>
-              )}
-            </Cartao>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold uppercase tracking-wide text-carvao-500">
+                  Deveria ter nesta gaveta
+                </p>
+                <p className="text-3xl font-bold text-carvao-900">{brl(c?.valor_esperado)}</p>
+              </div>
+            </div>
+            {minhaSessao.observacao_abertura && (
+              <p className="mt-3 rounded-lg bg-carvao-50 px-3 py-2 text-sm text-carvao-600">
+                {minhaSessao.observacao_abertura}
+              </p>
+            )}
+          </Cartao>
 
+          {/* Lado a lado: a conta do saldo e o que passou pela gaveta. */}
+          <div className="grid gap-4 lg:grid-cols-2">
             <Cartao className="p-4">
               <h2 className="mb-3 font-bold text-carvao-900">Composição do saldo</h2>
               <Linha rotulo="Troco de abertura" valor={brl(c?.valor_abertura)} />
@@ -397,26 +416,6 @@ export default function Caixa() {
               )}
             </Cartao>
           </div>
-
-          <Cartao className="h-fit p-4">
-            <h2 className="mb-1 font-bold text-carvao-900">Fechamento</h2>
-            <p className="text-sm text-carvao-500">
-              Ao final do turno, conte o dinheiro da gaveta do {minhaSessao.caixa_nome} e informe
-              o valor. O sistema compara com os {brl(c?.valor_esperado)} esperados e registra a
-              diferença.
-            </p>
-            <Botao
-              variante="perigo"
-              className="mt-4 w-full"
-              icone={<LockKeyhole className="h-4 w-4" />}
-              onClick={() => {
-                setFormFechamento({ valor: "", observacao: "" });
-                setFechando(true);
-              }}
-            >
-              Conferir e fechar
-            </Botao>
-          </Cartao>
         </div>
       )}
 
