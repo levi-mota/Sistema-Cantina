@@ -18,6 +18,9 @@ bash "$RAIZ/deploy/backup.sh"
 
 passo "Código"
 cd "$RAIZ"
+# O repositorio pertence ao usuario do servico, e quem publica e o root: sem
+# isto o git recusa a pasta por "dubious ownership" e nada e atualizado.
+git config --global --add safe.directory "$RAIZ" 2>/dev/null || true
 git fetch --quiet origin
 ANTES=$(git rev-parse --short HEAD)
 git reset --hard --quiet origin/master

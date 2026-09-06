@@ -54,7 +54,28 @@ O DuckDNS responde por qualquer subdomínio abaixo do seu nome, então já valem
 Aponte o domínio para o **IP público** da instância (campo *current ip* no
 painel do DuckDNS). O `duckdns.timer` depois mantém isso atualizado sozinho.
 
-## 4. Instalar
+## 4. Acesso ao repositório (se ele for privado)
+
+O servidor precisa poder ler o código. Com repositório privado, crie uma
+**deploy key** — uma chave que existe só nessa máquina e só lê esse repositório:
+
+```bash
+sudo mkdir -p /root/.ssh
+sudo ssh-keygen -t ed25519 -f /root/.ssh/deploy_cantina -N "" -C "servidor-cantina"
+printf 'Host github.com
+  IdentityFile /root/.ssh/deploy_cantina
+  IdentitiesOnly yes
+  StrictHostKeyChecking accept-new
+' | sudo tee /root/.ssh/config >/dev/null
+sudo chmod 600 /root/.ssh/config
+sudo cat /root/.ssh/deploy_cantina.pub
+```
+
+Cole a última linha em *GitHub → o repositório → Settings → Deploy keys → Add
+deploy key*, **sem** marcar "Allow write access". Depois clone por SSH:
+`git@github.com:usuario/repositorio.git`.
+
+## 5. Instalar
 
 ```bash
 sudo apt update && sudo apt install -y git
@@ -77,7 +98,7 @@ O script instala Python, Node e Caddy, cria o usuário `cantina`, monta a tela,
 sobe a API como serviço e liga os horários de backup e de DuckDNS. Roda de novo
 sem estragar nada, se precisar repetir.
 
-## 5. Primeiro acesso
+## 6. Primeiro acesso
 
 Abra `https://app.<dominio>` (o certificado leva menos de um minuto para sair),
 entre com o usuário do `/etc/cantina.env` e **troque a senha** em Funcionários.
