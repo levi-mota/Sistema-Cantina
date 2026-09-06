@@ -132,7 +132,9 @@ class Parceiro(Base):
     )
     nome: Mapped[str] = mapped_column(String(150), index=True)
     nome_fantasia: Mapped[str | None] = mapped_column(String(150))
-    documento: Mapped[str | None] = mapped_column(String(18), index=True)
+    # Único: o mesmo CPF/CNPJ em duas fichas parte o histórico do cliente ao
+    # meio. Em branco pode repetir -- no SQLite o NULL não colide.
+    documento: Mapped[str | None] = mapped_column(String(18), index=True, unique=True)
     email: Mapped[str | None] = mapped_column(String(150))
     telefone: Mapped[str | None] = mapped_column(String(20))
     cep: Mapped[str | None] = mapped_column(String(9))

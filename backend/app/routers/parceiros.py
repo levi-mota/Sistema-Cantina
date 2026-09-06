@@ -10,6 +10,26 @@ from app.services import documento as servico_documento
 router = APIRouter(prefix="/api/parceiros", tags=["parceiros"])
 
 
+def exigir_documento_livre(db, documento: str | None, ignorar_id: int | None = None) -> None:
+    """Um CPF/CNPJ pertence a um cadastro só.
+
+    Duas fichas com o mesmo documento partem o histórico do cliente em duas
+    metades, e nenhuma delas mostra o total certo. Documento em branco é
+    permitido e pode se repetir: é o cadastro que ainda não pediu o papel.
+    """
+    if not documento:
+        return
+    stmt = select(models.Parceiro).where(models.Parceiro.documento == documento)
+    if ignorar_id is not None:
+        stmt = stmt.where(models.Parceiro.id != ignorar_id)
+    existente = db.scalar(stmt)
+    if existente:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Documento já cadastrado para '{existente.nome}'",
+        )
+
+
 def exigir_fantasia_coerente(tipo_pessoa: models.TipoPessoa, fantasia: str | None) -> None:
     """Nome fantasia é de empresa: pessoa física tem nome, e só.
 
@@ -88,15 +108,7 @@ def criar(dados: schemas.ParceiroCreate, db: DB, _: SomenteAdmin):
     except ValueError as erro:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(erro)) from erro
 
-    if payload["documento"]:
-        existente = db.scalar(
-            select(models.Parceiro).where(models.Parceiro.documento == payload["documento"])
-        )
-        if existente:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Documento já cadastrado para '{existente.nome}'",
-            )
+    exigir_documento_livre(db, payload["documento"])
 
     exigir_fantasia_coerente(payload["tipo_pessoa"], payload.get("nome_fantasia"))
 
@@ -127,6 +139,8 @@ def atualizar(parceiro_id: int, dados: schemas.ParceiroUpdate, db: DB, _: Soment
             campos["documento"] = servico_documento.validar(campos["documento"])
         except ValueError as erro:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(erro)) from erro
+        exigir_documento_livre(db, campos["documento"], ignorar_id=parceiro.id)
+
     # Num PUT parcial o tipo e o fantasia podem vir de fontes diferentes: o que
     # vale é como o cadastro fica depois da mudança.
     tipo_pessoa = campos.get("tipo_pessoa", parceiro.tipo_pessoa)

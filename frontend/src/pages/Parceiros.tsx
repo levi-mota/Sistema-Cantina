@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import { Building2, Plus, Search, Sparkles, User } from "lucide-react";
+import { AlertTriangle, Building2, Plus, Search, Sparkles, User } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
 import { documentoFormatado, rotulo, telefoneFormatado } from "../lib/format";
-import type { Empresa, Endereco, Parceiro, TipoParceiro, TipoPessoa } from "../lib/tipos";
+import type {
+  Empresa,
+  Endereco,
+  Identificacao,
+  Parceiro,
+  TipoParceiro,
+  TipoPessoa,
+} from "../lib/tipos";
 import {
   Botao,
   Campo,
@@ -50,6 +57,8 @@ export default function Parceiros() {
   const [salvando, setSalvando] = useState(false);
   const [consultando, setConsultando] = useState<"cnpj" | "cep" | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  /** O que o documento digitado revelou: cadastro repetido ou dígito errado. */
+  const [conflito, setConflito] = useState<{ parceiro?: Parceiro; erro?: string } | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -72,6 +81,7 @@ export default function Parceiros() {
   function abrir(p: Parceiro | "novo") {
     setErro(null);
     setAviso(null);
+    setConflito(null);
     setModal(p);
     setForm(
       p === "novo"
@@ -95,6 +105,50 @@ export default function Parceiros() {
           },
     );
   }
+
+  // Confere o documento digitado contra os cadastros que já existem. O mesmo
+  // CPF em duas fichas separa o histórico do cliente em duas, e ninguém percebe
+  // até o relatório não bater -- melhor avisar enquanto se digita do que
+  // recusar o formulário inteiro na hora de salvar.
+  useEffect(() => {
+    if (!modal) return;
+    const limpo = form.documento.replace(/\D/g, "");
+    // 11 e 14 dígitos: antes disso a pessoa ainda está digitando.
+    if (limpo.length !== 11 && limpo.length !== 14) {
+      setConflito(null);
+      return;
+    }
+
+    let cancelado = false;
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await api.get<Identificacao>(`/parceiros/identificar/${limpo}`);
+        if (cancelado) return;
+        // Editar a própria ficha não é duplicata.
+        const outro =
+          data.cadastrado && data.parceiro_id && !(modal !== "novo" && modal.id === data.parceiro_id);
+        if (!outro) {
+          setConflito(null);
+          return;
+        }
+        const { data: achados } = await api.get<Parceiro[]>("/parceiros", {
+          params: { busca: limpo },
+        });
+        if (cancelado) return;
+        const parceiro = achados.find((p) => p.id === data.parceiro_id);
+        setConflito(parceiro ? { parceiro } : { erro: `Documento já cadastrado para ${data.nome}` });
+      } catch (e) {
+        // 422 aqui é dígito verificador errado: é erro de digitação, e o
+        // cadastro seria recusado do mesmo jeito ao salvar.
+        if (!cancelado) setConflito({ erro: mensagemErro(e, "Documento inválido") });
+      }
+    }, 400);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(t);
+    };
+  }, [form.documento, modal]);
 
   /** Preenche o cadastro a partir da Receita (ApiBrasil/BrasilAPI). */
   async function buscarCnpj() {
@@ -294,6 +348,29 @@ export default function Parceiros() {
             </div>
           )}
 
+          {conflito && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {conflito.parceiro ? (
+                <>
+                  <span className="flex-1">
+                    Este {form.tipo_pessoa === "JURIDICA" ? "CNPJ" : "CPF"} já é de{" "}
+                    <strong>{conflito.parceiro.nome}</strong>
+                  </span>
+                  <Botao
+                    type="button"
+                    variante="secundario"
+                    onClick={() => conflito.parceiro && abrir(conflito.parceiro)}
+                  >
+                    Abrir o cadastro
+                  </Botao>
+                </>
+              ) : (
+                <span>{conflito.erro}</span>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Seletor
               rotulo="Tipo de cadastro"
@@ -440,7 +517,12 @@ export default function Parceiros() {
             <Botao variante="secundario" type="button" onClick={() => setModal(null)}>
               Cancelar
             </Botao>
-            <Botao type="submit" carregando={salvando}>
+            <Botao
+              type="submit"
+              carregando={salvando}
+              disabled={!!conflito?.parceiro}
+              title={conflito?.parceiro ? "Este documento já tem cadastro" : undefined}
+            >
               Salvar
             </Botao>
           </div>
