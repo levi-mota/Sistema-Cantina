@@ -594,11 +594,6 @@ export default function Estoque() {
               rotulo="Código"
               value={form.codigo}
               onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-              dica={
-                produtoModal === "novo"
-                  ? "Código de barras, se houver. Em branco, o sistema gera pela categoria."
-                  : undefined
-              }
             />
             <Seletor
               rotulo="Tipo"
