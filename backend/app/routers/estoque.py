@@ -1,11 +1,14 @@
 """Estoque: categorias, produtos e movimentações (kardex)."""
 
+import base64
+import binascii
 import re
 import unicodedata
 from datetime import date, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import func, or_, select
 
 from app import models, schemas
@@ -38,6 +41,7 @@ def _produto_out(p: models.Produto) -> schemas.ProdutoOut:
         fornecedor_nome=p.fornecedor.nome if p.fornecedor else None,
         margem=round(margem, 2) if margem is not None else None,
         abaixo_minimo=Decimal(str(p.estoque_atual or 0)) <= Decimal(str(p.estoque_minimo or 0)),
+        tem_foto=p.imagem_tipo is not None,
     )
 
 
@@ -243,6 +247,58 @@ def atualizar_produto(produto_id: int, dados: schemas.ProdutoUpdate, db: DB, _: 
     db.commit()
     db.refresh(produto)
     return _produto_out(produto)
+
+
+# A tela manda a imagem ja reduzida, como data URI. Reduzir no navegador evita
+# uma biblioteca de imagem no servidor -- e o teto abaixo e a garantia de que a
+# reducao aconteceu mesmo.
+LIMITE_FOTO = 400_000
+TIPOS_FOTO = {"image/webp", "image/jpeg", "image/png"}
+
+
+class FotoIn(BaseModel):
+    """`data:image/webp;base64,...`"""
+
+    imagem: str
+
+
+@router.put("/produtos/{produto_id}/foto", status_code=status.HTTP_204_NO_CONTENT)
+def salvar_foto(produto_id: int, dados: FotoIn, db: DB, _: SomenteAdmin):
+    produto = db.get(models.Produto, produto_id)
+    if not produto:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado")
+
+    casou = re.fullmatch(r"data:([\w/+.-]+);base64,(.+)", dados.imagem.strip(), re.S)
+    if not casou:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Imagem em formato inesperado")
+
+    tipo, conteudo = casou.group(1), casou.group(2)
+    if tipo not in TIPOS_FOTO:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Use uma imagem WEBP, JPEG ou PNG"
+        )
+    try:
+        bruto = base64.b64decode(conteudo, validate=True)
+    except (ValueError, binascii.Error) as erro:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Imagem inválida") from erro
+    if len(bruto) > LIMITE_FOTO:
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Imagem muito grande depois de reduzida"
+        )
+
+    produto.imagem = bruto
+    produto.imagem_tipo = tipo
+    db.commit()
+
+
+@router.delete("/produtos/{produto_id}/foto", status_code=status.HTTP_204_NO_CONTENT)
+def remover_foto(produto_id: int, db: DB, _: SomenteAdmin):
+    produto = db.get(models.Produto, produto_id)
+    if not produto:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Produto não encontrado")
+    produto.imagem = None
+    produto.imagem_tipo = None
+    db.commit()
 
 
 @router.delete("/produtos/{produto_id}", status_code=status.HTTP_204_NO_CONTENT)

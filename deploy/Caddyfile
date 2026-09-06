@@ -89,8 +89,29 @@
 {$DOMINIO_SITE} {
 	import seguranca
 	encode zstd gzip
-	root * /opt/cantina/deploy/cardapio
-	file_server
+
+	# O cardapio le do mesmo endereco em que e servido: sem origem cruzada, e a
+	# regra connect-src 'self' da CSP continua valendo. So a parte publica da
+	# API passa por aqui -- venda, caixa e cadastro nao existem neste dominio.
+	handle /api/publico/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# A marca e o icone saem da mesma pasta que a tela do sistema usa: um
+	# arquivo so, em vez de duas copias para manter iguais.
+	handle /logo-cantina*.png {
+		root * /opt/cantina/frontend/dist
+		file_server
+	}
+	handle /favicon* {
+		root * /opt/cantina/frontend/dist
+		file_server
+	}
+
+	handle {
+		root * /opt/cantina/deploy/cardapio
+		file_server
+	}
 
 	log {
 		output file /var/log/caddy/cardapio.log {

@@ -22,6 +22,7 @@ from app.routers import (
     integracoes,
     parceiros,
     pix,
+    publico,
     relatorios,
     vendas,
 )
@@ -108,6 +109,7 @@ for modulo in (
     configuracoes,
     relatorios,
     pix,
+    publico,
     integracoes,
 ):
     app.include_router(modulo.router)

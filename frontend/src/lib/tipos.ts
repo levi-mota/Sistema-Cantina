@@ -64,6 +64,8 @@ export interface Produto {
   estoque_minimo: string;
   margem?: string | null;
   abaixo_minimo: boolean;
+  /** Tem foto cadastrada para o cardapio virtual. */
+  tem_foto?: boolean;
   ativo: boolean;
 }
 

@@ -167,7 +167,7 @@ class ProdutoOut(ORMModel, ProdutoBase):
     fornecedor_nome: str | None = None
     margem: Decimal | None = None
     abaixo_minimo: bool = False
-
+    tem_foto: bool = False
 
 class MovimentoIn(BaseModel):
     produto_id: int

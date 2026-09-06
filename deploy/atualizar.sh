@@ -34,6 +34,17 @@ npm ci --silent
 npm run build --silent
 chown -R "$USUARIO":"$USUARIO" "$RAIZ"
 
+passo "Servidor web"
+# O Caddyfile tambem e codigo: sem isto, mudar a borda exigia lembrar de um
+# passo manual, e o que se esquece nao existe.
+if ! cmp -s "$RAIZ/deploy/Caddyfile" /etc/caddy/Caddyfile; then
+  install -m 644 "$RAIZ/deploy/Caddyfile" /etc/caddy/Caddyfile
+  systemctl reload caddy
+  echo "  Caddyfile atualizado e recarregado"
+else
+  echo "  sem mudanca"
+fi
+
 passo "Reiniciando"
 # As migrações do banco são aplicadas pela própria aplicação ao subir.
 systemctl restart cantina-api

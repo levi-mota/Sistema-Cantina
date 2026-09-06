@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -192,6 +193,13 @@ class Produto(Base):
     estoque_minimo: Mapped[float] = mapped_column(Quantidade, default=0)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+    # Foto do cardapio. Fica no banco de proposito: o backup diario ja leva o
+    # arquivo do banco, entao a imagem viaja junto com o produto -- nada de
+    # pasta separada para lembrar de copiar. `deferred` porque o PDV pede a
+    # lista de produtos a cada venda e nao quer trinta imagens no caminho.
+    imagem: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
+    imagem_tipo: Mapped[str | None] = mapped_column(String(30))
 
     categoria: Mapped[Categoria | None] = relationship(lazy="joined")
     fornecedor: Mapped[Parceiro | None] = relationship(lazy="joined")

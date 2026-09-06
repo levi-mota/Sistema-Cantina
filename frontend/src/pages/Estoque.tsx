@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { api, mensagemErro } from "../lib/api";
+import { FotoProduto } from "../components/FotoProduto";
 import {
   apenasDigitos,
   brl,
@@ -554,6 +555,19 @@ export default function Estoque() {
       >
         <form onSubmit={salvarProduto} className="space-y-4">
           <Erro mensagem={erro} />
+
+          {/* So depois de o produto existir: a foto precisa de um id para
+              onde ir, e ela sobe na hora, fora do salvar do formulario. */}
+          {produtoModal && produtoModal !== "novo" && produtoModal.tipo === "FINAL" && (
+            <FotoProduto
+              produtoId={produtoModal.id}
+              temFoto={!!produtoModal.tem_foto}
+              aoMudar={(temFoto) => {
+                setProdutoModal({ ...produtoModal, tem_foto: temFoto });
+                void carregar();
+              }}
+            />
+          )}
 
           {(repetido.codigo || repetido.nome) && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
