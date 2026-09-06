@@ -1165,9 +1165,9 @@ export default function Pdv() {
                 return (
                   <li
                     key={p.id}
-                    className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-3 py-2.5 sm:grid-cols-[1fr_7rem_6rem_8rem]"
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5"
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-40 flex-1">
                       <p className="truncate text-sm font-semibold text-carvao-800">
                         {p.nome}
                         {noCarrinho > 0 && (
@@ -1181,12 +1181,12 @@ export default function Pdv() {
                         {p.categoria_nome ? ` · ${p.categoria_nome}` : ""} · por {p.unidade}
                       </p>
                     </div>
-                    <span className="text-right text-base font-bold tabular-nums text-marca-600">
+                    <span className="w-24 shrink-0 text-right text-base font-bold tabular-nums text-marca-600">
                       {brl(p.preco_venda)}
                     </span>
                     <span
                       className={cx(
-                        "text-right text-xs tabular-nums",
+                        "w-16 shrink-0 text-right text-xs tabular-nums",
                         teto <= 0
                           ? "font-semibold text-red-600"
                           : p.abaixo_minimo
@@ -1196,22 +1196,24 @@ export default function Pdv() {
                     >
                       {teto <= 0 ? "esgotado" : `${teto} un`}
                     </span>
-                    <div className="col-span-2 flex justify-end gap-1.5 sm:col-span-1">
+                    <div className="ml-auto flex shrink-0 gap-1.5">
                       <Botao
                         variante="secundario"
+                        className="whitespace-nowrap"
                         disabled={teto <= 0 || !vendaAberta}
                         onClick={() => incluirUmaUnidade(p)}
                       >
-                        + 1
+                        +1
                       </Botao>
                       <Botao
+                        className="whitespace-nowrap"
                         disabled={teto <= 0 || !vendaAberta}
                         onClick={() => {
                           setCatalogoAberto(false);
                           escolherProduto(p);
                         }}
                       >
-                        Quantidade
+                        Qtd.
                       </Botao>
                     </div>
                   </li>
@@ -1222,7 +1224,7 @@ export default function Pdv() {
 
           <p className="text-xs text-carvao-500">
             {vendaAberta
-              ? "“+ 1” inclui uma unidade e deixa a lista aberta; “Quantidade” fecha e abre o passo de quantidade."
+              ? "“+1” inclui uma unidade e deixa a lista aberta; “Qtd.” fecha e abre o passo de quantidade."
               : "Abra uma venda para incluir produtos. Aqui a consulta é só de preço e estoque."}
           </p>
         </div>
