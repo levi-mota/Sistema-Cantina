@@ -133,6 +133,12 @@ export default function Pdv() {
   /** Quando preenchido, finalizar altera esta venda em vez de criar outra. */
   const [editando, setEditando] = useState<Venda | null>(null);
 
+  // Catalogo: a lista da tela so responde a busca, entao quem nao lembra o
+  // nome precisa de um lugar para folhear o cardapio inteiro.
+  const [catalogoAberto, setCatalogoAberto] = useState(false);
+  const [filtroCategoria, setFiltroCategoria] = useState("");
+  const [buscaCatalogo, setBuscaCatalogo] = useState("");
+
   const [pixConfigurado, setPixConfigurado] = useState(false);
   const [pixCobranca, setPixCobranca] = useState<PixCobranca | null>(null);
   const [pixImagem, setPixImagem] = useState<string | null>(null);
@@ -261,6 +267,18 @@ export default function Pdv() {
     requestAnimationFrame(() => campoBusca.current?.focus());
   }, []);
 
+  const categorias = useMemo(() => {
+    const nomes = new Set<string>();
+    for (const p of produtos) if (p.categoria_nome) nomes.add(p.categoria_nome);
+    return [...nomes].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [produtos]);
+
+  const abrirCatalogo = useCallback(() => {
+    setErro(null);
+    setBuscaCatalogo("");
+    setCatalogoAberto(true);
+  }, []);
+
   const abrirLocalizar = useCallback(() => {
     setErro(null);
     setLocalizarAberto(true);
@@ -304,6 +322,40 @@ export default function Pdv() {
     [filtrados, destaque, carrinho, disponivel],
   );
 
+  /** Inclui uma unidade na venda, seja pela lista ou pelo catalogo. */
+  const incluirUmaUnidade = useCallback(
+    (produto: Produto) => {
+      const teto = disponivel(produto);
+      const atual = carrinho.find((i) => i.produto.id === produto.id)?.quantidade ?? 0;
+      if (atual >= teto) {
+        setErro(
+          teto <= 0
+            ? `"${produto.nome}" está sem estoque.`
+            : `Só há ${teto} de "${produto.nome}" em estoque.`,
+        );
+        return;
+      }
+      setErro(null);
+      setUltimoLancado(produto.id);
+      setCarrinho((itens) => {
+        const sem = itens.filter((i) => i.produto.id !== produto.id);
+        return [...sem, { produto, quantidade: atual + 1 }];
+      });
+    },
+    [carrinho, disponivel],
+  );
+
+  const catalogo = useMemo(() => {
+    const alvo = buscaCatalogo.trim().toLowerCase();
+    return produtos.filter(
+      (p) =>
+        (!filtroCategoria || p.categoria_nome === filtroCategoria) &&
+        (!alvo ||
+          p.nome.toLowerCase().includes(alvo) ||
+          (p.codigo ?? "").toLowerCase().includes(alvo)),
+    );
+  }, [produtos, buscaCatalogo, filtroCategoria]);
+
   const abrirPagamento = useCallback(() => {
     if (carrinho.length === 0 || !caixa) return;
     abertoEm.current = performance.now();
@@ -331,7 +383,7 @@ export default function Pdv() {
 
   // --- Atalhos de teclado da tela ----------------------------------------
   useEffect(() => {
-    if (pagamentoAberto || comprovante || escolhido || !vendaAberta) return;
+    if (pagamentoAberto || comprovante || escolhido || catalogoAberto || !vendaAberta) return;
 
     function aoTeclar(e: KeyboardEvent) {
       // Com a busca vazia as teclas sobram para o carrinho: nada do que o
@@ -371,6 +423,11 @@ export default function Pdv() {
         abrirLocalizar();
         return;
       }
+      if (e.key === "*" && buscaVazia) {
+        e.preventDefault();
+        abrirCatalogo();
+        return;
+      }
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         e.preventDefault();
         setDestaque((d) => Math.min(d + 1, Math.max(filtrados.length - 1, 0)));
@@ -404,6 +461,7 @@ export default function Pdv() {
     pagamentoAberto,
     comprovante,
     escolhido,
+    catalogoAberto,
     vendaAberta,
     busca,
     carrinho.length,
@@ -412,6 +470,7 @@ export default function Pdv() {
     escolherProduto,
     abrirPagamento,
     abrirLocalizar,
+    abrirCatalogo,
     ajustarDestacado,
     novaVenda,
     fecharVenda,
@@ -420,7 +479,7 @@ export default function Pdv() {
 
   // --- Atalhos da tela inicial -------------------------------------------
   useEffect(() => {
-    if (vendaAberta || localizarAberto || comprovante) return;
+    if (vendaAberta || localizarAberto || catalogoAberto || comprovante) return;
 
     function aoTeclar(e: KeyboardEvent) {
       if (e.key === "Enter" || e.key === " " || e.key === "+" || e.key.toLowerCase() === "n") {
@@ -431,12 +490,17 @@ export default function Pdv() {
       if (e.key === "/" || e.key.toLowerCase() === "l") {
         e.preventDefault();
         abrirLocalizar();
+        return;
+      }
+      if (e.key === "*" || e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        abrirCatalogo();
       }
     }
 
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
-  }, [vendaAberta, localizarAberto, comprovante, novaVenda, abrirLocalizar]);
+  }, [vendaAberta, localizarAberto, catalogoAberto, comprovante, novaVenda, abrirLocalizar, abrirCatalogo]);
 
 
   /** Confirma o passo: define a quantidade total daquele produto no carrinho. */
@@ -1054,6 +1118,116 @@ export default function Pdv() {
         </div>
       </Modal>
 
+      {/* Catalogo de produtos */}
+      <Modal
+        aberto={catalogoAberto}
+        titulo="Produtos"
+        aoFechar={() => {
+          setCatalogoAberto(false);
+          if (vendaAberta) focarBusca();
+        }}
+        largura="max-w-3xl"
+      >
+        <div className="space-y-3">
+          <Erro mensagem={erro} />
+          <div className="flex flex-wrap gap-2">
+            <div className="min-w-48 flex-1">
+              <Campo
+                autoFocus
+                value={buscaCatalogo}
+                onChange={(e) => setBuscaCatalogo(e.target.value)}
+                placeholder="Nome ou código do produto"
+              />
+            </div>
+            {categorias.length > 0 && (
+              <select
+                value={filtroCategoria}
+                onChange={(e) => setFiltroCategoria(e.target.value)}
+                className="campo w-auto"
+              >
+                <option value="">Todas as categorias</option>
+                {categorias.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {catalogo.length === 0 ? (
+            <Vazio titulo="Nenhum produto" descricao="Ajuste a busca ou o filtro de categoria." />
+          ) : (
+            <ul className="max-h-[60vh] divide-y divide-carvao-100 overflow-y-auto rounded-lg border border-carvao-100">
+              {catalogo.map((p) => {
+                const teto = disponivel(p);
+                const noCarrinho = carrinho.find((i) => i.produto.id === p.id)?.quantidade ?? 0;
+                return (
+                  <li
+                    key={p.id}
+                    className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-3 py-2.5 sm:grid-cols-[1fr_7rem_6rem_8rem]"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-carvao-800">
+                        {p.nome}
+                        {noCarrinho > 0 && (
+                          <span className="ml-2 text-xs font-bold text-emerald-700">
+                            {noCarrinho} na venda
+                          </span>
+                        )}
+                      </p>
+                      <p className="truncate text-[11px] text-carvao-400">
+                        <span className="font-mono">{p.codigo ?? "sem código"}</span>
+                        {p.categoria_nome ? ` · ${p.categoria_nome}` : ""} · por {p.unidade}
+                      </p>
+                    </div>
+                    <span className="text-right text-base font-bold tabular-nums text-marca-600">
+                      {brl(p.preco_venda)}
+                    </span>
+                    <span
+                      className={cx(
+                        "text-right text-xs tabular-nums",
+                        teto <= 0
+                          ? "font-semibold text-red-600"
+                          : p.abaixo_minimo
+                            ? "font-semibold text-amber-700"
+                            : "text-carvao-400",
+                      )}
+                    >
+                      {teto <= 0 ? "esgotado" : `${teto} un`}
+                    </span>
+                    <div className="col-span-2 flex justify-end gap-1.5 sm:col-span-1">
+                      <Botao
+                        variante="secundario"
+                        disabled={teto <= 0 || !vendaAberta}
+                        onClick={() => incluirUmaUnidade(p)}
+                      >
+                        + 1
+                      </Botao>
+                      <Botao
+                        disabled={teto <= 0 || !vendaAberta}
+                        onClick={() => {
+                          setCatalogoAberto(false);
+                          escolherProduto(p);
+                        }}
+                      >
+                        Quantidade
+                      </Botao>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <p className="text-xs text-carvao-500">
+            {vendaAberta
+              ? "“+ 1” inclui uma unidade e deixa a lista aberta; “Quantidade” fecha e abre o passo de quantidade."
+              : "Abra uma venda para incluir produtos. Aqui a consulta é só de preço e estoque."}
+          </p>
+        </div>
+      </Modal>
+
       {/* Localizar venda */}
       <Modal
         aberto={localizarAberto}
@@ -1294,6 +1468,17 @@ export default function Pdv() {
               </span>
             </button>
           </div>
+
+          <button
+            onClick={abrirCatalogo}
+            className="mx-auto mt-4 flex items-center gap-2 text-sm font-medium text-carvao-500 transition hover:text-marca-700"
+          >
+            <Search className="h-4 w-4" />
+            Consultar produtos e preços
+            <span className="flex items-center gap-1">
+              <kbd className={tecla}>*</kbd> ou <kbd className={tecla}>P</kbd>
+            </span>
+          </button>
         </div>
 
         {modais}
@@ -1358,8 +1543,11 @@ export default function Pdv() {
               <Acao tecla="Enter" titulo="Ir para o pagamento" onClick={abrirPagamento} desabilitado={carrinho.length === 0}>
                 Finalizar
               </Acao>
+              <Acao tecla="*" titulo="Consultar o cardápio inteiro e incluir na venda" onClick={abrirCatalogo}>
+                Produtos
+              </Acao>
               <Acao tecla="/" titulo="Localizar uma venda já fechada" onClick={abrirLocalizar}>
-                Localizar
+                Localizar venda
               </Acao>
               <Acao tecla="Esc" titulo="Voltar para a tela inicial" onClick={fecharVenda}>
                 Sair
