@@ -80,7 +80,8 @@ export default function Pdv() {
   const carregar = useCallback(async () => {
     try {
       const [p, k, x] = await Promise.all([
-        api.get<Produto[]>("/estoque/produtos", { params: { ativo: true } }),
+        // Só produto final: insumo não tem preço de balcão.
+        api.get<Produto[]>("/estoque/produtos", { params: { ativo: true, tipo: "FINAL" } }),
         api.get<CaixaSessao | null>("/caixa/atual"),
         api.get<{ configurado: boolean }>("/pix/config"),
       ]);

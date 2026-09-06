@@ -3,7 +3,14 @@ import { AlertTriangle, ArrowDownUp, History, Package, Plus, Search } from "luci
 
 import { api, mensagemErro } from "../lib/api";
 import { brl, dataHora, hojeIso, qtd, rotulo } from "../lib/format";
-import type { Categoria, Movimento, Parceiro, Produto, TipoMovimento } from "../lib/tipos";
+import type {
+  Categoria,
+  Movimento,
+  Parceiro,
+  Produto,
+  TipoMovimento,
+  TipoProduto,
+} from "../lib/tipos";
 import {
   Botao,
   Campo,
@@ -28,6 +35,7 @@ const TIPOS_MOVIMENTO: { valor: TipoMovimento; texto: string }[] = [
 const FORM_VAZIO = {
   codigo: "",
   nome: "",
+  tipo: "FINAL" as TipoProduto,
   categoria_id: "",
   fornecedor_id: "",
   unidade: "UN",
@@ -47,6 +55,7 @@ export default function Estoque() {
 
   const [busca, setBusca] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
+  const [tipoFiltro, setTipoFiltro] = useState("");
   const [somenteCriticos, setSomenteCriticos] = useState(false);
   const [aba, setAba] = useState<"produtos" | "movimentos">("produtos");
 
@@ -73,6 +82,7 @@ export default function Estoque() {
           params: {
             busca: busca || undefined,
             categoria_id: categoriaFiltro || undefined,
+            tipo: tipoFiltro || undefined,
             somente_criticos: somenteCriticos || undefined,
           },
         }),
@@ -85,7 +95,7 @@ export default function Estoque() {
     } finally {
       setCarregando(false);
     }
-  }, [busca, categoriaFiltro, somenteCriticos]);
+  }, [busca, categoriaFiltro, tipoFiltro, somenteCriticos]);
 
   useEffect(() => {
     Promise.all([
@@ -112,6 +122,7 @@ export default function Estoque() {
         : {
             codigo: p.codigo ?? "",
             nome: p.nome,
+            tipo: p.tipo,
             categoria_id: String(p.categoria_id ?? ""),
             fornecedor_id: String(p.fornecedor_id ?? ""),
             unidade: p.unidade,
@@ -179,6 +190,7 @@ export default function Estoque() {
     const corpo = {
       codigo: form.codigo || null,
       nome: form.nome,
+      tipo: form.tipo,
       categoria_id: form.categoria_id ? Number(form.categoria_id) : null,
       fornecedor_id: form.fornecedor_id ? Number(form.fornecedor_id) : null,
       unidade: form.unidade,
@@ -275,7 +287,7 @@ export default function Estoque() {
 
       {aba === "produtos" ? (
         <>
-          <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_200px_auto]">
+          <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_180px_180px_auto]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-carvao-400" />
               <input
@@ -290,6 +302,15 @@ export default function Estoque() {
               onChange={(e) => setCategoriaFiltro(e.target.value)}
               vazio="Todas as categorias"
               opcoes={categorias.map((c) => ({ valor: c.id, texto: c.nome }))}
+            />
+            <Seletor
+              value={tipoFiltro}
+              onChange={(e) => setTipoFiltro(e.target.value)}
+              vazio="Todos os tipos"
+              opcoes={[
+                { valor: "FINAL", texto: "Produto final" },
+                { valor: "INSUMO", texto: "Uso e consumo" },
+              ]}
             />
             <label className="flex items-center gap-2 rounded-lg border border-carvao-200 bg-white px-3 py-2 text-sm text-carvao-700">
               <input
@@ -318,6 +339,11 @@ export default function Estoque() {
                         <p className="text-xs text-carvao-500">
                           {p.codigo ?? "sem código"} · {p.categoria_nome ?? "sem categoria"}
                         </p>
+                        {p.tipo === "INSUMO" && (
+                          <div className="mt-1">
+                            <Selo tom="neutro">Uso e consumo</Selo>
+                          </div>
+                        )}
                       </div>
                       <Selo
                         tom={
@@ -333,8 +359,13 @@ export default function Estoque() {
                     </div>
                     <div className="mt-2 flex items-center justify-between text-sm">
                       <span className="text-carvao-600">
-                        Custo {brl(p.preco_custo)} · Venda{" "}
-                        <strong className="text-carvao-900">{brl(p.preco_venda)}</strong>
+                        Custo {brl(p.preco_custo)}
+                        {p.tipo === "FINAL" && (
+                          <>
+                            {" · Venda "}
+                            <strong className="text-carvao-900">{brl(p.preco_venda)}</strong>
+                          </>
+                        )}
                       </span>
                     </div>
                     <div className="mt-3 flex gap-2">
@@ -373,16 +404,21 @@ export default function Estoque() {
                   {produtos.map((p) => (
                     <tr key={p.id} className="hover:bg-carvao-50/60">
                       <td className="px-4 py-2.5">
-                        <p className="font-medium text-carvao-800">{p.nome}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-carvao-800">{p.nome}</p>
+                          {p.tipo === "INSUMO" && <Selo tom="neutro">Uso e consumo</Selo>}
+                        </div>
                         <p className="text-xs text-carvao-500">{p.codigo ?? "-"}</p>
                       </td>
                       <td className="px-4 py-2.5 text-carvao-600">{p.categoria_nome ?? "-"}</td>
                       <td className="px-4 py-2.5 text-carvao-600">{brl(p.preco_custo)}</td>
                       <td className="px-4 py-2.5 font-semibold text-carvao-900">
-                        {brl(p.preco_venda)}
+                        {p.tipo === "FINAL" ? brl(p.preco_venda) : "-"}
                       </td>
                       <td className="px-4 py-2.5 text-carvao-600">
-                        {p.margem ? `${Number(p.margem).toFixed(0)}%` : "-"}
+                        {p.tipo === "FINAL" && p.margem
+                          ? `${Number(p.margem).toFixed(0)}%`
+                          : "-"}
                       </td>
                       <td className="px-4 py-2.5">
                         <Selo
@@ -499,6 +535,26 @@ export default function Estoque() {
               onChange={(e) => setForm({ ...form, codigo: e.target.value })}
             />
             <Seletor
+              rotulo="Tipo"
+              value={form.tipo}
+              onChange={(e) => {
+                const tipo = e.target.value as TipoProduto;
+                // Insumo não vai ao balcão: preço de venda deixa de fazer
+                // sentido e some, para ninguém preencher um valor que nunca
+                // será cobrado.
+                setForm((f) => ({
+                  ...f,
+                  tipo,
+                  preco_venda: tipo === "INSUMO" ? "0" : f.preco_venda,
+                }));
+              }}
+              opcoes={[
+                { valor: "FINAL", texto: "Produto final (vai para o PDV)" },
+                { valor: "INSUMO", texto: "Uso e consumo (não é vendido)" },
+              ]}
+              className="sm:col-span-2"
+            />
+            <Seletor
               rotulo="Categoria"
               value={form.categoria_id}
               onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
@@ -534,14 +590,16 @@ export default function Estoque() {
               value={form.preco_custo}
               onChange={(e) => setForm({ ...form, preco_custo: e.target.value })}
             />
-            <Campo
-              rotulo="Preço de venda (R$)"
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.preco_venda}
-              onChange={(e) => setForm({ ...form, preco_venda: e.target.value })}
-            />
+            {form.tipo === "FINAL" && (
+              <Campo
+                rotulo="Preço de venda (R$)"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.preco_venda}
+                onChange={(e) => setForm({ ...form, preco_venda: e.target.value })}
+              />
+            )}
             {produtoModal === "novo" && (
               <Campo
                 rotulo="Estoque inicial"

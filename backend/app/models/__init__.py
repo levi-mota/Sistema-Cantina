@@ -51,6 +51,19 @@ class TipoPessoa(StrEnum):
     JURIDICA = "JURIDICA"
 
 
+class TipoProduto(StrEnum):
+    """O que o item é dentro da cantina.
+
+    FINAL é o que o cliente compra: vai ao PDV e tem preço de venda. INSUMO é o
+    que se usa para produzir ou acompanhar -- farinha, ketchup, embalagem --,
+    controlado no estoque e comprado como qualquer outro item, mas sem preço de
+    balcão e fora da tela de venda.
+    """
+
+    FINAL = "FINAL"
+    INSUMO = "INSUMO"
+
+
 class TipoMovimento(StrEnum):
     ENTRADA = "ENTRADA"
     SAIDA = "SAIDA"
@@ -166,6 +179,9 @@ class Produto(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     codigo: Mapped[str | None] = mapped_column(String(40), unique=True, index=True)
     nome: Mapped[str] = mapped_column(String(150), index=True)
+    tipo: Mapped[TipoProduto] = mapped_column(
+        Enum(TipoProduto), default=TipoProduto.FINAL, index=True
+    )
     descricao: Mapped[str | None] = mapped_column(Text)
     categoria_id: Mapped[int | None] = mapped_column(ForeignKey("categorias.id"))
     fornecedor_id: Mapped[int | None] = mapped_column(ForeignKey("parceiros.id"))

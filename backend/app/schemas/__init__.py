@@ -115,6 +115,7 @@ class CategoriaOut(ORMModel, CategoriaIn):
 class ProdutoBase(BaseModel):
     codigo: str | None = None
     nome: str
+    tipo: models.TipoProduto = models.TipoProduto.FINAL
     descricao: str | None = None
     categoria_id: int | None = None
     fornecedor_id: int | None = None
@@ -132,6 +133,7 @@ class ProdutoCreate(ProdutoBase):
 class ProdutoUpdate(BaseModel):
     codigo: str | None = None
     nome: str | None = None
+    tipo: models.TipoProduto | None = None
     descricao: str | None = None
     categoria_id: int | None = None
     fornecedor_id: int | None = None

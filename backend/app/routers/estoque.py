@@ -21,6 +21,7 @@ def _produto_out(p: models.Produto) -> schemas.ProdutoOut:
         id=p.id,
         codigo=p.codigo,
         nome=p.nome,
+        tipo=p.tipo,
         descricao=p.descricao,
         categoria_id=p.categoria_id,
         fornecedor_id=p.fornecedor_id,
@@ -81,6 +82,7 @@ def listar_produtos(
     _: CurrentUser,
     busca: str | None = None,
     categoria_id: int | None = None,
+    tipo: models.TipoProduto | None = None,
     ativo: bool | None = None,
     somente_criticos: bool = False,
     limite: int = 500,
@@ -93,6 +95,8 @@ def listar_produtos(
         )
     if categoria_id:
         stmt = stmt.where(models.Produto.categoria_id == categoria_id)
+    if tipo:
+        stmt = stmt.where(models.Produto.tipo == tipo)
     if ativo is not None:
         stmt = stmt.where(models.Produto.ativo.is_(ativo))
     if somente_criticos:

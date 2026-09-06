@@ -44,10 +44,14 @@ export interface Categoria {
   descricao?: string | null;
 }
 
+/** FINAL vai ao PDV; INSUMO é o que se usa para produzir (farinha, ketchup). */
+export type TipoProduto = "FINAL" | "INSUMO";
+
 export interface Produto {
   id: number;
   codigo?: string | null;
   nome: string;
+  tipo: TipoProduto;
   descricao?: string | null;
   categoria_id?: number | null;
   categoria_nome?: string | null;

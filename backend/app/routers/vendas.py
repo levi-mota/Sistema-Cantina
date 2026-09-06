@@ -121,6 +121,13 @@ def finalizar_venda(dados: schemas.VendaIn, db: DB, usuario: CurrentUser):
             raise HTTPException(
                 status.HTTP_404_NOT_FOUND, f"Produto {item.produto_id} indisponível"
             )
+        if produto.tipo != models.TipoProduto.FINAL:
+            # Insumo é o que se usa para produzir; não tem preço de balcão. Se
+            # um dia ele for vendido de fato, vira produto final no cadastro.
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"'{produto.nome}' é de uso e consumo e não pode ser vendido",
+            )
 
         preco = Decimal(str(item.preco_unitario or produto.preco_venda))
         quantidade = Decimal(str(item.quantidade))

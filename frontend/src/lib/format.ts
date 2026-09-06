@@ -87,6 +87,8 @@ const ROTULOS: Record<string, string> = {
   PAGO: "Pago",
   CANCELADO: "Cancelado",
   VENCIDO: "Vencido",
+  FINAL: "Produto final",
+  INSUMO: "Uso e consumo",
   RASCUNHO: "Rascunho",
   ENVIADA: "Enviada",
   CONCLUIDA: "Concluída",
