@@ -674,7 +674,7 @@ export default function Estoque() {
               />
             )}
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao variante="secundario" type="button" onClick={() => setProdutoModal(null)}>
               Cancelar
             </Botao>
@@ -754,7 +754,7 @@ export default function Estoque() {
             value={movForm.motivo}
             onChange={(e) => setMovForm({ ...movForm, motivo: e.target.value })}
           />
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao variante="secundario" type="button" onClick={() => setMovProduto(null)}>
               Cancelar
             </Botao>

@@ -291,7 +291,10 @@ export default function Layout() {
               onClick={() => setMaisAberto(false)}
               aria-label="Fechar"
             />
-            <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-superficie pb-20 shadow-xl">
+            {/* Teto de altura com rolagem própria: numa tela baixa (celular
+                deitado, ou aparelho pequeno) a folha passava do topo, e o que
+                subia demais ficava sem jeito de tocar. */}
+            <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-superficie pb-20 shadow-xl">
               <div className="flex items-center justify-between border-b border-carvao-100 px-5 py-3">
                 <span className="font-bold text-carvao-900">Mais opções</span>
                 <button

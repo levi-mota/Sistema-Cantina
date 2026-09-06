@@ -929,7 +929,7 @@ export default function Pdv() {
               <kbd className={tecla}>Enter</kbd> confirma, <kbd className={tecla}>Esc</kbd> cancela
             </p>
 
-            <div className="flex gap-2">
+            <div className="acoes acoes-cheias">
               <Botao
                 variante="secundario"
                 className="flex-1"
@@ -1145,7 +1145,7 @@ export default function Pdv() {
             />
           </details>
 
-          <div className="flex gap-2">
+          <div className="acoes acoes-cheias">
             <Botao
               variante="secundario"
               className="flex-1"
@@ -1379,7 +1379,7 @@ export default function Pdv() {
         {comprovante && (
           <div className="space-y-3">
             <ResumoVenda venda={comprovante} />
-            <div className="flex gap-2">
+            <div className="acoes acoes-cheias">
               <Botao
                 variante="secundario"
                 className="flex-1 py-3"
@@ -1440,7 +1440,7 @@ export default function Pdv() {
               <ShoppingCart className="h-8 w-8 text-marca-600" />
               <span className="text-lg font-bold text-carvao-900">Nova venda</span>
               <span className="text-sm text-carvao-500">Carrinho zerado, pronto para vender</span>
-              <span className="mt-1 flex items-center gap-1.5 text-xs text-carvao-500">
+              <span className="mt-1 hidden items-center gap-1.5 text-xs text-carvao-500 computador:flex">
                 <kbd className={tecla}>Enter</kbd>, <kbd className={tecla}>+</kbd> ou{" "}
                 <kbd className={tecla}>N</kbd>
               </span>
@@ -1455,7 +1455,7 @@ export default function Pdv() {
               <span className="text-sm text-carvao-500">
                 Reimprimir, alterar itens ou cancelar uma venda já fechada
               </span>
-              <span className="mt-1 flex items-center gap-1.5 text-xs text-carvao-500">
+              <span className="mt-1 hidden items-center gap-1.5 text-xs text-carvao-500 computador:flex">
                 <kbd className={tecla}>/</kbd> ou <kbd className={tecla}>L</kbd>
               </span>
             </button>
@@ -1463,11 +1463,11 @@ export default function Pdv() {
 
           <button
             onClick={abrirCatalogo}
-            className="mx-auto mt-4 flex items-center gap-2 text-sm font-medium text-carvao-500 transition hover:text-marca-700"
+            className="mx-auto mt-4 flex min-h-11 items-center gap-2 rounded-lg px-4 text-sm font-medium text-carvao-500 transition hover:bg-carvao-100 hover:text-marca-700"
           >
             <Search className="h-4 w-4" />
             Consultar produtos e preços
-            <span className="flex items-center gap-1">
+            <span className="hidden items-center gap-1 computador:flex">
               <kbd className={tecla}>*</kbd> ou <kbd className={tecla}>P</kbd>
             </span>
           </button>

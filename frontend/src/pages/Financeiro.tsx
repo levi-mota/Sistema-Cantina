@@ -387,7 +387,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
             value={form.observacao}
             onChange={(e) => setForm({ ...form, observacao: e.target.value })}
           />
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao variante="secundario" type="button" onClick={() => setNovoAberto(false)}>
               Cancelar
             </Botao>
@@ -432,7 +432,7 @@ export default function Financeiro({ tipo }: { tipo: TipoTitulo }) {
             }
             opcoes={FORMAS.map((f) => ({ valor: f, texto: f }))}
           />
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao variante="secundario" type="button" onClick={() => setBaixando(null)}>
               Cancelar
             </Botao>

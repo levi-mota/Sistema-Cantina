@@ -513,7 +513,7 @@ export default function Parceiros() {
             />
           </label>
 
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao variante="secundario" type="button" onClick={() => setModal(null)}>
               Cancelar
             </Botao>

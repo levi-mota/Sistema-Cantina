@@ -581,7 +581,7 @@ export default function Caixa() {
             onChange={(e) => setFormTerminal({ ...formTerminal, descricao: e.target.value })}
             placeholder="Ex.: balcão do pátio"
           />
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao variante="secundario" type="button" onClick={() => setNovoTerminal(false)}>
               Cancelar
             </Botao>
@@ -644,7 +644,7 @@ export default function Caixa() {
             </label>
           )}
 
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao variante="secundario" type="button" onClick={() => setEditandoTerminal(null)}>
               Cancelar
             </Botao>
@@ -692,7 +692,7 @@ export default function Caixa() {
             onChange={(e) => setFormAbertura({ ...formAbertura, observacao: e.target.value })}
             placeholder="Ex.: turno da manha"
           />
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao variante="secundario" type="button" onClick={() => setAbrindo(null)}>
               Cancelar
             </Botao>
@@ -747,7 +747,7 @@ export default function Caixa() {
               movimento === "SANGRIA" ? "Ex.: retirada para o cofre" : "Ex.: reforço de moedas"
             }
           />
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao variante="secundario" type="button" onClick={() => setMovimento(null)}>
               Cancelar
             </Botao>
@@ -845,7 +845,7 @@ export default function Caixa() {
             }
             placeholder="Ex.: conferido com o gerente"
           />
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao
               variante="secundario"
               type="button"

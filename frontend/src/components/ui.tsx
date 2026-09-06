@@ -239,8 +239,10 @@ export function Modal({
 
   if (!aberto) return null;
 
+  // z-60 fica acima da barra inferior do celular, que e z-50: com a mesma
+  // altura de camada, a barra ficava por cima do modal e cobria os botoes.
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-menu/60 p-0 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-60 flex items-end justify-center bg-menu/60 p-0 sm:items-center sm:p-4">
       <div
         className={cx(
           "max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-superficie shadow-xl sm:rounded-xl",

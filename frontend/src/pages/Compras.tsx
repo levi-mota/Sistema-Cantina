@@ -657,7 +657,7 @@ export default function Compras() {
             </span>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="acoes">
             <Botao variante="secundario" onClick={() => setEditor(null)}>
               Cancelar
             </Botao>
@@ -847,7 +847,7 @@ export default function Compras() {
               </span>
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="acoes">
               <Botao variante="secundario" type="button" onClick={() => setConferencia(null)}>
                 Cancelar
               </Botao>

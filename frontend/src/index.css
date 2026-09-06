@@ -142,6 +142,24 @@
     @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-carvao-600;
   }
 
+  /*
+   * Barra de acoes de um modal.
+   *
+   * Fica colada no fim do painel em vez de rolar junto com o formulario. Num
+   * celular pequeno -- ou com o teclado aberto, que come metade da tela -- o
+   * "Salvar" ficava abaixo da dobra e so aparecia para quem adivinhasse que a
+   * folha rola por dentro.
+   */
+  .acoes {
+    @apply sticky bottom-0 z-10 -mx-5 -mb-5 mt-4 flex justify-end gap-2
+           border-t border-carvao-100 bg-superficie px-5 py-3;
+  }
+
+  /* Mesma cola, para as barras cujos botoes ocupam a largura toda. */
+  .acoes-cheias {
+    @apply justify-stretch;
+  }
+
   .cartao {
     @apply rounded-xl border border-carvao-100 bg-superficie shadow-sm;
   }
