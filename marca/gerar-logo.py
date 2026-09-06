@@ -4,12 +4,20 @@ Troca a palavra ALAGOAS por CANTINA e produz os arquivos que a aplicacao usa:
 o logo horizontal (branco e escuro) e o icone quadrado da aba do navegador.
 """
 
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-ORIGEM = Path(r"C:\Users\Levi Mota\Desktop\MAANAIM-ALAGOAS-LOGO BRANCO.png")
-DESTINO = Path(r"C:\Users\Levi Mota\Desktop\Sistema cantina\frontend\public")
+RAIZ = Path(__file__).resolve().parent.parent
+
+# A arte de origem e o arquivo que a grafica entregou; sem argumento, usa a
+# copia guardada nesta pasta.
+#   python marca/gerar-logo.py caminho/para/LOGO-BRANCO.png
+ORIGEM = (
+    Path(sys.argv[1]) if len(sys.argv) > 1 else RAIZ / "marca" / "logo-original-alagoas.png"
+)
+DESTINO = RAIZ / "frontend" / "public"
 
 FONTE = r"C:\Windows\Fonts\Candaraz.ttf"  # Candara negrito italico: o que mais se aproxima
 

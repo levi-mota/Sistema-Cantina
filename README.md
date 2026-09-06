@@ -16,6 +16,7 @@
   <img src="https://img.shields.io/badge/SQLite-um%20arquivo-6b4b1d?style=flat-square" alt="SQLite">
   <img src="https://img.shields.io/badge/HTTPS-autom%C3%A1tico-7c3110?style=flat-square" alt="HTTPS automático">
   <img src="https://img.shields.io/badge/custo-VM%20gratuita-333?style=flat-square" alt="Custo">
+  <img src="https://img.shields.io/badge/licen%C3%A7a-todos%20os%20direitos%20reservados-8a2f10?style=flat-square" alt="Licença">
 </p>
 
 ---
@@ -36,10 +37,11 @@ esquina. Este sistema foi construído em cima dessa restrição.
 
 ### Veja funcionando
 
-| | |
-| --- | --- |
-| **Cardápio público** | <https://maanaimcantina.duckdns.org> |
-| **Sistema** | <https://app.maanaimcantina.duckdns.org> (precisa de login) |
+O cardápio é a única parte aberta ao público, e está no ar:
+
+**<https://maanaimcantina.duckdns.org>**
+
+O sistema roda no mesmo servidor, num endereço próprio e atrás de login.
 
 ---
 
@@ -433,6 +435,18 @@ sudo bash /opt/cantina/deploy/atualizar.sh
 Tudo o que é de ambiente — domínios, chave de assinatura, senha inicial, fuso — mora em
 `/etc/cantina.env`, fora do repositório. O SQLite atende bem uma cantina; se um dia o
 volume crescer, basta apontar `DATABASE_URL` para PostgreSQL — o SQLAlchemy cobre a troca.
+
+---
+
+## Licença
+
+Código aberto para **leitura**, não para uso. Ele está aqui para ser estudado e
+avaliado; usar em operação, redistribuir ou derivar depende de autorização
+escrita. A marca e as artes da pasta `marca/` são da cantina e não estão
+cobertas nem para leitura.
+
+Os termos completos estão em [LICENSE](LICENSE). Para licenciar ou adaptar para
+outra cantina, abra uma issue.
 
 ---
 
