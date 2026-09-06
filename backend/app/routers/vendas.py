@@ -30,6 +30,19 @@ def _e_gestor(usuario: models.Usuario) -> bool:
     return usuario.perfil == models.Perfil.ADMIN
 
 
+def _turno_visivel(db: DB, usuario: models.Usuario) -> int | None:
+    """De qual turno o operador enxerga as vendas -- `None` significa nenhum.
+
+    A janela e o turno que ele tem aberto agora, e nao "as vendas dele": quem
+    esta no balcao precisa atender quem chega ali, inclusive para reimprimir o
+    recibo de uma venda feita ha dez minutos. Fechado o turno, aquilo vira
+    historico, e historico e assunto da gerencia -- outro caixa, outro operador
+    ou outro dia nao aparecem.
+    """
+    sessao = servico_caixa.sessao_do_usuario(db, usuario.id)
+    return sessao.id if sessao else None
+
+
 def _venda_out(v: models.Venda) -> schemas.VendaOut:
     return schemas.VendaOut(
         id=v.id,
@@ -66,10 +79,11 @@ def listar(
     limite: int = 100,
 ):
     stmt = select(models.Venda)
-    # Operador enxerga o proprio caixa. A gerencia enxerga o da casa inteira --
-    # e ja e ela quem responde pelo fechamento e pelos relatorios.
     if not _e_gestor(usuario):
-        stmt = stmt.where(models.Venda.usuario_id == usuario.id)
+        turno = _turno_visivel(db, usuario)
+        if turno is None:
+            return []
+        stmt = stmt.where(models.Venda.caixa_sessao_id == turno)
     if busca:
         alvo = busca.strip()
         # No balcão se procura pelo número da venda ou pelo CPF do cliente; o
@@ -100,9 +114,10 @@ def listar(
 @router.get("/{venda_id}", response_model=schemas.VendaOut)
 def obter(venda_id: int, db: DB, usuario: CurrentUser):
     venda = db.get(models.Venda, venda_id)
-    # Mesma resposta para "nao existe" e "nao e sua": responder diferente
-    # contaria, numero a numero, quantas vendas a casa fez.
-    if not venda or (not _e_gestor(usuario) and venda.usuario_id != usuario.id):
+    # Mesma resposta para "nao existe" e "nao e do seu turno": responder
+    # diferente contaria, numero a numero, quantas vendas a casa fez.
+    fora_do_turno = venda and venda.caixa_sessao_id != _turno_visivel(db, usuario)
+    if not venda or (not _e_gestor(usuario) and fora_do_turno):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Venda não encontrada")
     return _venda_out(venda)
 
